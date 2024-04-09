@@ -17,6 +17,9 @@ run: # clean build
 fmt:
 	make fmt -C $(CORE)
 
+check:
+	make check -C $(CORE)
+
 clean:
 	make -C $(CORE) clean
 	rm -rf obj_dir
