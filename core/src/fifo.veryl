@@ -1,7 +1,6 @@
-/*
 module fifo #(
-    param Width    : u32 = 10,
-    param DataWidth: u32 = 0 ,
+    param Width    : u32 = 0,
+    param DataWidth: u32 = 0,
 ) (
     clk   : input  logic           ,
     rst   : input  logic           ,
@@ -17,6 +16,34 @@ module fifo #(
             $fatal("DataWidth is not set");
         }
     }
-}
-*/
 
+    // if (Width == 0) {
+    var dvalid: logic           ;
+    var data  : logic<DataWidth>;
+
+    assign rvalid = dvalid;
+    assign rdata  = data;
+    assign wready = !dvalid | rready;
+
+    always_ff (clk, rst) {
+        if_reset {
+            dvalid = 0;
+            data   = 0;
+        } else {
+            if (dvalid) {
+                if rready & wvalid {
+                    data = wdata;
+                } else if rready {
+                    dvalid = 0;
+                }
+            } else {
+                if wvalid {
+                    dvalid = 1;
+                    data   = wdata;
+                }
+            }
+        }
+    }
+    // } else {
+    // }
+}
