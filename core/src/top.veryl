@@ -1,0 +1,9 @@
+module top (
+    clk: input logic,
+    rst: input logic,
+) {
+    inst c: core (
+        clk  ,
+        rst  ,
+    );
+}

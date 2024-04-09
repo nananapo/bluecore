@@ -1,0 +1,22 @@
+/*
+module fifo #(
+    param Width    : u32 = 10,
+    param DataWidth: u32 = 0 ,
+) (
+    clk   : input  logic           ,
+    rst   : input  logic           ,
+    wready: output logic           ,
+    wvalid: input  logic           ,
+    wdata : input  logic<DataWidth>,
+    rready: input  logic           ,
+    rvalid: output logic           ,
+    rdata : output logic<DataWidth>,
+) {
+    initial {
+        if DataWidth == 0 {
+            $fatal("DataWidth is not set");
+        }
+    }
+}
+*/
+
