@@ -3,19 +3,12 @@ module core (
     rst: input logic,
 ) {
 
-    var pc: conf::Addr;
-
+    var mem_valid : logic       ;
+    var mem_wen   : logic       ;
+    var mem_addr  : conf::Addr  ;
+    var mem_wdata : conf::UInt64;
     var mem_rvalid: logic       ;
     var mem_rdata : conf::UInt64;
-
-    let mem_valid: logic      = 1;
-    var mem_wen  : logic     ;
-    let mem_addr : conf::Addr = if mem_rvalid {
-        pc
-    } else {
-        requested_pc
-    };
-    var mem_wdata: conf::UInt64;
 
     inst mem: $sv::memory (
         clk                           ,
@@ -28,12 +21,30 @@ module core (
         rdata : mem_rdata             ,
     );
 
+
+    // program counter
+    var pc          : conf::Addr;
     var requested_pc: conf::Addr;
+
+    // fetch op
+    assign mem_addr = if mem_rvalid {
+        pc
+    } else {
+        requested_pc
+    };
+
+    // fetched inst
+    let fetch_inst: conf::Inst = if (requested_pc[2] == 0) {
+        mem_rdata[31:0]
+    } else {
+        mem_rdata[63:32]
+    };
 
     // fetch
     always_ff (clk, rst) {
         if_reset {
             $display    ("reset!");
+            mem_valid    = 1;
             pc           = 4;
             mem_wen      = 0;
             requested_pc = 0;
@@ -41,7 +52,7 @@ module core (
             if mem_rvalid {
                 pc           = pc + 4;
                 requested_pc = pc;
-                $display    ("pc:%h rdata:%h", requested_pc, mem_rdata);
+                $display    ("Fetch pc:%h rdata:%h", requested_pc, fetch_inst);
             }
         }
     }

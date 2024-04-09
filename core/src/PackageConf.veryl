@@ -1,6 +1,7 @@
 package conf {
     local XLEN  : u32         = 64;
     type Addr   = logic<XLEN>;
+    type Inst   = logic<32>  ;
     type UIntX  = logic<XLEN>;
     type UInt64 = logic<64>  ;
 }
