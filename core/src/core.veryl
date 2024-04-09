@@ -21,39 +21,46 @@ module core (
         rdata : mem_rdata             ,
     );
 
-
     // program counter
-    var pc          : conf::Addr;
-    var requested_pc: conf::Addr;
+    var if_pc          : conf::Addr;
+    var if_is_requested: logic     ;
+    var if_requested_pc: conf::Addr;
 
-    // fetch op
     assign mem_addr = if mem_rvalid {
-        pc
+        if_pc
     } else {
-        requested_pc
+        if_requested_pc
     };
 
     // fetched inst
-    let fetch_inst: conf::Inst = if (requested_pc[2] == 0) {
+    let if_fetch_inst: conf::Inst = if (if_requested_pc[2] == 0) {
         mem_rdata[31:0]
     } else {
         mem_rdata[63:32]
     };
 
-    // fetch
     always_ff (clk, rst) {
         if_reset {
-            $display    ("reset!");
-            mem_valid    = 1;
-            pc           = 4;
-            mem_wen      = 0;
-            requested_pc = 0;
+            $display       ("reset!");
+            mem_valid       = 0;
+            mem_wen         = 0;
+            if_pc           = 0;
+            if_is_requested = 0;
+            if_requested_pc = 0;
         } else {
-            if mem_rvalid {
-                pc           = pc + 4;
-                requested_pc = pc;
-                $display    ("Fetch pc:%h rdata:%h", requested_pc, fetch_inst);
+            if (if_is_requested) {
+                if mem_rvalid {
+                    $display       ("Fetch pc:%h rdata:%h", if_requested_pc, if_fetch_inst);
+                    if_pc           = if_pc + 4;
+                    if_requested_pc = if_pc;
+                }
+            } else {
+                mem_valid       = 1;
+                if_pc           = if_pc + 4;
+                if_is_requested = 1;
+                if_requested_pc = if_pc;
             }
+
         }
     }
 }
