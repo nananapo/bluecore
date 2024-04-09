@@ -22,7 +22,7 @@ aligned = []
 for i in range(0, len(all), ALIGN):
     s = ""
     for j in range(ALIGN - 4, -1, -4):
-        for k in range(j, j+4):
+        for k in range(j+3, j-1, -1):
             s += all[i + k]
     aligned.append(s)
 
