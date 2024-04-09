@@ -8,9 +8,9 @@ module core (
     var mem_rvalid: logic       ;
     var mem_rdata : conf::UInt64;
 
-    let mem_valid: logic        = 1;
-    var mem_wen  : logic       ;
-    let mem_addr : conf::Addr   = if mem_rvalid {
+    let mem_valid: logic      = 1;
+    var mem_wen  : logic     ;
+    let mem_addr : conf::Addr = if mem_rvalid {
         pc
     } else {
         requested_pc
