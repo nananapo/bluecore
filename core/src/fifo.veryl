@@ -13,8 +13,6 @@ module fifo #(
     rdata : output DataType,
 ) {
 
-    type Addr = logic<Width>;
-
     if Width == 0 :widthIfBlock {
         var dvalid: logic   ;
         var data  : DataType;
@@ -43,6 +41,8 @@ module fifo #(
             }
         }
     } else {
+        type Addr = logic<Width>;
+
         var head: Addr;
         var tail: Addr;
 
