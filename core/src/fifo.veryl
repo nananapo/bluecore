@@ -1,49 +1,82 @@
 module fifo #(
-    param Width    : u32 = 0,
-    param DataWidth: u32 = 0,
+    param Width       : u32  = 0    ,
+    param DataType    : type = logic,
+    param FutureWReady: bit  = 0    ,
 ) (
-    clk   : input  logic           ,
-    rst   : input  logic           ,
-    wready: output logic           ,
-    wvalid: input  logic           ,
-    wdata : input  logic<DataWidth>,
-    rready: input  logic           ,
-    rvalid: output logic           ,
-    rdata : output logic<DataWidth>,
+    clk   : input  logic   ,
+    rst   : input  logic   ,
+    wready: output logic   ,
+    wvalid: input  logic   ,
+    wdata : input  DataType,
+    rready: input  logic   ,
+    rvalid: output logic   ,
+    rdata : output DataType,
 ) {
-    initial {
-        if DataWidth == 0 {
-            $fatal("DataWidth is not set");
-        }
-    }
 
-    // if (Width == 0) {
-    var dvalid: logic           ;
-    var data  : logic<DataWidth>;
+    type Addr = logic<Width>;
 
-    assign rvalid = dvalid;
-    assign rdata  = data;
-    assign wready = !dvalid | rready;
+    if Width == 0 :widthIfBlock {
+        var dvalid: logic   ;
+        var data  : DataType;
 
-    always_ff (clk, rst) {
-        if_reset {
-            dvalid = 0;
-            data   = 0;
-        } else {
-            if (dvalid) {
-                if rready & wvalid {
-                    data = wdata;
-                } else if rready {
-                    dvalid = 0;
-                }
+        assign rvalid = dvalid;
+        assign rdata  = data;
+        assign wready = !dvalid | rready;
+
+        always_ff (clk, rst) {
+            if_reset {
+                dvalid = 0;
+                data   = 0;
             } else {
-                if wvalid {
-                    dvalid = 1;
-                    data   = wdata;
+                if (dvalid) {
+                    if rready & wvalid {
+                        data = wdata;
+                    } else if rready {
+                        dvalid = 0;
+                    }
+                } else {
+                    if wvalid {
+                        dvalid = 1;
+                        data   = wdata;
+                    }
+                }
+            }
+        }
+    } else {
+        var head: Addr;
+        var tail: Addr;
+
+        local DataLen: u32 = 2 ** Width;
+
+        var dataList: DataType<DataLen>;
+
+        assign rvalid = head != tail;
+        assign rdata  = dataList[head];
+
+        // TODO width cast?
+        let head_1: Addr = head - 1;
+        let head_2: Addr = head - 2;
+
+        if FutureWReady :futblock {
+            assign wready = head_1 != tail & head_2 != tail;
+        } else {
+            assign wready = head_1 != tail;
+        }
+
+        always_ff (clk, rst) {
+            if_reset {
+                head     = 0;
+                tail     = 0;
+                dataList = 'x;
+            } else {
+                if (rready & rvalid) {
+                    head = head + 1;
+                }
+                if (wready & wvalid) {
+                    dataList[tail] = wdata;
+                    tail           = tail + 1;
                 }
             }
         }
     }
-    // } else {
-    // }
 }

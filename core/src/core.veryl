@@ -3,6 +3,7 @@ module core (
     rst: input logic,
 ) {
 
+    var mem_ready : logic       ;
     var mem_valid : logic       ;
     var mem_wen   : logic       ;
     var mem_addr  : conf::Addr  ;
@@ -21,16 +22,43 @@ module core (
         rdata : mem_rdata             ,
     );
 
+    assign mem_ready = 1;
+
     // program counter
     var if_pc          : conf::Addr;
     var if_is_requested: logic     ;
     var if_requested_pc: conf::Addr;
 
-    assign mem_addr = if mem_rvalid {
+    // if -> id queue
+    struct if_idq_type {
+        addr   : conf::Addr,
+        instbit: conf::Inst,
+    }
+    var if_idq_wready: logic      ;
+    var if_idq_wvalid: logic      ;
+    var if_idq_wdata : if_idq_type;
+    var if_idq_rready: logic      ;
+    var if_idq_rvalid: logic      ;
+    var if_idq_rdata : if_idq_type;
+
+    assign mem_valid = if_idq_wready & mem_ready & (!if_is_requested | mem_rvalid);
+    assign mem_addr  = if mem_rvalid {
         if_pc
     } else {
         if_requested_pc
     };
+
+    /* TODO
+    function try_start_fetch() {
+        if (mem_ready & if_idq_wready) {
+            if_pc           = if_pc + 4;
+            if_is_requested = 1;
+            if_requested_pc = if_pc;
+        } else {
+            if_is_requested = 0;
+        }
+    }
+    */
 
     // fetched inst
     let if_fetch_inst: conf::Inst = if (if_requested_pc[2] == 0) {
@@ -39,28 +67,58 @@ module core (
         mem_rdata[63:32]
     };
 
+    // if -> id queue
+    assign if_idq_wvalid        = if_is_requested & mem_rvalid;
+    assign if_idq_wdata.addr    = if_requested_pc;
+    assign if_idq_wdata.instbit = if_fetch_inst;
+    assign if_idq_rready        = 0;
+
     always_ff (clk, rst) {
         if_reset {
             $display       ("reset!");
-            mem_valid       = 0;
             mem_wen         = 0;
             if_pc           = 0;
             if_is_requested = 0;
             if_requested_pc = 0;
         } else {
+            // fetch stage
             if (if_is_requested) {
                 if mem_rvalid {
-                    $display       ("Fetch pc:%h rdata:%h", if_requested_pc, if_fetch_inst);
-                    if_pc           = if_pc + 4;
-                    if_requested_pc = if_pc;
+                    $display("Fetch pc:%h rdata:%h", if_requested_pc, if_fetch_inst);
+                    // try_start_fetch();
+                    if (mem_ready & if_idq_wready) {
+                        if_pc           = if_pc + 4;
+                        if_is_requested = 1;
+                        if_requested_pc = if_pc;
+                    } else {
+                        if_is_requested = 0;
+                    }
                 }
             } else {
-                mem_valid       = 1;
-                if_pc           = if_pc + 4;
-                if_is_requested = 1;
-                if_requested_pc = if_pc;
+                // try_start_fetch();
+                if (mem_ready & if_idq_wready) {
+                    if_pc           = if_pc + 4;
+                    if_is_requested = 1;
+                    if_requested_pc = if_pc;
+                } else {
+                    if_is_requested = 0;
+                }
             }
-
         }
     }
+
+    inst fifo_fetch_decode: fifo #(
+        Width       : 3          ,
+        DataType    : if_idq_type,
+        FutureWReady: 1          ,
+    ) (
+        clk                  ,
+        rst                  ,
+        wready: if_idq_wready,
+        wvalid: if_idq_wvalid,
+        wdata : if_idq_wdata ,
+        rready: if_idq_rready,
+        rvalid: if_idq_rvalid,
+        rdata : if_idq_rdata ,
+    );
 }
