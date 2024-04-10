@@ -1,7 +1,10 @@
 package conf {
-    local XLEN  : u32         = 64;
-    type Addr   = logic<XLEN>;
-    type Inst   = logic<32>  ;
-    type UIntX  = logic<XLEN>;
-    type UInt64 = logic<64>  ;
+    local XLEN  : u32                = 64;
+    type Addr   = logic       <XLEN>;
+    type Inst   = logic       <32>  ;
+    type UIntX  = logic       <XLEN>;
+    type UInt64 = logic       <64>  ;
+    type SIntX  = signed logic<64>  ;
+
+    local XLEN_X: logic<XLEN> = {1'b0 repeat XLEN};
 }
