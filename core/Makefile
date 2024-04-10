@@ -1,5 +1,6 @@
 build:
 	veryl build
+	python3 comp.py
 fmt:
 	veryl fmt
 check:

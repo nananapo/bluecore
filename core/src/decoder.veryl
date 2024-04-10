@@ -1,0 +1,168 @@
+module decoder (
+    instbit: input  conf::Inst     ,
+    ctrl   : output stage::InstCtrl,
+) {
+
+    /* TODO veryl not support import
+    type Alu  = stage::AluCmd ;
+    type Br   = stage::BrCmd  ;
+    type Op1  = stage::Op1Sel ;
+    type Op2  = stage::Op2Sel ;
+    type Mem  = stage::MemCmd ;
+    type Size = stage::MemSize;
+    type Csr  = stage::CsrCmd ;
+    type Wb   = stage::WbSel  ;
+    */
+
+    local Z_13: logic<13> = 0;
+
+    local X_2: logic<2>  = 2'bx;
+    local X_3: logic<3>  = 3'bx;
+    local X_5: logic<5>  = 5'bx;
+    local X_7: logic<7>  = 7'bx;
+    local X_X: logic<10> = 10'bx;
+
+    local T: logic = 1;
+    local F: logic = 0;
+
+    local LOAD_OP    : logic<7> = 7'b0000011;
+    local STORE_OP   : logic<7> = 7'b0100011;
+    local LB_F3      : logic<3> = 3'b000;
+    local LH_F3      : logic<3> = 3'b001;
+    local LW_F3      : logic<3> = 3'b010;
+    local LBU_F3     : logic<3> = 3'b100;
+    local LHU_F3     : logic<3> = 3'b101;
+    local SB_F3      : logic<3> = 3'b000;
+    local SH_F3      : logic<3> = 3'b001;
+    local SW_F3      : logic<3> = 3'b010;
+    local MISC_MEM_OP: logic<7> = 7'b0001111;
+    local FENCE_F3   : logic<3> = 3'b000;
+    local FENCEI_F3  : logic<3> = 3'b001; // Zifencei
+
+    local ALUR_OP: logic<7> = 7'b0110011;
+    local ADD_F7 : logic<7> = 7'b0000000;
+    local SUB_F7 : logic<7> = 7'b0100000;
+    local AND_F7 : logic<7> = 7'b0000000;
+    local OR_F7  : logic<7> = 7'b0000000;
+    local XOR_F7 : logic<7> = 7'b0000000;
+    local SLL_F7 : logic<7> = 7'b0000000;
+    local SRL_F7 : logic<7> = 7'b0000000;
+    local SRA_F7 : logic<7> = 7'b0100000;
+    local SLT_F7 : logic<7> = 7'b0000000;
+    local SLTU_F7: logic<7> = 7'b0000000;
+    local AND_F3 : logic<3> = 3'b111;
+    local ADD_F3 : logic<3> = 3'b000;
+    local SUB_F3 : logic<3> = 3'b000;
+    local OR_F3  : logic<3> = 3'b110;
+    local XOR_F3 : logic<3> = 3'b100;
+    local SLL_F3 : logic<3> = 3'b001;
+    local SRL_F3 : logic<3> = 3'b101;
+    local SRA_F3 : logic<3> = 3'b101;
+    local SLT_F3 : logic<3> = 3'b010;
+    local SLTU_F3: logic<3> = 3'b011;
+
+    local ALUI_OP : logic<7> = 7'b0010011;
+    local SLLI_F7 : logic<7> = 7'b0000000;
+    local SRLI_F7 : logic<7> = 7'b0000000;
+    local SRAI_F7 : logic<7> = 7'b0100000;
+    local ADDI_F3 : logic<3> = 3'b000;
+    local ANDI_F3 : logic<3> = 3'b111;
+    local ORI_F3  : logic<3> = 3'b110;
+    local XORI_F3 : logic<3> = 3'b100;
+    local SLLI_F3 : logic<3> = 3'b001;
+    local SRLI_F3 : logic<3> = 3'b101;
+    local SRAI_F3 : logic<3> = 3'b101;
+    local SLTI_F3 : logic<3> = 3'b010;
+    local SLTIU_F3: logic<3> = 3'b011;
+
+    local BR_OP  : logic<7> = 7'b1100011;
+    local BEQ_F3 : logic<3> = 3'b000;
+    local BNE_F3 : logic<3> = 3'b001;
+    local BLT_F3 : logic<3> = 3'b100;
+    local BGE_F3 : logic<3> = 3'b101;
+    local BLTU_F3: logic<3> = 3'b110;
+    local BGEU_F3: logic<3> = 3'b111;
+
+    local SYSTEM_OP: logic<7> = 7'b1110011;
+
+    local CSRRW_F3 : logic<3> = 3'b001;
+    local CSRRWI_F3: logic<3> = 3'b101;
+    local CSRRS_F3 : logic<3> = 3'b010;
+    local CSRRSI_F3: logic<3> = 3'b110;
+    local CSRRC_F3 : logic<3> = 3'b011;
+    local CSRRCI_F3: logic<3> = 3'b111;
+
+    local JAL_OP  : logic<7> = 7'b1101111;
+    local JALR_F3 : logic<3> = 3'b000;
+    local JALR_OP : logic<7> = 7'b1100111;
+    local LUI_OP  : logic<7> = 7'b0110111;
+    local AUIPC_OP: logic<7> = 7'b0010111;
+
+    local ECALL : conf::Inst = {7'b0, 5'b0, Z_13, SYSTEM_OP};
+    local EBREAK: conf::Inst = {7'b0, 5'b1, Z_13, SYSTEM_OP};
+
+    local SRET: conf::Inst = {25'b0001000_00010_00000_000_00000, SYSTEM_OP};
+    local MRET: conf::Inst = {25'b0011000_00010_00000_000_00000, SYSTEM_OP};
+
+    local NOP_Y: stage::InstCtrl = {T, stage::AluCmd::X, stage::BrCmd::X, T, stage::Op1Sel::X, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::W, stage::CsrCmd::X, F, stage::WbSel::ALU};
+    local NOP_N: stage::InstCtrl = {F, stage::AluCmd::X, stage::BrCmd::X, T, stage::Op1Sel::X, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::W, stage::CsrCmd::X, F, stage::WbSel::ALU};
+
+    function decode (
+        bits: input conf::Inst     ,
+    ) -> stage::InstCtrl {
+        case bits {
+            {X_7, X_X, LB_F3, X_5, LOAD_OP}        : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::L, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::MEM}; // LB
+                                                     {X_7, X_X, LBU_F3, X_5, LOAD_OP}       : return {T, stage::AluCmd::ADD, stage::BrCmd::X, F, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::L, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::MEM}; // LBU
+                                                     {X_7, X_X, LH_F3, X_5, LOAD_OP}        : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::L, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::MEM}; // LH
+                                                     {X_7, X_X, LHU_F3, X_5, LOAD_OP}       : return {T, stage::AluCmd::ADD, stage::BrCmd::X, F, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::L, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::MEM}; // LHU
+                                                     {X_7, X_X, LW_F3, X_5, LOAD_OP}        : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::L, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::MEM}; // LW
+                                                     {X_7, X_X, SB_F3, X_5, STORE_OP}       : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMS, T, stage::MemCmd::S, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // SB
+                                                     {X_7, X_X, SH_F3, X_5, STORE_OP}       : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMS, T, stage::MemCmd::S, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // SH
+                                                     {X_7, X_X, SW_F3, X_5, STORE_OP}       : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMS, T, stage::MemCmd::S, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // SW
+                                                     {ADD_F7, X_X, ADD_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // ADD
+                                                     {SUB_F7, X_X, SUB_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::SUB, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SUB
+                                                     {AND_F7, X_X, AND_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::AND, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // AND
+                                                     {OR_F7, X_X, OR_F3, X_5, ALUR_OP}      : return {T, stage::AluCmd::OR, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // OR
+                                                     {XOR_F7, X_X, XOR_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::XOR, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // XOR
+                                                     {SLL_F7, X_X, SLL_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::SLL, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SLL
+                                                     {SRL_F7, X_X, SRL_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::SRL, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SRL
+                                                     {SRA_F7, X_X, SRA_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::SRA, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SRA
+                                                     {SLT_F7, X_X, SLT_F3, X_5, ALUR_OP}    : return {T, stage::AluCmd::SLT, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SLT
+                                                     {SLTU_F7, X_X, SLTU_F3, X_5, ALUR_OP}  : return {T, stage::AluCmd::SLT, stage::BrCmd::X, F, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SLTU
+                                                     {X_7, X_X, ADDI_F3, X_5, ALUI_OP}      : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // ADDI
+                                                     {X_7, X_X, ANDI_F3, X_5, ALUI_OP}      : return {T, stage::AluCmd::AND, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // ANDI
+                                                     {X_7, X_X, ORI_F3, X_5, ALUI_OP}       : return {T, stage::AluCmd::OR, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // ORI
+                                                     {X_7, X_X, XORI_F3, X_5, ALUI_OP}      : return {T, stage::AluCmd::XOR, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // XORI
+                                                     {SLLI_F7, X_X, SLLI_F3, X_5, ALUI_OP}  : return {T, stage::AluCmd::SLL, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SLLI
+                                                     {SRLI_F7, X_X, SRLI_F3, X_5, ALUI_OP}  : return {T, stage::AluCmd::SRL, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SRLI
+                                                     {SRAI_F7, X_X, SRAI_F3, X_5, ALUI_OP}  : return {T, stage::AluCmd::SRA, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SRAI
+                                                     {X_7, X_X, SLTI_F3, X_5, ALUI_OP}      : return {T, stage::AluCmd::SLT, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SLTI
+                                                     {X_7, X_X, SLTIU_F3, X_5, ALUI_OP}     : return {T, stage::AluCmd::SLT, stage::BrCmd::X, F, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // SLTIU
+                                                     {X_7, X_X, BEQ_F3, X_5, BR_OP}         : return {T, stage::AluCmd::X, stage::BrCmd::BEQ, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // BEQ
+                                                     {X_7, X_X, BNE_F3, X_5, BR_OP}         : return {T, stage::AluCmd::X, stage::BrCmd::BNE, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // BNE
+                                                     {X_7, X_X, BLT_F3, X_5, BR_OP}         : return {T, stage::AluCmd::X, stage::BrCmd::BLT, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // BLT
+                                                     {X_7, X_X, BGE_F3, X_5, BR_OP}         : return {T, stage::AluCmd::X, stage::BrCmd::BGE, T, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // BGE
+                                                     {X_7, X_X, BLTU_F3, X_5, BR_OP}        : return {T, stage::AluCmd::X, stage::BrCmd::BLT, F, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // BLTU
+                                                     {X_7, X_X, BGEU_F3, X_5, BR_OP}        : return {T, stage::AluCmd::X, stage::BrCmd::BGE, F, stage::Op1Sel::RS1, stage::Op2Sel::RS2, T, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, F, stage::WbSel::ALU}; // BGEU
+                                                     {X_7, X_X, X_3, X_5, JAL_OP}           : return {T, stage::AluCmd::ADD, stage::BrCmd::JLI, T, stage::Op1Sel::PC, stage::Op2Sel::NPC, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::PC}; // JAL
+                                                     {X_7, X_X, JALR_F3, X_5, JALR_OP}      : return {T, stage::AluCmd::JALR, stage::BrCmd::JLR, T, stage::Op1Sel::RS1, stage::Op2Sel::IMI, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::PC}; // JALR
+                                                     {X_7, X_X, X_3, X_5, LUI_OP}           : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::X, stage::Op2Sel::IMU, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // LUI
+                                                     {X_7, X_X, X_3, X_5, AUIPC_OP}         : return {T, stage::AluCmd::ADD, stage::BrCmd::X, T, stage::Op1Sel::PC, stage::Op2Sel::IMU, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::X, T, stage::WbSel::ALU}; // AUIPC
+                                                     {X_7, X_X, CSRRW_F3, X_5, SYSTEM_OP}   : return {T, stage::AluCmd::COPY1, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::W, T, stage::WbSel::CSR}; // CSRRW
+                                                     {X_7, X_X, CSRRWI_F3, X_5, SYSTEM_OP}  : return {T, stage::AluCmd::COPY1, stage::BrCmd::X, T, stage::Op1Sel::IMZ, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::W, T, stage::WbSel::CSR}; // CSRRWI
+                                                     {X_7, X_X, CSRRS_F3, X_5, SYSTEM_OP}   : return {T, stage::AluCmd::COPY1, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::S, T, stage::WbSel::CSR}; // CSRRS
+                                                     {X_7, X_X, CSRRSI_F3, X_5, SYSTEM_OP}  : return {T, stage::AluCmd::COPY1, stage::BrCmd::X, T, stage::Op1Sel::IMZ, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::S, T, stage::WbSel::CSR}; // CSRRSI
+                                                     {X_7, X_X, CSRRC_F3, X_5, SYSTEM_OP}   : return {T, stage::AluCmd::COPY1, stage::BrCmd::X, T, stage::Op1Sel::RS1, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::C, T, stage::WbSel::CSR}; // CSRRC
+                                                     {X_7, X_X, CSRRCI_F3, X_5, SYSTEM_OP}  : return {T, stage::AluCmd::COPY1, stage::BrCmd::X, T, stage::Op1Sel::IMZ, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::C, T, stage::WbSel::CSR}; // CSRRCI
+                                                     ECALL                              : return {T, stage::AluCmd::X, stage::BrCmd::X, T, stage::Op1Sel::X, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::ECALL, F, stage::WbSel::ALU}; // ECALL
+                                                 EBREAK                             : return {T, stage::AluCmd::X, stage::BrCmd::X, T, stage::Op1Sel::X, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::EBREAK, F, stage::WbSel::ALU}; // EBREAK
+                                                 SRET                               : return {T, stage::AluCmd::X, stage::BrCmd::X, T, stage::Op1Sel::X, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::SRET, F, stage::WbSel::ALU}; // MRET
+                                                 MRET                               : return {T, stage::AluCmd::X, stage::BrCmd::X, T, stage::Op1Sel::X, stage::Op2Sel::X, F, stage::MemCmd::X, stage::Size::D, stage::CsrCmd::MRET, F, stage::WbSel::ALU}; // SRET
+                                                 {X_7, X_X, FENCE_F3, X_5, MISC_MEM_OP} : return NOP_Y; // fence
+                                                     {X_7, X_X, FENCEI_F3, X_5, MISC_MEM_OP}: return NOP_Y; // fence.i
+                                                     default                            : return NOP_N;
+        }
+    }
+
+    assign ctrl = decode(instbit);
+}

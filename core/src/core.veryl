@@ -3,6 +3,10 @@ module core (
     rst: input logic,
 ) {
 
+    // clock count
+    var clock_count: u64;
+
+    // memory
     var mem_ready : logic       ;
     var mem_valid : logic       ;
     var mem_wen   : logic       ;
@@ -71,7 +75,7 @@ module core (
     assign if_idq_wvalid        = if_is_requested & mem_rvalid;
     assign if_idq_wdata.addr    = if_requested_pc;
     assign if_idq_wdata.instbit = if_fetch_inst;
-    assign if_idq_rready        = 0;
+    assign if_idq_rready        = 1;
 
     always_ff (clk, rst) {
         if_reset {
@@ -80,11 +84,14 @@ module core (
             if_pc           = 0;
             if_is_requested = 0;
             if_requested_pc = 0;
+            clock_count     = 0;
         } else {
+            $display   ("------------------ clock %0d", clock_count);
+            clock_count = clock_count + 1;
             // fetch stage
             if (if_is_requested) {
                 if mem_rvalid {
-                    $display("Fetch pc:%h rdata:%h", if_requested_pc, if_fetch_inst);
+                    $display("fetched: %h:%h", if_requested_pc, if_fetch_inst);
                     // try_start_fetch();
                     if (mem_ready & if_idq_wready) {
                         if_pc           = if_pc + 4;
@@ -104,8 +111,32 @@ module core (
                     if_is_requested = 0;
                 }
             }
+
+            if (if_idq_rvalid) {
+                $display("Decode Stage ---");
+                $display("%h:%h", if_idq_rdata.addr, if_idq_rdata.instbit);
+                $display("is_legal  : %2d", id_ctrl.is_legal);
+                $display("alu_cmd   : %2d", id_ctrl.alu_cmd);
+                $display("br_cmd    : %2d", id_ctrl.br_cmd);
+                $display("is_signed : %2d", id_ctrl.is_signed);
+                $display("op1_sel   : %2d", id_ctrl.op1_sel);
+                $display("op2_sel   : %2d", id_ctrl.op2_sel);
+                $display("use_rs2   : %2d", id_ctrl.use_rs2);
+                $display("mem_cmd   : %2d", id_ctrl.mem_cmd);
+                $display("mem_size  : %2d", id_ctrl.mem_size);
+                $display("csr_cmd   : %2d", id_ctrl.csr_cmd);
+                $display("rf_wen    : %2d", id_ctrl.rf_wen);
+                $display("wb_sel    : %2d", id_ctrl.wb_sel);
+            }
         }
     }
+
+    var id_ctrl: stage::InstCtrl;
+
+    inst decode_unit: decoder (
+        instbit: if_idq_rdata.instbit,
+        ctrl   : id_ctrl             ,
+    );
 
     inst fifo_fetch_decode: fifo #(
         Width       : 3          ,

@@ -1,0 +1,82 @@
+package stage {
+    enum AluCmd: logic<4> {
+        X,
+        ADD,
+        SUB,
+        AND,
+        OR,
+        XOR,
+        SLL,
+        SRL,
+        SRA,
+        SLT,
+        JALR,
+        COPY1,
+    }
+    enum BrCmd: logic<3> {
+        X,
+        BEQ,
+        BNE,
+        BLT,
+        BGE,
+        JLI,
+        JLR,
+    }
+    enum Op1Sel: logic<2> {
+        X,
+        RS1,
+        PC,
+        IMZ,
+    }
+    enum Op2Sel: logic<3> {
+        X,
+        RS2,
+        IMI,
+        IMS,
+        IMJ,
+        IMU,
+        IMZ,
+        NPC,
+    }
+    enum MemCmd: logic<2> {
+        X,
+        S,
+        L,
+    }
+    enum Size: logic<2> {
+        B = 0,
+        H = 1,
+        W = 2,
+        D = 3,
+    }
+    enum WbSel: logic<2> {
+        ALU,
+        MEM,
+        PC,
+        CSR,
+    }
+    enum CsrCmd: logic<3> {
+        X,
+        W,
+        S,
+        C,
+        ECALL,
+        EBREAK,
+        SRET,
+        MRET,
+    }
+    struct InstCtrl {
+        is_legal : logic ,
+        alu_cmd  : AluCmd,
+        br_cmd   : BrCmd ,
+        is_signed: logic ,
+        op1_sel  : Op1Sel,
+        op2_sel  : Op2Sel,
+        use_rs2  : logic ,
+        mem_cmd  : MemCmd,
+        mem_size : Size  ,
+        csr_cmd  : CsrCmd,
+        rf_wen   : logic ,
+        wb_sel   : WbSel ,
+    }
+}
