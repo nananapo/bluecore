@@ -26,6 +26,7 @@ module core (
         rdata : mem_rdata             ,
     );
 
+    // TODO impl arbiter
     assign mem_ready = 1;
 
     // program counter
@@ -45,15 +46,33 @@ module core (
     var if_idq_rvalid: logic      ;
     var if_idq_rdata : if_idq_type;
 
-    assign mem_valid = if_idq_wready & mem_ready & (!if_is_requested | mem_rvalid);
-    assign mem_addr  = if mem_rvalid {
-        if_pc
+    always_comb {
+        mem_valid = if_idq_wready & mem_ready & (!if_is_requested | mem_rvalid);
+        mem_addr  = if mem_rvalid {
+            if_pc
+        } else {
+            if_requested_pc
+        };
+    }
+
+    // fetched inst
+    let if_fetch_inst: conf::Inst = if (if_requested_pc[2] == 0) {
+        mem_rdata[31:0]
     } else {
-        if_requested_pc
+        mem_rdata[63:32]
     };
 
-    /* TODO
-    function try_start_fetch() {
+    // if -> id queue
+    always_comb {
+        if_idq_wvalid        = if_is_requested & mem_rvalid;
+        if_idq_wdata.addr    = if_requested_pc;
+        if_idq_wdata.instbit = if_fetch_inst;
+        if_idq_rready        = 1;
+    }
+
+    /*
+    // TODO veryl not support task (function emits blocking assignment...)
+    task try_start_fetch() {
         if (mem_ready & if_idq_wready) {
             if_pc           = if_pc + 4;
             if_is_requested = 1;
@@ -64,18 +83,7 @@ module core (
     }
     */
 
-    // fetched inst
-    let if_fetch_inst: conf::Inst = if (if_requested_pc[2] == 0) {
-        mem_rdata[31:0]
-    } else {
-        mem_rdata[63:32]
-    };
-
-    // if -> id queue
-    assign if_idq_wvalid        = if_is_requested & mem_rvalid;
-    assign if_idq_wdata.addr    = if_requested_pc;
-    assign if_idq_wdata.instbit = if_fetch_inst;
-    assign if_idq_rready        = 1;
+    var id_ctrl: stage::InstCtrl;
 
     always_ff (clk, rst) {
         if_reset {
@@ -130,8 +138,6 @@ module core (
             }
         }
     }
-
-    var id_ctrl: stage::InstCtrl;
 
     inst decode_unit: decoder (
         instbit: if_idq_rdata.instbit,
