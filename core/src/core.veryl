@@ -1,6 +1,8 @@
 module core (
-    clk: input logic,
-    rst: input logic,
+    clk  : input logic             ,
+    rst  : input logic             ,
+    ireq : inout meminterface::Req ,
+    iresp: inout meminterface::Resp,
 ) {
 
     import conf::*;
@@ -8,26 +10,6 @@ module core (
 
     // clock count
     var clock_count: u64;
-
-    // memory
-    var mem_ready : logic ;
-    var mem_valid : logic ;
-    var mem_wen   : logic ;
-    var mem_addr  : Addr  ;
-    var mem_wdata : UInt64;
-    var mem_rvalid: logic ;
-    var mem_rdata : UInt64;
-
-    inst mem: $sv::memory (
-        clk                           ,
-        rst                           ,
-        valid : mem_valid             ,
-        wen   : mem_wen               ,
-        addr  : mem_addr[16 + 3 - 1:3],
-        wdata : mem_wdata             ,
-        rvalid: mem_rvalid            ,
-        rdata : mem_rdata             ,
-    );
 
     // stage var
     struct if_idq_type {
@@ -75,10 +57,6 @@ module core (
     var exe_memq_rvalid: logic        ;
     var exe_memq_rdata : exe_memq_type;
 
-
-    // TODO impl arbiter
-    assign mem_ready = 1;
-
     // program counter
     var if_pc          : Addr ;
     var if_is_requested: logic;
@@ -86,41 +64,30 @@ module core (
 
     // fetch
     always_comb {
-        mem_valid = if_idq_wready & mem_ready & (!if_is_requested | mem_rvalid);
-        mem_addr  = if mem_rvalid {
+        ireq.valid = if_idq_wready & (!if_is_requested | iresp.valid);
+        ireq.addr  = if iresp.valid {
             if_pc
         } else {
             if_requested_pc
         };
+        ireq.wen   = 0;
+        ireq.wdata = 'z;
     }
 
     // fetched inst
     let if_fetch_inst: Inst = if (if_requested_pc[2] == 0) {
-        mem_rdata[31:0]
+        iresp.rdata[31:0]
     } else {
-        mem_rdata[63:32]
+        iresp.rdata[63:32]
     };
 
     // if -> id queue
     always_comb {
-        if_idq_wvalid        = if_is_requested & mem_rvalid;
+        if_idq_wvalid        = if_is_requested & iresp.valid;
         if_idq_wdata.addr    = if_requested_pc;
         if_idq_wdata.instbit = if_fetch_inst;
         if_idq_rready        = id_exeq_wready;
     }
-
-    /*
-    // TODO veryl not support task (function emits blocking assignment...)
-    task try_start_fetch() {
-        if (mem_ready & if_idq_wready) {
-            if_pc           = if_pc + 4;
-            if_is_requested = 1;
-            if_requested_pc = if_pc;
-        } else {
-            if_is_requested = 0;
-        }
-    }
-    */
 
     // decode stage
     var id_info: stageinfo;
@@ -218,7 +185,6 @@ module core (
     always_ff (clk, rst) {
         if_reset {
             $display       ("reset!");
-            mem_wen         = 0;
             if_pc           = 0;
             if_is_requested = 0;
             if_requested_pc = 0;
@@ -231,10 +197,10 @@ module core (
             $display   ("Fetch Stage ---");
             // fetch stage
             if (if_is_requested) {
-                if mem_rvalid {
+                if iresp.valid {
                     $display("  fetched: %h:%h", if_requested_pc, if_fetch_inst);
-                    // try_start_fetch();
-                    if (mem_ready & if_idq_wready) {
+                    // TODO task? (function emits blocking assignment...)
+                    if (ireq.ready & if_idq_wready) {
                         if_pc           = if_pc + 4;
                         if_is_requested = 1;
                         if_requested_pc = if_pc;
@@ -243,8 +209,7 @@ module core (
                     }
                 }
             } else {
-                // try_start_fetch();
-                if (mem_ready & if_idq_wready) {
+                if (ireq.ready & if_idq_wready) {
                     if_pc           = if_pc + 4;
                     if_is_requested = 1;
                     if_requested_pc = if_pc;

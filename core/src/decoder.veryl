@@ -5,14 +5,14 @@ module decoder (
 
     import stage::*;
 
-    type Alu  = stage::AluCmd;
-    type Br   = stage::BrCmd ;
-    type Op1  = stage::Op1Sel;
-    type Op2  = stage::Op2Sel;
-    type Mem  = stage::MemCmd;
-    type Size = stage::Size  ;
-    type Csr  = stage::CsrCmd;
-    type Wb   = stage::WbSel ;
+    type Alu = stage::AluCmd;
+    type Br  = stage::BrCmd ;
+    type Op1 = stage::Op1Sel;
+    type Op2 = stage::Op2Sel;
+    type Mem = stage::MemCmd;
+    // type Size = stage::Size  ; // 変なエラーメッセージ?
+    type Csr = stage::CsrCmd;
+    type Wb  = stage::WbSel ;
 
     local Z_13: logic<13> = 0;
 
