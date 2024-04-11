@@ -1,10 +1,12 @@
+VERYL = ../../veryl/target/debug/veryl
+
 build:
-	veryl build
+	$(VERYL) build
 	python3 comp.py
 fmt:
-	veryl fmt
+	$(VERYL) fmt
 check:
-	veryl fmt --check
-	veryl check
+	$(VERYL) fmt --check
+	$(VERYL) check
 clean:
-	veryl clean
+	$(VERYL) clean
