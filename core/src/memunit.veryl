@@ -1,15 +1,24 @@
 module memunit (
-    clk     : input  logic          ,
-    rst     : input  logic          ,
-    ctrl    : input  stage::InstCtrl,
-    rs2     : input  conf::UIntX    ,
-    alu_out : input  conf::UIntX    ,
-    is_stall: output logic          ,
-    mem_out : output conf::UIntX    ,
+    clk     : input  logic             ,
+    rst     : input  logic             ,
+    dreq    : inout  meminterface::Req ,
+    dresp   : inout  meminterface::Resp,
+    ctrl    : input  stage::InstCtrl   ,
+    rs2     : input  conf::UIntX       ,
+    alu_out : input  conf::UIntX       ,
+    is_stall: output logic             ,
+    mem_out : output conf::UIntX       ,
 ) {
 
     import stage::*;
     import conf::*;
+
+    always_comb {
+        dreq.valid = 0;
+        dreq.wen   = 0;
+        dreq.addr  = 0;
+        dreq.wdata = 0;
+    }
 
     // TODO
 

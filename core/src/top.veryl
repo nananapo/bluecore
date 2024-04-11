@@ -26,16 +26,39 @@ module top (
 
     var ireq : meminterface::Req ;
     var iresp: meminterface::Resp;
+    var dreq : meminterface::Req ;
+    var dresp: meminterface::Resp;
+
+    var last_req_is_i: logic;
 
     always_comb {
-        ireq.ready  = 1;
-        iresp.valid = mem_rvalid;
+        ireq.ready = !dreq.valid;
+        dreq.ready = 1;
+
+        iresp.valid = last_req_is_i & mem_rvalid;
         iresp.rdata = mem_rdata;
 
-        mem_valid = ireq.valid;
-        mem_wen   = ireq.wen;
-        mem_addr  = ireq.addr;
-        mem_wdata = ireq.wdata;
+        dresp.valid = !last_req_is_i & mem_rvalid;
+        dresp.rdata = mem_rdata;
+
+        mem_valid = ireq.valid | dreq.valid;
+        if (dreq.valid) {
+            mem_wen   = dreq.wen;
+            mem_addr  = dreq.addr;
+            mem_wdata = dreq.wdata;
+        } else {
+            mem_wen   = 0;
+            mem_addr  = ireq.addr;
+            mem_wdata = 'z;
+        }
+    }
+
+    always_ff (clk, rst) {
+        if_reset {
+            last_req_is_i = 0;
+        } else {
+            last_req_is_i = !dreq.valid;
+        }
     }
 
     inst c: core (
@@ -43,5 +66,7 @@ module top (
         rst    ,
         ireq   ,
         iresp  ,
+        dreq   ,
+        dresp  ,
     );
 }

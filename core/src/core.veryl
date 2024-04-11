@@ -3,6 +3,9 @@ module core (
     rst  : input logic             ,
     ireq : inout meminterface::Req ,
     iresp: inout meminterface::Resp,
+    dreq : inout meminterface::Req ,
+    dresp: inout meminterface::Resp,
+
 ) {
 
     import conf::*;
@@ -282,6 +285,8 @@ module core (
     inst mem_memunit: memunit (
         clk                    ,
         rst                    ,
+        dreq                   ,
+        dresp                  ,
         ctrl    : mem_info.ctrl,
         rs2     : mem_rs2      ,
         alu_out : mem_alu_out  ,
