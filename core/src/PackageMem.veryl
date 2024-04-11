@@ -1,11 +1,12 @@
 package meminterface {
     import conf::*;
     struct Req {
-        ready: logic       ,
-        valid: logic       ,
-        addr : conf::Addr  ,
-        wen  : logic       ,
-        wdata: conf::UInt64,
+        ready: logic          ,
+        valid: logic          ,
+        addr : conf::Addr     ,
+        wen  : logic          ,
+        wdata: conf::UInt64   ,
+        wmask: logic       <8>,
         // addr : Addr , // TODO 名前空間がおかしそうなエラー
         // wdata: UInt64, // TODO 名前空間がおかしそうなエラー
     }

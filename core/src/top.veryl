@@ -6,20 +6,22 @@ module top (
     import conf::*;
 
     // memory
-    var mem_valid : logic ;
-    var mem_wen   : logic ;
-    var mem_addr  : Addr  ;
-    var mem_wdata : UInt64;
-    var mem_rvalid: logic ;
-    var mem_rdata : UInt64;
+    var mem_valid : logic    ;
+    var mem_wen   : logic    ;
+    var mem_addr  : Addr     ;
+    var mem_wdata : UInt64   ;
+    var mem_wmask : logic <8>;
+    var mem_rvalid: logic    ;
+    var mem_rdata : UInt64   ;
 
-    inst mem: $sv::memory (
+    inst datamemory: $sv::memory (
         clk                           ,
         rst                           ,
         valid : mem_valid             ,
         wen   : mem_wen               ,
         addr  : mem_addr[16 + 3 - 1:3],
         wdata : mem_wdata             ,
+        wmask : mem_wmask             ,
         rvalid: mem_rvalid            ,
         rdata : mem_rdata             ,
     );
@@ -46,10 +48,12 @@ module top (
             mem_wen   = dreq.wen;
             mem_addr  = dreq.addr;
             mem_wdata = dreq.wdata;
+            mem_wmask = dreq.wmask;
         } else {
             mem_wen   = 0;
             mem_addr  = ireq.addr;
-            mem_wdata = 'z;
+            mem_wdata = ireq.wdata;
+            mem_wmask = ireq.wmask;
         }
     }
 
