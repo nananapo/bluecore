@@ -3,6 +3,8 @@ module decoder (
     ctrl   : output stage::InstCtrl,
 ) {
 
+    import stage::*;
+
     type Alu  = stage::AluCmd;
     type Br   = stage::BrCmd ;
     type Op1  = stage::Op1Sel;
