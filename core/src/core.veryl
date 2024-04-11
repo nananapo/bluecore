@@ -3,17 +3,20 @@ module core (
     rst: input logic,
 ) {
 
+    import conf::*;
+    import stage::*;
+
     // clock count
     var clock_count: u64;
 
     // memory
-    var mem_ready : logic       ;
-    var mem_valid : logic       ;
-    var mem_wen   : logic       ;
-    var mem_addr  : conf::Addr  ;
-    var mem_wdata : conf::UInt64;
-    var mem_rvalid: logic       ;
-    var mem_rdata : conf::UInt64;
+    var mem_ready : logic ;
+    var mem_valid : logic ;
+    var mem_wen   : logic ;
+    var mem_addr  : Addr  ;
+    var mem_wdata : UInt64;
+    var mem_rvalid: logic ;
+    var mem_rdata : UInt64;
 
     inst mem: $sv::memory (
         clk                           ,
@@ -28,8 +31,8 @@ module core (
 
     // stage var
     struct if_idq_type {
-        addr   : conf::Addr,
-        instbit: conf::Inst,
+        addr   : Addr,
+        instbit: Inst,
     }
     var if_idq_wready: logic      ;
     var if_idq_wvalid: logic      ;
@@ -39,9 +42,9 @@ module core (
     var if_idq_rdata : if_idq_type;
 
     struct stageinfo {
-        addr   : conf::Addr     ,
-        instbit: conf::Inst     ,
-        ctrl   : stage::InstCtrl,
+        addr   : Addr    ,
+        instbit: Inst    ,
+        ctrl   : InstCtrl,
     }
 
     struct id_exeq_type {
@@ -59,9 +62,9 @@ module core (
     assign mem_ready = 1;
 
     // program counter
-    var if_pc          : conf::Addr;
-    var if_is_requested: logic     ;
-    var if_requested_pc: conf::Addr;
+    var if_pc          : Addr ;
+    var if_is_requested: logic;
+    var if_requested_pc: Addr ;
 
     // fetch
     always_comb {
@@ -74,7 +77,7 @@ module core (
     }
 
     // fetched inst
-    let if_fetch_inst: conf::Inst = if (if_requested_pc[2] == 0) {
+    let if_fetch_inst: Inst = if (if_requested_pc[2] == 0) {
         mem_rdata[31:0]
     } else {
         mem_rdata[63:32]
@@ -113,45 +116,45 @@ module core (
     always_comb {
         id_exeq_wvalid     = if_idq_rvalid;
         id_exeq_wdata.info = id_info;
-        id_exeq_rready     = 1 & 1; // TODO data hazard and mem stage
+        id_exeq_rready     = 1 & (!id_exeq_wvalid | 1);
     }
 
     // register
-    var regfile: conf::UIntX<32>;
+    var regfile: UIntX<32>;
 
     // exe stage
-    let exe_info   : stageinfo   = id_exeq_rdata.info;
-    var exe_alu_out: conf::UIntX;
-    var exe_op1    : conf::UIntX;
-    var exe_op2    : conf::UIntX;
-    var exe_rs2    : conf::UIntX;
+    let exe_info   : stageinfo = id_exeq_rdata.info;
+    var exe_alu_out: UIntX    ;
+    var exe_op1    : UIntX    ;
+    var exe_op2    : UIntX    ;
+    var exe_rs2    : UIntX    ;
 
     // const value
-    let exe_rs1_addr: logic      <5> = exe_info.instbit[19:15];
-    let exe_rs2_addr: logic      <5> = exe_info.instbit[24:20];
-    var exe_imm_i   : conf::UIntX   ;
-    var exe_imm_s   : conf::UIntX   ;
-    var exe_imm_b   : conf::UIntX   ;
-    var exe_imm_j   : conf::UIntX   ;
-    var exe_imm_u   : conf::UIntX   ;
-    var exe_imm_z   : conf::UIntX   ;
+    let exe_rs1_addr: logic<5> = exe_info.instbit[19:15];
+    let exe_rs2_addr: logic<5> = exe_info.instbit[24:20];
+    var exe_imm_i   : UIntX   ;
+    var exe_imm_s   : UIntX   ;
+    var exe_imm_b   : UIntX   ;
+    var exe_imm_j   : UIntX   ;
+    var exe_imm_u   : UIntX   ;
+    var exe_imm_z   : UIntX   ;
 
     always_comb {
         exe_op1 = case exe_info.ctrl.op1_sel {
-            stage::Op1Sel::RS1: regfile[exe_rs1_addr],
-            stage::Op1Sel::PC : exe_info.addr,
-            stage::Op1Sel::IMZ: exe_imm_z,
-            default           : conf::XLEN_X,
+            Op1Sel::RS1: regfile[exe_rs1_addr],
+            Op1Sel::PC : exe_info.addr,
+            Op1Sel::IMZ: exe_imm_z,
+            default    : XLEN_X,
         };
         exe_op2 = case (exe_info.ctrl.op2_sel) {
-            stage::Op2Sel::RS2: regfile[exe_rs2_addr],
-            stage::Op2Sel::IMI: exe_imm_i,
-            stage::Op2Sel::IMS: exe_imm_s,
-            stage::Op2Sel::IMJ: exe_imm_j,
-            stage::Op2Sel::IMU: exe_imm_u,
-            stage::Op2Sel::IMZ: exe_imm_z,
-            stage::Op2Sel::NPC: 4,
-            default           : conf::XLEN_X,
+            Op2Sel::RS2: regfile[exe_rs2_addr],
+            Op2Sel::IMI: exe_imm_i,
+            Op2Sel::IMS: exe_imm_s,
+            Op2Sel::IMJ: exe_imm_j,
+            Op2Sel::IMU: exe_imm_u,
+            Op2Sel::IMZ: exe_imm_z,
+            Op2Sel::NPC: 4,
+            default    : XLEN_X,
         };
         exe_rs2 = regfile[exe_rs2_addr];
     }

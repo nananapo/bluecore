@@ -5,28 +5,30 @@ module alu (
     op2_data : input  conf::UIntX  ,
     result   : output conf::UIntX  ,
 ) {
+    import conf::*;
+    import stage::*;
 
-    let op1_s: conf::SIntX = op1_data;
-    let op2_s: conf::SIntX = op2_data;
+    let op1_s: SIntX = op1_data;
+    let op2_s: SIntX = op2_data;
 
-    let sra_result: conf::SIntX = op1_s >>> op2_s[4:0];
+    let sra_result: SIntX = op1_s >>> op2_s[4:0];
 
     assign result = case (cmd) {
-        stage::AluCmd::ADD: op1_data + op2_data,
-        stage::AluCmd::SUB: op1_data - op2_data,
-        stage::AluCmd::AND: op1_data & op2_data,
-        stage::AluCmd::OR : op1_data | op2_data,
-        stage::AluCmd::XOR: op1_data ^ op2_data,
-        stage::AluCmd::SLL: op1_data << op2_data[4:0],
-        stage::AluCmd::SRL: op1_data >> op2_data[4:0],
-        stage::AluCmd::SRA: sra_result,
-        stage::AluCmd::SLT: if (is_signed) {
-            {1'b0 repeat conf::XLEN - 1, (op1_s <: op2_s)} // SLT
+        AluCmd::ADD: op1_data + op2_data,
+        AluCmd::SUB: op1_data - op2_data,
+        AluCmd::AND: op1_data & op2_data,
+        AluCmd::OR : op1_data | op2_data,
+        AluCmd::XOR: op1_data ^ op2_data,
+        AluCmd::SLL: op1_data << op2_data[4:0],
+        AluCmd::SRL: op1_data >> op2_data[4:0],
+        AluCmd::SRA: sra_result,
+        AluCmd::SLT: if (is_signed) {
+            {1'b0 repeat XLEN - 1, (op1_s <: op2_s)} // SLT
         } else {
-            {1'b0 repeat conf::XLEN - 1, op1_data <: op2_data} // SLTU
+            {1'b0 repeat XLEN - 1, op1_data <: op2_data} // SLTU
         },
-        stage::AluCmd::JALR : (op1_data + op2_data) & (~1),
-        stage::AluCmd::COPY1: op1_data,
-        default             : conf::XLEN_X,
+        AluCmd::JALR : (op1_data + op2_data) & (~1),
+        AluCmd::COPY1: op1_data,
+        default      : XLEN_X,
     };
 }
