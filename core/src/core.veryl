@@ -57,6 +57,24 @@ module core (
     var id_exeq_rvalid: logic       ;
     var id_exeq_rdata : id_exeq_type;
 
+    struct register_context {
+        rs1_addr: logic<5>,
+        rs2_addr: logic<5>,
+    }
+
+    struct exe_memq_type {
+        info   : stageinfo       ,
+        rs2    : UIntX           ,
+        regctx : register_context,
+        alu_out: UIntX           ,
+    }
+    var exe_memq_wready: logic        ;
+    var exe_memq_wvalid: logic        ;
+    var exe_memq_wdata : exe_memq_type;
+    var exe_memq_rready: logic        ;
+    var exe_memq_rvalid: logic        ;
+    var exe_memq_rdata : exe_memq_type;
+
 
     // TODO impl arbiter
     assign mem_ready = 1;
@@ -116,7 +134,7 @@ module core (
     always_comb {
         id_exeq_wvalid     = if_idq_rvalid;
         id_exeq_wdata.info = id_info;
-        id_exeq_rready     = 1 & (!id_exeq_wvalid | 1);
+        id_exeq_rready     = !id_exeq_wvalid | exe_memq_wready & exe_memq_wvalid;
     }
 
     // register
@@ -157,6 +175,44 @@ module core (
             default    : XLEN_X,
         };
         exe_rs2 = regfile[exe_rs2_addr];
+    }
+
+    let exe_dh_rs1: logic = exe_info.ctrl.op1_sel == Op1Sel::RS1 & exe_rs1_addr != 0 & (
+    // mem
+    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs1_addr | mem_regctx.rs2_addr == exe_rs1_addr));
+    let exe_dh_rs2: logic = exe_info.ctrl.use_rs2 & exe_rs2_addr != 0 & (
+    // mem
+    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs2_addr | mem_regctx.rs2_addr == exe_rs2_addr));
+    let exe_stall: logic = exe_dh_rs1 | exe_dh_rs2;
+
+    // exe -> mem queue
+    always_comb {
+        exe_memq_wvalid                = id_exeq_rvalid & !exe_stall;
+        exe_memq_wdata.info            = exe_info;
+        exe_memq_wdata.regctx.rs1_addr = if (exe_info.ctrl.op1_sel == Op1Sel::RS1) {
+            exe_rs1_addr
+        } else {
+            0
+        };
+        exe_memq_wdata.regctx.rs2_addr = if (exe_info.ctrl.use_rs2) {
+            exe_rs2_addr
+        } else {
+            0
+        };
+        exe_memq_wdata.alu_out = exe_alu_out;
+        exe_memq_wdata.rs2     = exe_rs2;
+    }
+
+    // mem stage
+    var mem_stall    : logic           ;
+    let mem_info     : stageinfo        = exe_memq_rdata.info;
+    let mem_regctx   : register_context = exe_memq_rdata.regctx;
+    let mem_alu_out  : UIntX            = exe_memq_rdata.alu_out;
+    let mem_rs2      : UIntX            = exe_memq_rdata.rs2;
+    var mem_mem_rdata: UIntX           ;
+
+    always_comb {
+        exe_memq_rready = !mem_stall;
     }
 
     always_ff (clk, rst) {
@@ -219,10 +275,18 @@ module core (
             $display("Exe Stage ---");
             if (id_exeq_rvalid) {
                 $display("  %h:%h", exe_info.addr, exe_info.instbit);
+                $display("  stall     : %d", exe_stall);
                 $display("  alu_cmd   : %2d", exe_info.ctrl.alu_cmd);
                 $display("  op1       : %h", exe_op1);
                 $display("  op2       : %h", exe_op2);
                 $display("  alu_out   : %h", exe_alu_out);
+            }
+            // mem stage
+            $display("Mem Stage ---");
+            if (exe_memq_rvalid) {
+                $display("  %h:%h", mem_info.addr, mem_info.instbit);
+                $display("  stall     : %d", mem_stall);
+                $display("  mem_cmd   : %d", mem_info.ctrl.mem_cmd);
             }
         }
     }
@@ -248,6 +312,16 @@ module core (
         imm_j: exe_imm_j       ,
         imm_u: exe_imm_u       ,
         imm_z: exe_imm_z       ,
+    );
+
+    inst mem_memunit: memunit (
+        clk                    ,
+        rst                    ,
+        ctrl    : mem_info.ctrl,
+        rs2     : mem_rs2      ,
+        alu_out : mem_alu_out  ,
+        is_stall: mem_stall    ,
+        mem_out : mem_mem_rdata,
     );
 
     inst fifo_fetch_decode: fifo #(
@@ -277,5 +351,19 @@ module core (
         rready: id_exeq_rready,
         rvalid: id_exeq_rvalid,
         rdata : id_exeq_rdata ,
+    );
+
+    inst fifo_exe_mem: fifo #(
+        Width   : 0            ,
+        DataType: exe_memq_type,
+    ) (
+        clk                    ,
+        rst                    ,
+        wready: exe_memq_wready,
+        wvalid: exe_memq_wvalid,
+        wdata : exe_memq_wdata ,
+        rready: exe_memq_rready,
+        rvalid: exe_memq_rvalid,
+        rdata : exe_memq_rdata ,
     );
 }

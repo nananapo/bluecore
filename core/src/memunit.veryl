@@ -1,0 +1,22 @@
+module memunit (
+    clk     : input  logic          ,
+    rst     : input  logic          ,
+    ctrl    : input  stage::InstCtrl,
+    rs2     : input  conf::UIntX    ,
+    alu_out : input  conf::UIntX    ,
+    is_stall: output logic          ,
+    mem_out : output conf::UIntX    ,
+) {
+
+    import stage::*;
+    import conf::*;
+
+    // TODO
+
+    always_ff (clk, rst) {
+        if_reset {} else {}
+    }
+
+    assign is_stall = ctrl.mem_cmd != MemCmd::X;
+    assign mem_out  = 0;
+}
