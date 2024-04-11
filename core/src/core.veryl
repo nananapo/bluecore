@@ -60,6 +60,19 @@ module core (
     var exe_memq_rvalid: logic        ;
     var exe_memq_rdata : exe_memq_type;
 
+    struct mem_wbq_type {
+        info   : stageinfo       ,
+        regctx : register_context,
+        alu_out: UIntX           ,
+        mem_out: UIntX           ,
+    }
+    var mem_wbq_wready: logic       ;
+    var mem_wbq_wvalid: logic       ;
+    var mem_wbq_wdata : mem_wbq_type;
+    var mem_wbq_rready: logic       ;
+    var mem_wbq_rvalid: logic       ;
+    var mem_wbq_rdata : mem_wbq_type;
+
     // program counter
     var if_pc          : Addr ;
     var if_is_requested: logic;
@@ -75,6 +88,7 @@ module core (
         };
         ireq.wen   = 0;
         ireq.wdata = 'z;
+        ireq.wmask = 0;
     }
 
     // fetched inst
@@ -149,10 +163,14 @@ module core (
 
     let exe_dh_rs1: logic = exe_info.ctrl.op1_sel == Op1Sel::RS1 & exe_rs1_addr != 0 & (
     // mem
-    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs1_addr | mem_regctx.rs2_addr == exe_rs1_addr));
+    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs1_addr | mem_regctx.rs2_addr == exe_rs1_addr) |
+    // wb
+     mem_wbq_rvalid & (wb_regctx.rs1_addr == exe_rs1_addr | wb_regctx.rs2_addr == exe_rs1_addr));
     let exe_dh_rs2: logic = exe_info.ctrl.use_rs2 & exe_rs2_addr != 0 & (
     // mem
-    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs2_addr | mem_regctx.rs2_addr == exe_rs2_addr));
+    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs2_addr | mem_regctx.rs2_addr == exe_rs2_addr) |
+    // wb
+     mem_wbq_rvalid & (wb_regctx.rs1_addr == exe_rs2_addr | wb_regctx.rs2_addr == exe_rs2_addr));
     let exe_stall: logic = exe_dh_rs1 | exe_dh_rs2;
 
     // exe -> mem queue
@@ -174,15 +192,33 @@ module core (
     }
 
     // mem stage
-    var mem_stall    : logic           ;
-    let mem_info     : stageinfo        = exe_memq_rdata.info;
-    let mem_regctx   : register_context = exe_memq_rdata.regctx;
-    let mem_alu_out  : UIntX            = exe_memq_rdata.alu_out;
-    let mem_rs2      : UIntX            = exe_memq_rdata.rs2;
-    var mem_mem_rdata: UIntX           ;
+    let mem_valid        : logic            = exe_memq_rvalid;
+    var mem_is_new       : logic           ;
+    var mem_memunit_stall: logic           ;
+    let mem_info         : stageinfo        = exe_memq_rdata.info;
+    let mem_regctx       : register_context = exe_memq_rdata.regctx;
+    let mem_alu_out      : UIntX            = exe_memq_rdata.alu_out;
+    let mem_rs2          : UIntX            = exe_memq_rdata.rs2;
+    var mem_mem_rdata    : UIntX           ;
 
     always_comb {
-        exe_memq_rready = !mem_stall;
+        exe_memq_rready       = !mem_memunit_stall & mem_wbq_wready;
+        mem_wbq_wvalid        = mem_valid & !mem_memunit_stall;
+        mem_wbq_wdata.info    = mem_info;
+        mem_wbq_wdata.regctx  = mem_regctx;
+        mem_wbq_wdata.alu_out = mem_alu_out;
+        mem_wbq_wdata.mem_out = mem_mem_rdata;
+    }
+
+    // wb stage
+    let wb_valid   : logic            = mem_wbq_rvalid;
+    let wb_info    : stageinfo        = mem_wbq_rdata.info;
+    let wb_regctx  : register_context = mem_wbq_rdata.regctx;
+    let _wb_alu_out: UIntX            = mem_wbq_rdata.alu_out;
+    let _wb_mem_out: UIntX            = mem_wbq_rdata.mem_out;
+
+    always_comb {
+        mem_wbq_rready = 1;
     }
 
     always_ff (clk, rst) {
@@ -194,6 +230,7 @@ module core (
             clock_count     = 0;
             regfile[0]      = 0;
             regfile[31:1]   = 'x;
+            mem_is_new      = 0;
         } else {
             $display   ("------------------ clock %0d", clock_count);
             clock_count = clock_count + 1;
@@ -204,6 +241,7 @@ module core (
                     $display("  fetched: %h:%h", if_requested_pc, if_fetch_inst);
                     // TODO task? (function emits blocking assignment...)
                     if (ireq.ready & if_idq_wready) {
+                        $display       ("  fetch req: %h", if_pc);
                         if_pc           = if_pc + 4;
                         if_is_requested = 1;
                         if_requested_pc = if_pc;
@@ -213,6 +251,7 @@ module core (
                 }
             } else {
                 if (ireq.ready & if_idq_wready) {
+                    $display       ("  fetch req: %h", if_pc);
                     if_pc           = if_pc + 4;
                     if_is_requested = 1;
                     if_requested_pc = if_pc;
@@ -251,10 +290,18 @@ module core (
             }
             // mem stage
             $display("Mem Stage ---");
-            if (exe_memq_rvalid) {
-                $display("  %h:%h", mem_info.addr, mem_info.instbit);
-                $display("  stall     : %d", mem_stall);
-                $display("  mem_cmd   : %d", mem_info.ctrl.mem_cmd);
+            if (mem_valid) {
+                mem_is_new = exe_memq_rready;
+                $display  ("  %h:%h", mem_info.addr, mem_info.instbit);
+                $display  ("  mu_stall     : %d", mem_memunit_stall);
+                $display  ("  mem_cmd   : %d", mem_info.ctrl.mem_cmd);
+            } else {
+                mem_is_new = 1;
+            }
+
+            $display("Wb Stage---");
+            if (wb_valid) {
+                $display("  %h:%h", wb_info.addr, wb_info.instbit);
             }
         }
     }
@@ -283,15 +330,17 @@ module core (
     );
 
     inst mem_memunit: memunit (
-        clk                    ,
-        rst                    ,
-        dreq                   ,
-        dresp                  ,
-        ctrl    : mem_info.ctrl,
-        rs2     : mem_rs2      ,
-        alu_out : mem_alu_out  ,
-        is_stall: mem_stall    ,
-        mem_out : mem_mem_rdata,
+        clk                        ,
+        rst                        ,
+        dreq                       ,
+        dresp                      ,
+        valid   : mem_valid        ,
+        is_new  : mem_is_new       ,
+        ctrl    : mem_info.ctrl    ,
+        rs2     : mem_rs2          ,
+        addr    : mem_alu_out      ,
+        is_stall: mem_memunit_stall,
+        mem_out : mem_mem_rdata    ,
     );
 
     inst fifo_fetch_decode: fifo #(
@@ -335,5 +384,19 @@ module core (
         rready: exe_memq_rready,
         rvalid: exe_memq_rvalid,
         rdata : exe_memq_rdata ,
+    );
+
+    inst fifo_mem_wb: fifo #(
+        Width   : 0           ,
+        DataType: mem_wbq_type,
+    ) (
+        clk                   ,
+        rst                   ,
+        wready: mem_wbq_wready,
+        wvalid: mem_wbq_wvalid,
+        wdata : mem_wbq_wdata ,
+        rready: mem_wbq_rready,
+        rvalid: mem_wbq_rvalid,
+        rdata : mem_wbq_rdata ,
     );
 }

@@ -3,9 +3,11 @@ module memunit (
     rst     : input  logic             ,
     dreq    : inout  meminterface::Req ,
     dresp   : inout  meminterface::Resp,
+    valid   : input  logic             ,
+    is_new  : input  logic             ,
     ctrl    : input  stage::InstCtrl   ,
     rs2     : input  conf::UIntX       ,
-    alu_out : input  conf::UIntX       ,
+    addr    : input  conf::UIntX       ,
     is_stall: output logic             ,
     mem_out : output conf::UIntX       ,
 ) {
@@ -13,19 +15,132 @@ module memunit (
     import stage::*;
     import conf::*;
 
-    always_comb {
-        dreq.valid = 0;
-        dreq.wen   = 0;
-        dreq.addr  = 0;
-        dreq.wdata = 0;
+    enum State: logic<2> {
+        Init,
+        WaitReady,
+        WaitValid,
     }
 
-    // TODO
+    var state: State;
+
+    always_comb {
+        dreq.addr  = addr;
+        dreq.wdata = rs2;
+        dreq.wmask = case ctrl.mem_size {
+            Size::B: 8'b1 << addr[2:0],
+            Size::H: case addr[2:0] {
+                6      : 8'b11000000,
+                4      : 8'b00110000,
+                2      : 8'b00001100,
+                0      : 8'b00000011,
+                default: 8'b0,
+            },
+            Size::W: case addr[2:0] {
+                4      : 8'b11110000,
+                0      : 8'b00001111,
+                default: 8'b0,
+            },
+            default: 8'b11111111,
+        };
+        if valid & ctrl.mem_cmd != MemCmd::X {
+            dreq.valid = state == State::Init & is_new | state == State::WaitReady;
+            dreq.wen   = ctrl.mem_cmd == MemCmd::S;
+        } else {
+            dreq.valid = 0;
+            dreq.wen   = 0;
+        }
+    }
+
+    always_comb {
+        is_stall = valid & ctrl.mem_cmd != MemCmd::X & case (state) {
+            State::Init     : is_new,
+            State::WaitReady: 1,
+            State::WaitValid: !dresp.valid,
+            default         : 0,
+        };
+        mem_out = case ctrl.mem_size {
+            Size::B: if ctrl.is_signed {
+                case addr[2:0] {
+                    0      : {dresp.rdata[7] repeat XLEN - 8, dresp.rdata[7:0]},
+                    1      : {dresp.rdata[15] repeat XLEN - 8, dresp.rdata[15:8]},
+                    2      : {dresp.rdata[23] repeat XLEN - 8, dresp.rdata[23:16]},
+                    3      : {dresp.rdata[31] repeat XLEN - 8, dresp.rdata[31:24]},
+                    4      : {dresp.rdata[39] repeat XLEN - 8, dresp.rdata[39:32]},
+                    5      : {dresp.rdata[47] repeat XLEN - 8, dresp.rdata[47:40]},
+                    6      : {dresp.rdata[55] repeat XLEN - 8, dresp.rdata[55:48]},
+                    7      : {dresp.rdata[63] repeat XLEN - 8, dresp.rdata[63:56]},
+                    default: 0,
+                }
+            } else {
+                case addr[2:0] {
+                    0      : {1'b0 repeat XLEN - 8, dresp.rdata[7:0]},
+                    1      : {1'b0 repeat XLEN - 8, dresp.rdata[15:8]},
+                    2      : {1'b0 repeat XLEN - 8, dresp.rdata[23:16]},
+                    3      : {1'b0 repeat XLEN - 8, dresp.rdata[31:24]},
+                    4      : {1'b0 repeat XLEN - 8, dresp.rdata[39:32]},
+                    5      : {1'b0 repeat XLEN - 8, dresp.rdata[47:40]},
+                    6      : {1'b0 repeat XLEN - 8, dresp.rdata[55:48]},
+                    7      : {1'b0 repeat XLEN - 8, dresp.rdata[63:56]},
+                    default: 0,
+                }
+            },
+            Size::H: if ctrl.is_signed {
+                case addr[2:0] {
+                    0      : {dresp.rdata[15] repeat XLEN - 16, dresp.rdata[15:0]},
+                    2      : {dresp.rdata[31] repeat XLEN - 16, dresp.rdata[31:16]},
+                    4      : {dresp.rdata[47] repeat XLEN - 16, dresp.rdata[47:32]},
+                    6      : {dresp.rdata[63] repeat XLEN - 16, dresp.rdata[63:48]},
+                    default: 0,
+                }
+            } else {
+                case addr[2:0] {
+                    0      : {1'b0 repeat XLEN - 16, dresp.rdata[15:0]},
+                    2      : {1'b0 repeat XLEN - 16, dresp.rdata[31:16]},
+                    4      : {1'b0 repeat XLEN - 16, dresp.rdata[47:32]},
+                    6      : {1'b0 repeat XLEN - 16, dresp.rdata[63:48]},
+                    default: 0,
+                }
+            },
+            Size::W: if ctrl.is_signed {
+                case addr[2:0] {
+                    0      : {dresp.rdata[31] repeat XLEN - 32, dresp.rdata[31:0]},
+                    4      : {dresp.rdata[63] repeat XLEN - 32, dresp.rdata[63:32]},
+                    default: 0,
+                }
+            } else {
+                case addr[2:0] {
+                    0      : {1'b0 repeat XLEN - 32, dresp.rdata[31:0]},
+                    4      : {1'b0 repeat XLEN - 32, dresp.rdata[63:32]},
+                    default: 0,
+                }
+            },
+            default: dresp.rdata,
+        };
+    }
 
     always_ff (clk, rst) {
-        if_reset {} else {}
+        if_reset {
+            state = State::Init;
+        } else {
+            if (valid) {
+                if state == State::Init {
+                    if is_new {
+                        if ctrl.mem_cmd != MemCmd::X {
+                            state = if dreq.ready {
+                                State::WaitValid
+                            } else {
+                                State::WaitReady
+                            };
+                        }
+                    }
+                } else if state == State::WaitReady {
+                    if dreq.ready {
+                        state = State::WaitValid;
+                    }
+                } else if state == State::WaitValid {
+                    state = State::Init;
+                }
+            }
+        }
     }
-
-    assign is_stall = ctrl.mem_cmd != MemCmd::X;
-    assign mem_out  = 0;
 }
