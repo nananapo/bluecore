@@ -6,14 +6,18 @@ int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
     Vcore_top *dut = new Vcore_top();
 
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[0] << " [cycle]" << std::endl;
+        return 1;
+    }
+
+    std::string arg2(argv[1]);
+    long long loopcount = stoll(arg2);
+    loopcount = loopcount * 2;
+
     dut->clk = 0;
     dut->rst = 1;
     dut->eval();
-
-    int loopcount;
-    std::cout << "execute clock(loop=0)?:";
-    std::cin >> loopcount;
-    loopcount = loopcount * 2;
 
     // reset
     dut->rst = 0;

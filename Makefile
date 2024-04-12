@@ -5,6 +5,7 @@ TOPMODULE = core_top
 
 OPTION = ""
 MEMFILE = ""
+CYCLE=
 
 build:
 	make -C $(CORE)
@@ -12,7 +13,7 @@ build:
 verilator: build
 	verilator $(OPTION) -DFILEPATH=\"$(MEMFILE)\" --cc $(addprefix -f ,$(FILELISTS)) --top-module $(TOPMODULE) --exe src/tb.cpp
 	make -C obj_dir/ -f V$(TOPMODULE).mk
-	obj_dir/V$(TOPMODULE)
+	obj_dir/V$(TOPMODULE) $(CYCLE)
 
 iverilog: build
 	mkdir -p obj_dir
