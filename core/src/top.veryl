@@ -14,7 +14,10 @@ module top (
     var mem_rvalid: logic    ;
     var mem_rdata : UInt64   ;
 
-    inst datamemory: $sv::memory (
+    inst datamemory: $sv::memory #(
+        DATA_WIDTH: 64,
+        ADDR_WIDTH: 16,
+    ) (
         clk                           ,
         rst                           ,
         valid : mem_valid             ,
