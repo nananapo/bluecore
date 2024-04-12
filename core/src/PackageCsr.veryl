@@ -1,0 +1,24 @@
+package csr {
+    enum CsrMode: logic<2> {
+        M = 3,
+        H = 2,
+        S = 1,
+        U = 0,
+    }
+
+    enum CsrAddr: logic<12> {
+        STVEC = 12'h105,
+        SEPC = 12'h141,
+        SCAUSE = 12'h142,
+        MTVEC = 12'h305,
+        MEPC = 12'h341,
+        MCAUSE = 12'h342,
+    }
+
+    local CAUSE_ENVIRONMENT_CALL_FROM_U_MODE: conf::UIntX = 8;
+    /* Currently veryl can't use large width enum 
+    enum CsrCause: logic<conf::XLEN> {
+        ENVIRONMENT_CALL_FROM_U_MODE = 8,
+    }
+    */
+}
