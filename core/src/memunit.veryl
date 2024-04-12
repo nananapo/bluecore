@@ -24,8 +24,14 @@ module memunit (
     var state: State;
 
     always_comb {
+        if valid & ctrl.mem_cmd != MemCmd::X {
+            dreq.valid = state == State::Init & is_new | state == State::WaitReady;
+        } else {
+            dreq.valid = 0;
+        }
+        dreq.wen   = ctrl.mem_cmd == MemCmd::S;
         dreq.addr  = addr;
-        dreq.wdata = rs2;
+        dreq.wdata = {1'b0 repeat $bits(dreq.wdata) - XLEN, rs2} << addr[2:0];
         dreq.wmask = case ctrl.mem_size {
             Size::B: 8'b1 << addr[2:0],
             Size::H: case addr[2:0] {
@@ -42,14 +48,10 @@ module memunit (
             },
             default: 8'b11111111,
         };
-        if valid & ctrl.mem_cmd != MemCmd::X {
-            dreq.valid = state == State::Init & is_new | state == State::WaitReady;
-            dreq.wen   = ctrl.mem_cmd == MemCmd::S;
-        } else {
-            dreq.valid = 0;
-            dreq.wen   = 0;
-        }
     }
+
+    var mem_rdata_64: UInt64;
+    local MEM_WIDTH   : u32    = 64;
 
     always_comb {
         is_stall = valid & ctrl.mem_cmd != MemCmd::X & case (state) {
@@ -58,64 +60,65 @@ module memunit (
             State::WaitValid: !dresp.valid,
             default         : 0,
         };
-        mem_out = case ctrl.mem_size {
+        mem_rdata_64 = case ctrl.mem_size {
             Size::B: if ctrl.is_signed {
                 case addr[2:0] {
-                    0      : {dresp.rdata[7] repeat XLEN - 8, dresp.rdata[7:0]},
-                    1      : {dresp.rdata[15] repeat XLEN - 8, dresp.rdata[15:8]},
-                    2      : {dresp.rdata[23] repeat XLEN - 8, dresp.rdata[23:16]},
-                    3      : {dresp.rdata[31] repeat XLEN - 8, dresp.rdata[31:24]},
-                    4      : {dresp.rdata[39] repeat XLEN - 8, dresp.rdata[39:32]},
-                    5      : {dresp.rdata[47] repeat XLEN - 8, dresp.rdata[47:40]},
-                    6      : {dresp.rdata[55] repeat XLEN - 8, dresp.rdata[55:48]},
-                    7      : {dresp.rdata[63] repeat XLEN - 8, dresp.rdata[63:56]},
+                    0      : {dresp.rdata[7] repeat MEM_WIDTH - 8, dresp.rdata[7:0]},
+                    1      : {dresp.rdata[15] repeat MEM_WIDTH - 8, dresp.rdata[15:8]},
+                    2      : {dresp.rdata[23] repeat MEM_WIDTH - 8, dresp.rdata[23:16]},
+                    3      : {dresp.rdata[31] repeat MEM_WIDTH - 8, dresp.rdata[31:24]},
+                    4      : {dresp.rdata[39] repeat MEM_WIDTH - 8, dresp.rdata[39:32]},
+                    5      : {dresp.rdata[47] repeat MEM_WIDTH - 8, dresp.rdata[47:40]},
+                    6      : {dresp.rdata[55] repeat MEM_WIDTH - 8, dresp.rdata[55:48]},
+                    7      : {dresp.rdata[63] repeat MEM_WIDTH - 8, dresp.rdata[63:56]},
                     default: 0,
                 }
             } else {
                 case addr[2:0] {
-                    0      : {1'b0 repeat XLEN - 8, dresp.rdata[7:0]},
-                    1      : {1'b0 repeat XLEN - 8, dresp.rdata[15:8]},
-                    2      : {1'b0 repeat XLEN - 8, dresp.rdata[23:16]},
-                    3      : {1'b0 repeat XLEN - 8, dresp.rdata[31:24]},
-                    4      : {1'b0 repeat XLEN - 8, dresp.rdata[39:32]},
-                    5      : {1'b0 repeat XLEN - 8, dresp.rdata[47:40]},
-                    6      : {1'b0 repeat XLEN - 8, dresp.rdata[55:48]},
-                    7      : {1'b0 repeat XLEN - 8, dresp.rdata[63:56]},
+                    0      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[7:0]},
+                    1      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[15:8]},
+                    2      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[23:16]},
+                    3      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[31:24]},
+                    4      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[39:32]},
+                    5      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[47:40]},
+                    6      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[55:48]},
+                    7      : {1'b0 repeat MEM_WIDTH - 8, dresp.rdata[63:56]},
                     default: 0,
                 }
             },
             Size::H: if ctrl.is_signed {
                 case addr[2:0] {
-                    0      : {dresp.rdata[15] repeat XLEN - 16, dresp.rdata[15:0]},
-                    2      : {dresp.rdata[31] repeat XLEN - 16, dresp.rdata[31:16]},
-                    4      : {dresp.rdata[47] repeat XLEN - 16, dresp.rdata[47:32]},
-                    6      : {dresp.rdata[63] repeat XLEN - 16, dresp.rdata[63:48]},
+                    0      : {dresp.rdata[15] repeat MEM_WIDTH - 16, dresp.rdata[15:0]},
+                    2      : {dresp.rdata[31] repeat MEM_WIDTH - 16, dresp.rdata[31:16]},
+                    4      : {dresp.rdata[47] repeat MEM_WIDTH - 16, dresp.rdata[47:32]},
+                    6      : {dresp.rdata[63] repeat MEM_WIDTH - 16, dresp.rdata[63:48]},
                     default: 0,
                 }
             } else {
                 case addr[2:0] {
-                    0      : {1'b0 repeat XLEN - 16, dresp.rdata[15:0]},
-                    2      : {1'b0 repeat XLEN - 16, dresp.rdata[31:16]},
-                    4      : {1'b0 repeat XLEN - 16, dresp.rdata[47:32]},
-                    6      : {1'b0 repeat XLEN - 16, dresp.rdata[63:48]},
+                    0      : {1'b0 repeat MEM_WIDTH - 16, dresp.rdata[15:0]},
+                    2      : {1'b0 repeat MEM_WIDTH - 16, dresp.rdata[31:16]},
+                    4      : {1'b0 repeat MEM_WIDTH - 16, dresp.rdata[47:32]},
+                    6      : {1'b0 repeat MEM_WIDTH - 16, dresp.rdata[63:48]},
                     default: 0,
                 }
             },
             Size::W: if ctrl.is_signed {
                 case addr[2:0] {
-                    0      : {dresp.rdata[31] repeat XLEN - 32, dresp.rdata[31:0]},
-                    4      : {dresp.rdata[63] repeat XLEN - 32, dresp.rdata[63:32]},
+                    0      : {dresp.rdata[31] repeat MEM_WIDTH - 32, dresp.rdata[31:0]},
+                    4      : {dresp.rdata[63] repeat MEM_WIDTH - 32, dresp.rdata[63:32]},
                     default: 0,
                 }
             } else {
                 case addr[2:0] {
-                    0      : {1'b0 repeat XLEN - 32, dresp.rdata[31:0]},
-                    4      : {1'b0 repeat XLEN - 32, dresp.rdata[63:32]},
+                    0      : {1'b0 repeat MEM_WIDTH - 32, dresp.rdata[31:0]},
+                    4      : {1'b0 repeat MEM_WIDTH - 32, dresp.rdata[63:32]},
                     default: 0,
                 }
             },
             default: dresp.rdata,
         };
+        mem_out = mem_rdata_64[XLEN - 1:0];
     }
 
     always_ff (clk, rst) {
