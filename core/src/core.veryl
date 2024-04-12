@@ -204,7 +204,7 @@ module core (
         exe_memq_wdata.br_target = case (exe_info.ctrl.br_cmd) {
             BrCmd::JLI: exe_alu_out,
             BrCmd::JLR: exe_alu_out,
-            default   : mem_info.addr + exe_imm_b // branch
+            default   : exe_info.addr + exe_imm_b // branch
             ,
         } & (~1);
     }
