@@ -69,6 +69,7 @@ module core (
         regctx : register_context,
         alu_out: UIntX           ,
         mem_out: UIntX           ,
+        csr_out: UIntX           ,
     }
     var mem_wbq_wready: logic       ;
     var mem_wbq_wvalid: logic       ;
@@ -80,7 +81,7 @@ module core (
     var mem_next_pc_expected: Addr ;
     var mem_is_branch_hazard: logic;
 
-    let reset_before_memstage: logic = mem_is_branch_hazard;
+    let reset_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
 
     // program counter
     var if_pc          : Addr ;
@@ -221,6 +222,11 @@ module core (
     let mem_rs2          : UIntX            = exe_memq_rdata.rs2;
     var mem_mem_rdata    : UIntX           ;
 
+    var mem_csr_rdata      : UIntX;
+    var mem_csrunit_stall  : logic;
+    var mem_csr_is_trap    : logic;
+    var mem_csr_trap_vector: Addr ;
+
     assign mem_next_pc_expected = if (mem_info.ctrl.br_cmd == BrCmd::X | !mem_br_taken) {
         mem_info.addr + 4
     } else {
@@ -232,12 +238,13 @@ module core (
     assign mem_is_branch_hazard = mem_valid & mem_next_pc_expected != exe_info.addr;
 
     always_comb {
-        exe_memq_rready       = !mem_memunit_stall & mem_wbq_wready;
-        mem_wbq_wvalid        = mem_valid & !mem_memunit_stall;
+        exe_memq_rready       = !mem_memunit_stall & !mem_csrunit_stall & mem_wbq_wready;
+        mem_wbq_wvalid        = mem_valid & !mem_memunit_stall & !mem_csrunit_stall;
         mem_wbq_wdata.info    = mem_info;
         mem_wbq_wdata.regctx  = mem_regctx;
         mem_wbq_wdata.alu_out = mem_alu_out;
         mem_wbq_wdata.mem_out = mem_mem_rdata;
+        mem_wbq_wdata.csr_out = mem_csr_rdata;
     }
 
     // wb stage
@@ -246,12 +253,13 @@ module core (
     let wb_regctx : register_context = mem_wbq_rdata.regctx;
     let wb_alu_out: UIntX            = mem_wbq_rdata.alu_out;
     let wb_mem_out: UIntX            = mem_wbq_rdata.mem_out;
+    let wb_csr_out: UIntX            = mem_wbq_rdata.csr_out;
     let wb_wb_data: UIntX            = case (wb_info.ctrl.wb_sel) {
         WbSel::ALU: wb_alu_out,
         WbSel::MEM: wb_mem_out,
         WbSel::PC : wb_info.addr + 4, // TODO Cext
-        default   : 0 // TODO CSR
-        ,
+        WbSel::CSR: wb_csr_out,
+        default   : 0,
     };
 
     always_comb {
@@ -275,7 +283,13 @@ module core (
             $display   ("Fetch Stage ---");
             if (reset_before_memstage) {
                 if_is_requested = 0;
-                if_pc           = mem_next_pc_expected;
+                if_pc           = if (mem_csr_is_trap) {
+                    mem_csr_trap_vector
+                } else if (mem_is_branch_hazard) {
+                    mem_next_pc_expected
+                } else {
+                    0
+                };
             } else {
                 if (if_is_requested) {
                     if iresp.valid {
@@ -338,7 +352,11 @@ module core (
                 $display  ("  %h:%h", mem_info.addr, mem_info.instbit);
                 $display  ("  mu_stall     : %d", mem_memunit_stall);
                 $display  ("  mem_cmd      : %d", mem_info.ctrl.mem_cmd);
-                if (mem_is_branch_hazard) {
+                $display  ("  cu_stall     : %d", mem_csrunit_stall);
+                $display  ("  csr_cmd      : %d", mem_info.ctrl.csr_cmd);
+                if (mem_csr_is_trap) {
+                    $display("  csr hazard: %h", mem_csr_trap_vector);
+                } else if (mem_is_branch_hazard) {
                     $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, exe_info.addr);
                 }
             } else {
@@ -349,7 +367,7 @@ module core (
             if (wb_valid) {
                 $display("  %h:%h", wb_info.addr, wb_info.instbit);
                 if (wb_info.ctrl.rf_wen & wb_regctx.rd_addr != 0) {
-                    $display                  ("writebacked [%d] <= %h", wb_regctx.rd_addr, wb_wb_data);
+                    $display                  ("  writebacked [%d] <= %h", wb_regctx.rd_addr, wb_wb_data);
                     regfile[wb_regctx.rd_addr] = wb_wb_data;
                 }
             }

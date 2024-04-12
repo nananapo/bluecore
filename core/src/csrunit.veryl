@@ -1,0 +1,126 @@
+module csrunit (
+    clk        : input  logic        ,
+    rst        : input  logic        ,
+    valid      : input  logic        ,
+    is_new     : input  logic        ,
+    pc         : input  conf::Addr   ,
+    cmd        : input  stage::CsrCmd,
+    csr_addr   : input  conf::UInt12 ,
+    op1_data   : input  conf::UIntX  ,
+    csr_rdata  : output conf::UIntX  ,
+    is_stall   : output logic        ,
+    is_trap    : output logic        ,
+    trap_vector: output conf::Addr   ,
+) {
+
+    import csr::*;
+    import conf::*;
+    import stage::CsrCmd;
+
+    var mode: CsrMode;
+
+    // registers
+    var mtvec : UIntX;
+    var mepc  : UIntX;
+    var mcause: UIntX;
+    var stvec : UIntX;
+    var sepc  : UIntX;
+    var scause: UIntX;
+
+    // csr read
+    var rdata: UIntX;
+    var wdata: UIntX;
+    always_comb {
+        rdata = case (csr_addr) {
+            CsrAddr::MTVEC : mtvec,
+            CsrAddr::MEPC  : mepc,
+            CsrAddr::MCAUSE: mcause,
+            CsrAddr::STVEC : stvec,
+            CsrAddr::SEPC  : sepc,
+            CsrAddr::SCAUSE: scause,
+            default        : 0,
+        };
+        wdata = case (cmd) {
+            CsrCmd::W: op1_data,
+            CsrCmd::S: rdata | op1_data,
+            CsrCmd::C: rdata & ~op1_data,
+            default  : 0,
+        };
+    }
+
+    let cmd_is_write: logic = cmd == CsrCmd::W | cmd == CsrCmd::S | cmd == CsrCmd::C;
+
+    let raise_expt: logic = cmd == CsrCmd::ECALL;
+    let cause_expt: UIntX = if (cmd == CsrCmd::ECALL) {
+        CAUSE_ENVIRONMENT_CALL_FROM_U_MODE + {1'b0 repeat XLEN - $bits(mode), mode}
+    } else {
+        0
+    };
+
+    let trap_to_M: logic = 1;
+
+    var last_is_trap: logic;
+
+    always_comb {
+        csr_rdata = rdata;
+        is_trap   = valid & !is_new & last_is_trap;
+        is_stall  = valid & is_new & (raise_expt | cmd == CsrCmd::MRET | cmd == CsrCmd::SRET);
+    }
+
+    always_ff (clk, rst) {
+        if_reset {
+            mode         = CsrMode::M;
+            mcause       = 0;
+            mepc         = 0;
+            mtvec        = 0;
+            scause       = 0;
+            sepc         = 0;
+            stvec        = 0;
+            last_is_trap = 0;
+            trap_vector  = 0;
+        } else {
+            if (valid) {
+                if (is_new) {
+                    if (raise_expt) {
+                        last_is_trap = 1;
+                        if (trap_to_M) {
+                            mode        = CsrMode::M;
+                            mcause      = cause_expt;
+                            mepc        = pc;
+                            trap_vector = mtvec;
+                        } else {
+                            mode        = CsrMode::S;
+                            scause      = cause_expt;
+                            sepc        = pc;
+                            trap_vector = stvec;
+                        }
+                    } else {
+                        if (cmd == CsrCmd::MRET) {
+                            last_is_trap = 1;
+                            mode         = CsrMode::S; // TODO
+                            trap_vector  = mepc;
+                        } else if (cmd == CsrCmd::SRET) {
+                            last_is_trap = 1;
+                            mode         = CsrMode::U;
+                            trap_vector  = sepc;
+                        } else if (cmd_is_write) {
+                            last_is_trap = 0;
+                            case csr_addr {
+                                CsrAddr::MTVEC : mtvec  = wdata;
+                                CsrAddr::MEPC  : mepc   = {wdata[XLEN - 1:2], 2'b00};
+                                CsrAddr::MCAUSE: mcause = wdata;
+                                CsrAddr::STVEC : stvec  = wdata;
+                                CsrAddr::SEPC  : sepc   = {wdata[XLEN - 1:2], 2'b00};
+                                CsrAddr::SCAUSE: scause = wdata;
+                                default        : {}
+                            }
+                        } else {
+                            last_is_trap = 0;
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+}
