@@ -1,0 +1,61 @@
+module fifo_f #(
+    param Width   : u32  = 0    ,
+    param DataType: type = logic,
+) (
+    clk        : input  logic   ,
+    rst        : input  logic   ,
+    rst_pos    : input  logic   ,
+    wready     : output logic   ,
+    wready_next: output logic   ,
+    wvalid     : input  logic   ,
+    wdata      : input  DataType,
+    rready     : input  logic   ,
+    rvalid     : output logic   ,
+    rdata      : output DataType,
+) {
+
+    initial {
+        if Width == 0 {
+            $fatal("use fifo instead of fifo_f");
+        }
+    }
+    type Addr = logic<Width>;
+
+    var head: Addr;
+    var tail: Addr;
+
+    local DataLen: u32 = 2 ** Width;
+
+    var dataList: DataType<DataLen>;
+
+    assign rvalid = head != tail;
+    assign rdata  = dataList[head];
+
+    // TODO width cast?
+    let head_1: Addr = head - 1;
+    let head_2: Addr = head_1 - 1;
+
+    assign wready      = head_1 != tail;
+    assign wready_next = head_1 != tail & head_2 != tail;
+
+    always_ff (clk, rst) {
+        if_reset {
+            head     = 0;
+            tail     = 0;
+            dataList = 'x;
+        } else {
+            if (rst_pos) {
+                head = 0;
+                tail = 0;
+            } else {
+                if (rready & rvalid) {
+                    head = head + 1;
+                }
+                if (wready & wvalid) {
+                    dataList[tail] = wdata;
+                    tail           = tail + 1;
+                }
+            }
+        }
+    }
+}

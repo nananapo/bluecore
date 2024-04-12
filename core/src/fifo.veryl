@@ -1,7 +1,6 @@
 module fifo #(
-    param Width       : u32  = 0    ,
-    param DataType    : type = logic,
-    param FutureWReady: bit  = 0    ,
+    param Width   : u32  = 0    ,
+    param DataType: type = logic,
 ) (
     clk    : input  logic   ,
     rst    : input  logic   ,
@@ -59,15 +58,8 @@ module fifo #(
         assign rvalid = head != tail;
         assign rdata  = dataList[head];
 
-        // TODO width cast?
         let head_1: Addr = head - 1;
-        let head_2: Addr = head - 2;
-
-        if FutureWReady :futblock {
-            assign wready = head_1 != tail & head_2 != tail;
-        } else {
-            assign wready = head_1 != tail;
-        }
+        assign wready = head_1 != tail;
 
         always_ff (clk, rst) {
             if_reset {
