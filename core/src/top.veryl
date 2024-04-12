@@ -60,11 +60,24 @@ module top (
         }
     }
 
+    local RISCVTESTS_EXIT_ADDR    : Addr   = ('h1000) as Addr;
+    local RISCVTESTS_WDATA_SUCCESS: UInt64 = 1;
+
     always_ff (clk, rst) {
         if_reset {
             last_req_is_i = 0;
         } else {
             last_req_is_i = !dreq.valid;
+
+            if (dreq.valid & dreq.wen & dreq.addr == RISCVTESTS_EXIT_ADDR) {
+                $display("wdata: %h", dreq.wdata);
+                if (dreq.wdata == RISCVTESTS_WDATA_SUCCESS) {
+                    $display("riscv-tests: Success!");
+                } else {
+                    $error("riscv-tests: Fail");
+                }
+                $finish();
+            }
         }
     }
 
