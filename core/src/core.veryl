@@ -1,10 +1,10 @@
 module core (
-    clk  : input logic             ,
-    rst  : input logic             ,
-    ireq : inout meminterface::Req ,
-    iresp: inout meminterface::Resp,
-    dreq : inout meminterface::Req ,
-    dresp: inout meminterface::Resp,
+    clk  : input logic                 ,
+    rst  : input logic                 ,
+    ireq : inout tri meminterface::Req ,
+    iresp: inout tri meminterface::Resp,
+    dreq : inout tri meminterface::Req ,
+    dresp: inout tri meminterface::Resp,
 
 ) {
 
