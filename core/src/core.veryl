@@ -249,6 +249,13 @@ module core (
     let wb_regctx : register_context = mem_wbq_rdata.regctx;
     let wb_alu_out: UIntX            = mem_wbq_rdata.alu_out;
     let wb_mem_out: UIntX            = mem_wbq_rdata.mem_out;
+    let wb_wb_data: UIntX            = case (wb_info.ctrl.wb_sel) {
+        WbSel::ALU: wb_alu_out,
+        WbSel::MEM: wb_mem_out,
+        WbSel::PC : wb_info.addr + 4, // TODO Cext
+        default   : 0 // TODO CSR
+        ,
+    };
 
     always_comb {
         mem_wbq_rready = 1;
@@ -344,14 +351,9 @@ module core (
             $display("Wb Stage---");
             if (wb_valid) {
                 $display("  %h:%h", wb_info.addr, wb_info.instbit);
-                if (wb_info.ctrl.rf_wen) {
-                    regfile[wb_regctx.rd_addr] = case (wb_info.ctrl.wb_sel) {
-                        WbSel::ALU: wb_alu_out,
-                        WbSel::MEM: wb_mem_out,
-                        WbSel::PC : wb_info.addr + 4, // TODO Cext
-                        default   : 0 // TODO CSR
-                        ,
-                    };
+                if (wb_info.ctrl.rf_wen & wb_regctx.rd_addr != 0) {
+                    $display                  ("writebacked [%d] <= %h", wb_regctx.rd_addr, wb_wb_data);
+                    regfile[wb_regctx.rd_addr] = wb_wb_data;
                 }
             }
         }
