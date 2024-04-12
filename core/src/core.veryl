@@ -45,6 +45,7 @@ module core (
     struct register_context {
         rs1_addr: logic<5>,
         rs2_addr: logic<5>,
+        rd_addr : logic<5>,
     }
 
     struct exe_memq_type {
@@ -134,6 +135,7 @@ module core (
     // const value
     let exe_rs1_addr: logic<5> = exe_info.instbit[19:15];
     let exe_rs2_addr: logic<5> = exe_info.instbit[24:20];
+    let exe_rd_addr : logic<5> = exe_info.instbit[11:7];
     var exe_imm_i   : UIntX   ;
     var exe_imm_s   : UIntX   ;
     var exe_imm_b   : UIntX   ;
@@ -163,14 +165,14 @@ module core (
 
     let exe_dh_rs1: logic = exe_info.ctrl.op1_sel == Op1Sel::RS1 & exe_rs1_addr != 0 & (
     // mem
-    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs1_addr | mem_regctx.rs2_addr == exe_rs1_addr) |
+    exe_memq_rvalid & mem_regctx.rd_addr == exe_rs1_addr |
     // wb
-     mem_wbq_rvalid & (wb_regctx.rs1_addr == exe_rs1_addr | wb_regctx.rs2_addr == exe_rs1_addr));
+     mem_wbq_rvalid & wb_regctx.rd_addr == exe_rs1_addr);
     let exe_dh_rs2: logic = exe_info.ctrl.use_rs2 & exe_rs2_addr != 0 & (
     // mem
-    exe_memq_rvalid & (mem_regctx.rs1_addr == exe_rs2_addr | mem_regctx.rs2_addr == exe_rs2_addr) |
+    exe_memq_rvalid & mem_regctx.rd_addr == exe_rs2_addr |
     // wb
-     mem_wbq_rvalid & (wb_regctx.rs1_addr == exe_rs2_addr | wb_regctx.rs2_addr == exe_rs2_addr));
+     mem_wbq_rvalid & wb_regctx.rd_addr == exe_rs2_addr);
     let exe_stall: logic = exe_dh_rs1 | exe_dh_rs2;
 
     // exe -> mem queue
@@ -184,6 +186,11 @@ module core (
         };
         exe_memq_wdata.regctx.rs2_addr = if (exe_info.ctrl.use_rs2) {
             exe_rs2_addr
+        } else {
+            0
+        };
+        exe_memq_wdata.regctx.rd_addr = if (exe_info.ctrl.rf_wen) {
+            exe_rd_addr
         } else {
             0
         };
