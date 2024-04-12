@@ -157,7 +157,6 @@ module core (
             Op2Sel::IMJ: exe_imm_j,
             Op2Sel::IMU: exe_imm_u,
             Op2Sel::IMZ: exe_imm_z,
-            Op2Sel::NPC: 4,
             default    : XLEN_X,
         };
         exe_rs2 = regfile[exe_rs2_addr];

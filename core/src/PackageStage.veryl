@@ -36,7 +36,6 @@ package stage {
         IMJ,
         IMU,
         IMZ,
-        NPC,
     }
     enum MemCmd: logic<2> {
         X,

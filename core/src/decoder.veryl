@@ -146,7 +146,7 @@ module decoder (
                                                                  {X_7, X_X, BGE_F3, X_5, BR_OP}                     : return {T, Alu::X, Br::BGE, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU}; // BGE
                                                                  {X_7, X_X, BLTU_F3, X_5, BR_OP}                    : return {T, Alu::X, Br::BLT, F, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU}; // BLTU
                                                                  {X_7, X_X, BGEU_F3, X_5, BR_OP}                    : return {T, Alu::X, Br::BGE, F, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU}; // BGEU
-                                                                 {X_7, X_X, X_3, X_5, JAL_OP}                       : return {T, Alu::ADD, Br::JLI, T, Op1::PC, Op2::NPC, F, Mem::X, Size::D, Csr::X, T, Wb::PC}; // JAL
+                                                                 {X_7, X_X, X_3, X_5, JAL_OP}                       : return {T, Alu::ADD, Br::JLI, T, Op1::PC, Op2::IMJ, F, Mem::X, Size::D, Csr::X, T, Wb::PC}; // JAL
                                                                  {X_7, X_X, JALR_F3, X_5, JALR_OP}                  : return {T, Alu::JALR, Br::JLR, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::PC}; // JALR
                                                                  {X_7, X_X, X_3, X_5, LUI_OP}                       : return {T, Alu::ADD, Br::X, T, Op1::X, Op2::IMU, F, Mem::X, Size::D, Csr::X, T, Wb::ALU}; // LUI
                                                                  {X_7, X_X, X_3, X_5, AUIPC_OP}                     : return {T, Alu::ADD, Br::X, T, Op1::PC, Op2::IMU, F, Mem::X, Size::D, Csr::X, T, Wb::ALU}; // AUIPC
