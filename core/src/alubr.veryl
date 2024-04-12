@@ -1,0 +1,29 @@
+module alubr (
+    cmd      : input  stage::BrCmd,
+    is_signed: input  logic       ,
+    op1_data : input  conf::UIntX ,
+    op2_data : input  conf::UIntX ,
+    take     : output logic       ,
+) {
+    import conf::*;
+    import stage::*;
+
+    let op1_s: SIntX = op1_data;
+    let op2_s: SIntX = op2_data;
+
+    assign take = case (cmd) {
+        BrCmd::BEQ: op1_data === op2_data,
+        BrCmd::BNE: !(op1_data === op2_data),
+        BrCmd::BLT: if (is_signed) {
+            op1_s <: op2_s
+        } else {
+            op1_data <: op2_data
+        },
+        BrCmd::BGE: if (is_signed) {
+            !(op1_s <: op2_s)
+        } else {
+            !(op1_data <: op2_data)
+        },
+        default: 0,
+    };
+}
