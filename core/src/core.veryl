@@ -280,7 +280,7 @@ module core (
             $display   ("------------------ clock %0d", clock_count);
             clock_count = clock_count + 1;
             // fetch stage
-            $display   ("Fetch Stage ---");
+            $display("Fetch Stage ---");
             if (reset_before_memstage) {
                 if_is_requested = 0;
                 if_pc           = if (mem_csr_is_trap) {
