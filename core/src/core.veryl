@@ -1,10 +1,10 @@
 module core (
-    clk  : input logic                 ,
-    rst  : input logic                 ,
-    ireq : inout tri meminterface::Req ,
-    iresp: inout tri meminterface::Resp,
-    dreq : inout tri meminterface::Req ,
-    dresp: inout tri meminterface::Resp,
+    clk  : input   logic                   ,
+    rst  : input   logic                   ,
+    ireq : modport meminterface_req::slave ,
+    iresp: modport meminterface_resp::slave,
+    dreq : modport meminterface_req::slave ,
+    dresp: modport meminterface_resp::slave,
 
 ) {
 
@@ -93,7 +93,7 @@ module core (
         ireq.valid = if_idq_wready_next & (!if_is_requested | iresp.valid);
         ireq.addr  = if_pc;
         ireq.wen   = 0;
-        ireq.wdata = 'z;
+        ireq.wdata = 'x;
         ireq.wmask = 0;
     }
 

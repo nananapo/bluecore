@@ -29,10 +29,10 @@ module top (
         rdata : mem_rdata             ,
     );
 
-    var ireq : meminterface::Req ;
-    var iresp: meminterface::Resp;
-    var dreq : meminterface::Req ;
-    var dresp: meminterface::Resp;
+    var ireq : meminterface_req ;
+    var iresp: meminterface_resp;
+    var dreq : meminterface_req ;
+    var dresp: meminterface_resp;
 
     var last_req_is_i: logic;
 

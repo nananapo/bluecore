@@ -1,17 +1,35 @@
-package meminterface {
+interface meminterface_req {
     import conf::*;
-    struct Req {
-        ready: logic          ,
-        valid: logic          ,
-        addr : conf::Addr     ,
-        wen  : logic          ,
-        wdata: conf::UInt64   ,
-        wmask: logic       <8>,
-        // addr : Addr , // TODO 名前空間がおかしそうなエラー
-        // wdata: UInt64, // TODO 名前空間がおかしそうなエラー
+    var ready: logic          ;
+    var valid: logic          ;
+    var addr : conf::Addr     ;
+    var wen  : logic          ;
+    var wdata: conf::UInt64   ;
+    var wmask: logic       <8>;
+
+    modport master {
+        ready: output,
+        valid: input ,
+        addr : input ,
+        wen  : input ,
+        wdata: input ,
+        wmask: input ,
     }
-    struct Resp {
-        valid: logic       ,
-        rdata: conf::UInt64,
+    modport slave {
+        ready: input ,
+        valid: output,
+        addr : output,
+        wen  : output,
+        wdata: output,
+        wmask: output,
+    }
+}
+
+interface meminterface_resp {
+    var valid: logic       ;
+    var rdata: conf::UInt64;
+    modport slave {
+        valid: input,
+        rdata: input,
     }
 }

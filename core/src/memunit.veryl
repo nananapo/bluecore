@@ -1,15 +1,15 @@
 module memunit (
-    clk     : input  logic                 ,
-    rst     : input  logic                 ,
-    dreq    : inout  tri meminterface::Req ,
-    dresp   : inout  tri meminterface::Resp,
-    valid   : input  logic                 ,
-    is_new  : input  logic                 ,
-    ctrl    : input  stage::InstCtrl       ,
-    rs2     : input  conf::UIntX           ,
-    addr    : input  conf::UIntX           ,
-    is_stall: output logic                 ,
-    mem_out : output conf::UIntX           ,
+    clk     : input   logic                   ,
+    rst     : input   logic                   ,
+    dreq    : modport meminterface_req::slave ,
+    dresp   : modport meminterface_resp::slave,
+    valid   : input   logic                   ,
+    is_new  : input   logic                   ,
+    ctrl    : input   stage::InstCtrl         ,
+    rs2     : input   conf::UIntX             ,
+    addr    : input   conf::UIntX             ,
+    is_stall: output  logic                   ,
+    mem_out : output  conf::UIntX             ,
 ) {
 
     import stage::*;
