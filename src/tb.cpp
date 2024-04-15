@@ -15,17 +15,17 @@ int main(int argc, char** argv) {
     long long loopcount = stoll(arg2);
     loopcount = loopcount * 2;
 
-    dut->clk = 0;
-    dut->rst = 1;
+    dut->clk_in = 0;
+    dut->rst_in = 1;
     dut->eval();
 
     // reset
-    dut->rst = 0;
+    dut->rst_in = 0;
     dut->eval();
-    dut->rst = 1;
+    dut->rst_in = 1;
 
     for (int i=0; loopcount == 0 | i < loopcount; i++) {
-        dut->clk = !dut->clk;
+        dut->clk_in = !dut->clk_in;
         dut->eval();
     }
 

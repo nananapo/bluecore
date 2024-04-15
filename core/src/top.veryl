@@ -1,9 +1,29 @@
 module top (
-    clk: input logic,
-    rst: input logic,
+    clk_in: input  logic   ,
+    rst_in: input  logic   ,
+    led   : output logic<6>,
+    key   : input  logic<4>,
 ) {
 
     import conf::*;
+
+    var clk: logic;
+    var rst: logic;
+
+    if (SYNTHESIS_GOWIN) :synth_if {
+        inst gowin_pll: $sv::Gowin_PLL (
+            clkout0: clk   ,
+            clkin  : clk_in,
+        );
+        always_comb {
+            rst = key[3] & state != 1;
+        }
+    } else {
+        always_comb {
+            clk = clk_in;
+            rst = rst_in;
+        }
+    }
 
     // memory
     var mem_valid : logic    ;
@@ -67,16 +87,29 @@ module top (
     local RISCVTESTS_EXIT_ADDR    : Addr   = ('h1000) as Addr;
     local RISCVTESTS_WDATA_SUCCESS: UInt64 = 1;
 
+    local LED_RESET  : logic<6> = 6'b000000;
+    local LED_RUN    : logic<6> = 6'b111111;
+    local LED_SUCCESS: logic<6> = 6'b111110;
+    local LED_FAIL   : logic<6> = 6'b111101;
+
     var state: logic<2>;
 
     always_ff (clk, rst) {
         if_reset {
             last_req_is_i = 0;
             state         = 0;
+            led           = LED_RESET;
         } else {
             if (!mem_ready) {
                 last_req_is_i = !dreq.valid;
             }
+
+            led = case state {
+                0      : LED_RUN,
+                1      : LED_SUCCESS,
+                2      : LED_FAIL,
+                default: LED_RESET,
+            };
 
             if (dreq.valid & dreq.wen & dreq.addr == RISCVTESTS_EXIT_ADDR) {
                 $display("wdata: %h", dreq.wdata);
