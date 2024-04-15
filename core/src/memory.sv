@@ -5,6 +5,7 @@ module memory #(
 )(
     input clk,
     input rst,
+    input ready,
     input valid,
     input wen,
     input [ADDR_WIDTH-1:0]  addr,
@@ -34,6 +35,13 @@ initial begin
     rdata = 0;
 end
 
+typedef enum logic {
+    STATE_READY,
+    STATE_WRITE
+} State;
+
+State state;
+
 wire logic [DATA_WIDTH-1:0] wmask_expand;
 for (genvar i=0; i<DATA_WIDTH; i++) begin : wm_expand_block
     assign wmask_expand[i] = wmask[i / 8];
@@ -42,14 +50,24 @@ end
 always @(posedge clk) begin
     if (!rst) begin
         rvalid  <= 0;
-    end else if (valid) begin
-        rvalid  <= 1;
-        rdata   <= mem_data[addr];
-        if (wen)
-            mem_data[addr] <=   wdata & wmask_expand |
-                                mem_data[addr] & ~wmask_expand;
+        rdata   <= 0;
+        state   <= STATE_READY;
     end else begin
-        rvalid <= 0;
+        if (state == STATE_READY) begin
+            if (valid) begin
+                rvalid  <= !wen;
+                rdata   <= mem_data[addr];
+                if (wen) begin
+                    state <= STATE_WRITE;
+                end
+            end else begin
+                rvalid <= 0;
+            end
+        end else if (state == STATE_WRITE) begin
+            rvalid <= 1;
+            mem_data[addr] <= wdata & wmask_expand | rdata & ~wmask_expand;
+            state <= STATE_READY;
+        end
     end
 end
 

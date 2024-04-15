@@ -7,6 +7,7 @@ module top (
 
     // memory
     var mem_valid : logic    ;
+    var mem_ready : logic    ;
     var mem_wen   : logic    ;
     var mem_addr  : Addr     ;
     var mem_wdata : UInt64   ;
@@ -14,25 +15,28 @@ module top (
     var mem_rvalid: logic    ;
     var mem_rdata : UInt64   ;
 
+    local DataAddrWidth: u32 = 10;
+
     inst datamemory: $sv::memory #(
-        DATA_WIDTH: 64,
-        ADDR_WIDTH: 16,
+        DATA_WIDTH: 64           ,
+        ADDR_WIDTH: DataAddrWidth,
     ) (
-        clk                           ,
-        rst                           ,
-        valid : mem_valid             ,
-        wen   : mem_wen               ,
-        addr  : mem_addr[16 + 3 - 1:3],
-        wdata : mem_wdata             ,
-        wmask : mem_wmask             ,
-        rvalid: mem_rvalid            ,
-        rdata : mem_rdata             ,
+        clk                                      ,
+        rst                                      ,
+        ready : mem_ready                        ,
+        valid : mem_valid                        ,
+        wen   : mem_wen                          ,
+        addr  : mem_addr[DataAddrWidth + 3 - 1:3],
+        wdata : mem_wdata                        ,
+        wmask : mem_wmask                        ,
+        rvalid: mem_rvalid                       ,
+        rdata : mem_rdata                        ,
     );
 
-    var ireq : meminterface_req ;
-    var iresp: meminterface_resp;
-    var dreq : meminterface_req ;
-    var dresp: meminterface_resp;
+    inst ireq : meminterface_req;
+    inst iresp: meminterface_resp;
+    inst dreq : meminterface_req;
+    inst dresp: meminterface_resp;
 
     var last_req_is_i: logic;
 
@@ -63,21 +67,29 @@ module top (
     local RISCVTESTS_EXIT_ADDR    : Addr   = ('h1000) as Addr;
     local RISCVTESTS_WDATA_SUCCESS: UInt64 = 1;
 
+    var state: logic<2>;
+
     always_ff (clk, rst) {
         if_reset {
             last_req_is_i = 0;
+            state         = 0;
         } else {
-            last_req_is_i = !dreq.valid;
+            if (!mem_ready) {
+                last_req_is_i = !dreq.valid;
+            }
 
             if (dreq.valid & dreq.wen & dreq.addr == RISCVTESTS_EXIT_ADDR) {
                 $display("wdata: %h", dreq.wdata);
                 if (dreq.wdata == RISCVTESTS_WDATA_SUCCESS) {
                     $display("riscv-tests: Success!");
+                    state    = 1;
                 } else {
                     $error("riscv-tests: Fail");
+                    state  = 2;
                 }
                 $finish();
             }
+
         }
     }
 
