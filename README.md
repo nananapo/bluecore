@@ -21,5 +21,9 @@ wdata: 0000000000000001
 riscv-tests: Success!
 ```
 
-RV64I is selected as default. You can change ISA by change config.
-https://github.com/nananapo/bluecore/blob/b7ad7a1bb11bb994e0a5f929a3e81def2b54ae18/core/src/PackageConf.veryl#L1-L2
+RV32I is selected as default. You can change ISA by change config.
+https://github.com/nananapo/bluecore/blob/main/core/src/PackageConf.veryl#L1-L2
+
+### synthesize
+```gowin/``` directory is GOWIN FPGA Designer project.  
+You can synthesize bluecore on TangMega 138K Pro Dock (GW5AST).
