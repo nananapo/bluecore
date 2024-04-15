@@ -33,21 +33,35 @@ module core (
         ctrl   : InstCtrl,
     }
 
-    struct id_exeq_type {
+    struct id_dsq_type {
         info: stageinfo,
     }
-    var id_exeq_wready: logic       ;
-    var id_exeq_wvalid: logic       ;
-    var id_exeq_wdata : id_exeq_type;
-    var id_exeq_rready: logic       ;
-    var id_exeq_rvalid: logic       ;
-    var id_exeq_rdata : id_exeq_type;
+    var id_dsq_wready: logic      ;
+    var id_dsq_wvalid: logic      ;
+    var id_dsq_wdata : id_dsq_type;
+    var id_dsq_rready: logic      ;
+    var id_dsq_rvalid: logic      ;
+    var id_dsq_rdata : id_dsq_type;
 
     struct register_context {
         rs1_addr: logic<5>,
         rs2_addr: logic<5>,
         rd_addr : logic<5>,
     }
+
+    struct ds_exeq_type {
+        info  : stageinfo       ,
+        op1   : UIntX           ,
+        op2   : UIntX           ,
+        rs2   : UIntX           ,
+        regctx: register_context,
+    }
+    var ds_exeq_wready: logic       ;
+    var ds_exeq_wvalid: logic       ;
+    var ds_exeq_wdata : ds_exeq_type;
+    var ds_exeq_rready: logic       ;
+    var ds_exeq_rvalid: logic       ;
+    var ds_exeq_rdata : ds_exeq_type;
 
     struct exe_memq_type {
         info     : stageinfo       ,
@@ -56,6 +70,7 @@ module core (
         alu_out  : UIntX           ,
         br_taken : logic           ,
         br_target: Addr            ,
+        nextpc   : Addr            ,
     }
     var exe_memq_wready: logic        ;
     var exe_memq_wvalid: logic        ;
@@ -109,7 +124,7 @@ module core (
         if_idq_wvalid        = if_is_requested & iresp.valid;
         if_idq_wdata.addr    = if_requested_pc;
         if_idq_wdata.instbit = if_fetch_inst;
-        if_idq_rready        = id_exeq_wready;
+        if_idq_rready        = id_dsq_wready;
     }
 
     // decode stage
@@ -120,86 +135,111 @@ module core (
         // ctrl is assigned in decoder instance
     }
 
-    // id -> exe queue
+    // id -> ds queue
     always_comb {
-        id_exeq_wvalid     = if_idq_rvalid;
-        id_exeq_wdata.info = id_info;
-        id_exeq_rready     = !id_exeq_wvalid | exe_memq_wready & exe_memq_wvalid;
+        id_dsq_wvalid     = if_idq_rvalid;
+        id_dsq_wdata.info = id_info;
+        id_dsq_rready     = !id_dsq_wvalid | ds_exeq_wready & ds_exeq_wvalid;
     }
 
     // register
     var regfile: UIntX<32>;
 
-    // exe stage
-    let exe_info    : stageinfo = id_exeq_rdata.info;
-    var exe_alu_out : UIntX    ;
-    var exe_br_taken: logic    ;
-    var exe_op1     : UIntX    ;
-    var exe_op2     : UIntX    ;
-    var exe_rs2     : UIntX    ;
+    // ds stage
+    let ds_info: stageinfo = id_dsq_rdata.info;
+    var ds_op1 : UIntX    ;
+    var ds_op2 : UIntX    ;
+    var ds_rs2 : UIntX    ;
 
     // const value
-    let exe_rs1_addr: logic<5> = exe_info.instbit[19:15];
-    let exe_rs2_addr: logic<5> = exe_info.instbit[24:20];
-    let exe_rd_addr : logic<5> = exe_info.instbit[11:7];
-    var exe_imm_i   : UIntX   ;
-    var exe_imm_s   : UIntX   ;
-    var exe_imm_b   : UIntX   ;
-    var exe_imm_j   : UIntX   ;
-    var exe_imm_u   : UIntX   ;
-    var exe_imm_z   : UIntX   ;
+    let ds_rs1_addr: logic<5> = ds_info.instbit[19:15];
+    let ds_rs2_addr: logic<5> = ds_info.instbit[24:20];
+    let ds_rd_addr : logic<5> = ds_info.instbit[11:7];
+    var ds_imm_i   : UIntX   ;
+    var ds_imm_s   : UIntX   ;
+    var ds_imm_j   : UIntX   ;
+    var ds_imm_u   : UIntX   ;
+    var ds_imm_z   : UIntX   ;
 
     always_comb {
-        exe_op1 = case exe_info.ctrl.op1_sel {
-            Op1Sel::RS1: regfile[exe_rs1_addr],
-            Op1Sel::PC : exe_info.addr,
-            Op1Sel::IMZ: exe_imm_z,
+        ds_op1 = case ds_info.ctrl.op1_sel {
+            Op1Sel::RS1: regfile[ds_rs1_addr],
+            Op1Sel::PC : ds_info.addr,
+            Op1Sel::IMZ: ds_imm_z,
             default    : XLEN_X,
         };
-        exe_op2 = case (exe_info.ctrl.op2_sel) {
-            Op2Sel::RS2: regfile[exe_rs2_addr],
-            Op2Sel::IMI: exe_imm_i,
-            Op2Sel::IMS: exe_imm_s,
-            Op2Sel::IMJ: exe_imm_j,
-            Op2Sel::IMU: exe_imm_u,
-            Op2Sel::IMZ: exe_imm_z,
+        ds_op2 = case (ds_info.ctrl.op2_sel) {
+            Op2Sel::RS2: regfile[ds_rs2_addr],
+            Op2Sel::IMI: ds_imm_i,
+            Op2Sel::IMS: ds_imm_s,
+            Op2Sel::IMJ: ds_imm_j,
+            Op2Sel::IMU: ds_imm_u,
+            Op2Sel::IMZ: ds_imm_z,
             default    : XLEN_X,
         };
-        exe_rs2 = regfile[exe_rs2_addr];
+        ds_rs2 = regfile[ds_rs2_addr];
     }
 
-    let exe_dh_rs1: logic = exe_info.ctrl.op1_sel == Op1Sel::RS1 & exe_rs1_addr != 0 & (
+    let ds_dh_rs1: logic = ds_info.ctrl.op1_sel == Op1Sel::RS1 & ds_rs1_addr != 0 & (
+    // exe
+    ds_exeq_rvalid & exe_regctx.rd_addr == ds_rs1_addr |
     // mem
-    exe_memq_rvalid & mem_regctx.rd_addr == exe_rs1_addr |
+     exe_memq_rvalid & mem_regctx.rd_addr == ds_rs1_addr |
     // wb
-     mem_wbq_rvalid & wb_regctx.rd_addr == exe_rs1_addr);
-    let exe_dh_rs2: logic = exe_info.ctrl.use_rs2 & exe_rs2_addr != 0 & (
+     mem_wbq_rvalid & wb_regctx.rd_addr == ds_rs1_addr);
+    let ds_dh_rs2: logic = ds_info.ctrl.use_rs2 & ds_rs2_addr != 0 & (
     // mem
-    exe_memq_rvalid & mem_regctx.rd_addr == exe_rs2_addr |
+    ds_exeq_rvalid & exe_regctx.rd_addr == ds_rs2_addr |
+    // mem
+     exe_memq_rvalid & mem_regctx.rd_addr == ds_rs2_addr |
     // wb
-     mem_wbq_rvalid & wb_regctx.rd_addr == exe_rs2_addr);
-    let exe_stall: logic = exe_dh_rs1 | exe_dh_rs2 | !if_idq_rvalid; // datahazard or there are no inst in id
+     mem_wbq_rvalid & wb_regctx.rd_addr == ds_rs2_addr);
+    let ds_stall: logic = ds_dh_rs1 | ds_dh_rs2; // datahazard
+
+
+    // ds -> exe queue
+    always_comb {
+        ds_exeq_wvalid                = id_dsq_rvalid & !ds_stall;
+        ds_exeq_wdata.info            = ds_info;
+        ds_exeq_wdata.op1             = ds_op1;
+        ds_exeq_wdata.op2             = ds_op2;
+        ds_exeq_wdata.rs2             = ds_rs2;
+        ds_exeq_wdata.regctx.rs1_addr = if (ds_info.ctrl.op1_sel == Op1Sel::RS1) {
+            ds_rs1_addr
+        } else {
+            0
+        };
+        ds_exeq_wdata.regctx.rs2_addr = if (ds_info.ctrl.use_rs2) {
+            ds_rs2_addr
+        } else {
+            0
+        };
+        ds_exeq_wdata.regctx.rd_addr = if (ds_info.ctrl.rf_wen) {
+            ds_rd_addr
+        } else {
+            0
+        };
+        ds_exeq_rready = !ds_exeq_wvalid | exe_memq_wready & exe_memq_wvalid;
+    }
+
+    // exe stage
+    let exe_info    : stageinfo        = ds_exeq_rdata.info;
+    var exe_alu_out : UIntX           ;
+    var exe_br_taken: logic           ;
+    let exe_op1     : UIntX            = ds_exeq_rdata.op1;
+    let exe_op2     : UIntX            = ds_exeq_rdata.op2;
+    let exe_rs2     : UIntX            = ds_exeq_rdata.rs2;
+    let exe_regctx  : register_context = ds_exeq_rdata.regctx;
+    var exe_imm_b   : UIntX           ;
+
+    let exe_stall: logic = !id_dsq_rvalid; // wait ds is valid
 
     // exe -> mem queue
     always_comb {
-        exe_memq_wvalid                = id_exeq_rvalid & !exe_stall;
-        exe_memq_wdata.info            = exe_info;
-        exe_memq_wdata.rs2             = exe_rs2;
-        exe_memq_wdata.regctx.rs1_addr = if (exe_info.ctrl.op1_sel == Op1Sel::RS1) {
-            exe_rs1_addr
-        } else {
-            0
-        };
-        exe_memq_wdata.regctx.rs2_addr = if (exe_info.ctrl.use_rs2) {
-            exe_rs2_addr
-        } else {
-            0
-        };
-        exe_memq_wdata.regctx.rd_addr = if (exe_info.ctrl.rf_wen) {
-            exe_rd_addr
-        } else {
-            0
-        };
+        exe_memq_wvalid          = ds_exeq_rvalid & !exe_stall;
+        exe_memq_wdata.info      = exe_info;
+        exe_memq_wdata.rs2       = exe_rs2;
+        exe_memq_wdata.regctx    = exe_regctx;
         exe_memq_wdata.alu_out   = exe_alu_out;
         exe_memq_wdata.br_taken  = exe_br_taken | exe_info.ctrl.br_cmd == BrCmd::JLI | exe_info.ctrl.br_cmd == BrCmd::JLR;
         exe_memq_wdata.br_target = case (exe_info.ctrl.br_cmd) {
@@ -208,19 +248,21 @@ module core (
             default   : exe_info.addr + exe_imm_b // branch
             ,
         } & (~1);
+        exe_memq_wdata.nextpc = ds_info.addr;
     }
 
     // mem stage
-    let mem_valid        : logic            = exe_memq_rvalid;
-    var mem_is_new       : logic           ;
-    var mem_memunit_stall: logic           ;
-    let mem_info         : stageinfo        = exe_memq_rdata.info;
-    let mem_regctx       : register_context = exe_memq_rdata.regctx;
-    let mem_alu_out      : UIntX            = exe_memq_rdata.alu_out;
-    let mem_br_taken     : logic            = exe_memq_rdata.br_taken;
-    let mem_br_target    : Addr             = exe_memq_rdata.br_target;
-    let mem_rs2          : UIntX            = exe_memq_rdata.rs2;
-    var mem_mem_rdata    : UIntX           ;
+    let mem_valid         : logic            = exe_memq_rvalid;
+    var mem_is_new        : logic           ;
+    var mem_memunit_stall : logic           ;
+    let mem_info          : stageinfo        = exe_memq_rdata.info;
+    let mem_regctx        : register_context = exe_memq_rdata.regctx;
+    let mem_alu_out       : UIntX            = exe_memq_rdata.alu_out;
+    let mem_br_taken      : logic            = exe_memq_rdata.br_taken;
+    let mem_br_target     : Addr             = exe_memq_rdata.br_target;
+    let mem_rs2           : UIntX            = exe_memq_rdata.rs2;
+    var mem_mem_rdata     : UIntX           ;
+    let mem_next_pc_actual: Addr             = exe_memq_rdata.nextpc;
 
     var mem_csr_rdata      : UIntX;
     var mem_csrunit_stall  : logic;
@@ -233,9 +275,8 @@ module core (
         mem_br_target
     };
 
-    // expects exestage is valid
     // TODO assert
-    assign mem_is_branch_hazard = mem_valid & mem_next_pc_expected != exe_info.addr;
+    assign mem_is_branch_hazard = mem_valid & mem_next_pc_expected != mem_next_pc_actual;
 
     always_comb {
         exe_memq_rready       = !mem_memunit_stall & !mem_csrunit_stall & mem_wbq_wready;
@@ -335,9 +376,18 @@ module core (
                 $display("  wb_sel    : %2d", id_info.ctrl.wb_sel);
             }
 
+            // ds stage
+            $display("Data Stage ---");
+            if (id_dsq_rvalid) {
+                $display("  %h:%h", ds_info.addr, ds_info.instbit);
+                $display("  stall     : %d", ds_stall);
+                $display("  op1       : %h", ds_op1);
+                $display("  op2       : %h", ds_op2);
+            }
+
             // exe stage
             $display("Exe Stage ---");
-            if (id_exeq_rvalid) {
+            if (ds_exeq_rvalid) {
                 $display("  %h:%h", exe_info.addr, exe_info.instbit);
                 $display("  stall     : %d", exe_stall);
                 $display("  alu_cmd   : %2d", exe_info.ctrl.alu_cmd);
@@ -357,7 +407,7 @@ module core (
                 if (mem_csr_is_trap) {
                     $display("  csr hazard: %h", mem_csr_trap_vector);
                 } else if (mem_is_branch_hazard) {
-                    $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, exe_info.addr);
+                    $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, mem_next_pc_actual);
                 }
             } else {
                 mem_is_new = 1;
@@ -395,14 +445,24 @@ module core (
         take     : exe_br_taken           ,
     );
 
+    inst ds_immdec: imm_decoder (
+        data : ds_info.instbit,
+        imm_i: ds_imm_i       ,
+        imm_s: ds_imm_s       ,
+        imm_b: _              ,
+        imm_j: ds_imm_j       ,
+        imm_u: ds_imm_u       ,
+        imm_z: ds_imm_z       ,
+    );
+
     inst exe_immdec: imm_decoder (
         data : exe_info.instbit,
-        imm_i: exe_imm_i       ,
-        imm_s: exe_imm_s       ,
+        imm_i: _               ,
+        imm_s: _               ,
         imm_b: exe_imm_b       ,
-        imm_j: exe_imm_j       ,
-        imm_u: exe_imm_u       ,
-        imm_z: exe_imm_z       ,
+        imm_j: _               ,
+        imm_u: _               ,
+        imm_z: _               ,
     );
 
     inst mem_memunit: memunit (
@@ -450,19 +510,34 @@ module core (
         rdata      : if_idq_rdata            ,
     );
 
-    inst fifo_decode_exe: fifo #(
-        Width   : 0           ,
-        DataType: id_exeq_type,
+    inst fifo_decode_ds: fifo #(
+        Width   : 0          ,
+        DataType: id_dsq_type,
     ) (
         clk                           ,
         rst                           ,
         rst_pos: reset_before_memstage,
-        wready : id_exeq_wready       ,
-        wvalid : id_exeq_wvalid       ,
-        wdata  : id_exeq_wdata        ,
-        rready : id_exeq_rready       ,
-        rvalid : id_exeq_rvalid       ,
-        rdata  : id_exeq_rdata        ,
+        wready : id_dsq_wready        ,
+        wvalid : id_dsq_wvalid        ,
+        wdata  : id_dsq_wdata         ,
+        rready : id_dsq_rready        ,
+        rvalid : id_dsq_rvalid        ,
+        rdata  : id_dsq_rdata         ,
+    );
+
+    inst fifo_ds_exe: fifo #(
+        Width   : 0           ,
+        DataType: ds_exeq_type,
+    ) (
+        clk                           ,
+        rst                           ,
+        rst_pos: reset_before_memstage,
+        wready : ds_exeq_wready       ,
+        wvalid : ds_exeq_wvalid       ,
+        wdata  : ds_exeq_wdata        ,
+        rready : ds_exeq_rready       ,
+        rvalid : ds_exeq_rvalid       ,
+        rdata  : ds_exeq_rdata        ,
     );
 
     inst fifo_exe_mem: fifo #(
