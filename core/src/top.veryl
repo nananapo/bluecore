@@ -108,7 +108,7 @@ module top (
     // LED
     always_ff (clk, rst) {
         if_reset {
-            led           = LED_RESET;
+            led = LED_RESET;
         } else {
             led = case state {
                 0      : LED_RUN,
@@ -122,7 +122,7 @@ module top (
     // riscv-tests
     always_ff (clk, rst) {
         if_reset {
-            state         = 0;
+            state = 0;
         } else {
             if (dreq.valid & dreq.wen & dreq.addr == RISCVTESTS_EXIT_ADDR) {
                 $display("wdata: %h", dreq.wdata);
@@ -135,7 +135,6 @@ module top (
                 }
                 $finish();
             }
-
         }
     }
 
