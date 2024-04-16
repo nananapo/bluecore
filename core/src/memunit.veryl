@@ -141,7 +141,9 @@ module memunit (
                         state = State::WaitValid;
                     }
                 } else if state == State::WaitValid {
-                    state = State::Init;
+                    if dresp.valid {
+                        state = State::Init;
+                    }
                 }
             }
         }
