@@ -92,25 +92,38 @@ module top (
     local LED_SUCCESS: logic<6> = 6'b111110;
     local LED_FAIL   : logic<6> = 6'b111101;
 
-    var state: logic<2>;
-
+    // memory arbiter
     always_ff (clk, rst) {
         if_reset {
             last_req_is_i = 0;
-            state         = 0;
-            led           = LED_RESET;
         } else {
-            if (!mem_ready) {
+            if (mem_ready) {
                 last_req_is_i = !dreq.valid;
             }
+        }
+    }
 
+    var state: logic<2>;
+
+    // LED
+    always_ff (clk, rst) {
+        if_reset {
+            led           = LED_RESET;
+        } else {
             led = case state {
                 0      : LED_RUN,
                 1      : LED_SUCCESS,
                 2      : LED_FAIL,
                 default: LED_RESET,
             };
+        }
+    }
 
+    // riscv-tests
+    always_ff (clk, rst) {
+        if_reset {
+            state         = 0;
+        } else {
             if (dreq.valid & dreq.wen & dreq.addr == RISCVTESTS_EXIT_ADDR) {
                 $display("wdata: %h", dreq.wdata);
                 if (dreq.wdata == RISCVTESTS_WDATA_SUCCESS) {

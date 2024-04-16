@@ -5,7 +5,7 @@ module memory #(
 )(
     input clk,
     input rst,
-    input ready,
+    output ready,
     input valid,
     input wen,
     input [ADDR_WIDTH-1:0]  addr,
@@ -46,6 +46,8 @@ wire logic [DATA_WIDTH-1:0] wmask_expand;
 for (genvar i=0; i<DATA_WIDTH; i++) begin : wm_expand_block
     assign wmask_expand[i] = wmask[i / 8];
 end
+
+assign ready = state == STATE_READY;
 
 always @(posedge clk) begin
     if (!rst) begin
