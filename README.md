@@ -1,10 +1,8 @@
 # bluecore
 RISC-V Processor written in [Veryl](https://github.com/veryl-lang/veryl).
 
-```
-Veryl version : at 794f33d686aad5fe2261a1d037ee991fcd6b2fb1
-```
-bluecore is 5-stage in-order core supporting subset of RV[32|64]I.
+Veryl version is latest on master branch.  
+bluecore is 6-stage in-order core supporting subset of RV[32|64]I.
 
 ### build
 change this line in core/Makefile
@@ -27,3 +25,5 @@ https://github.com/nananapo/bluecore/blob/main/core/src/PackageConf.veryl#L1-L2
 ### synthesize
 ```gowin/``` directory is GOWIN FPGA Designer project.  
 You can synthesize bluecore on TangMega 138K Pro Dock (GW5AST).
+
+Change SYNTHESIS_GOWIN=0 to 1 in ```core/src/PackageConf.veryl``` and run ```make build``` before open projects.
