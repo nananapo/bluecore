@@ -5,6 +5,12 @@ Veryl version is latest on master branch.
 bluecore is 6-stage in-order core supporting subset of RV[32|64]I.
 
 ### build
+
+```sh
+$ git clone https://github.com/bluecore
+$ git submodule update
+```
+
 change this line in core/Makefile
 https://github.com/nananapo/bluecore/blob/b7ad7a1bb11bb994e0a5f929a3e81def2b54ae18/core/Makefile#L1
 
