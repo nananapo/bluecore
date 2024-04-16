@@ -9,5 +9,5 @@ package conf {
 
     local XLEN_X: logic<XLEN> = {1'b0 repeat XLEN};
 
-    local SYNTHESIS_GOWIN: logic = 1;
+    local SYNTHESIS_GOWIN: logic = 0;
 }
