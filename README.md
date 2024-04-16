@@ -15,7 +15,7 @@ $ make build
 ```
 ### run test
 ```sh
-$ make verilator MEMFILE=test/riscv-tests/rv32ui-p-add.bin.aligned CYCLE=0
+$ make verilator MEMFILE=test/riscv-tests-bin/rv32ui-p-add.bin.aligned CYCLE=0
 ...
 wdata: 0000000000000001
 riscv-tests: Success!
