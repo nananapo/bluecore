@@ -149,6 +149,7 @@ module core (
     let ds_info: stageinfo = id_dsq_rdata.info;
     var ds_op1 : UIntX    ;
     var ds_op2 : UIntX    ;
+    var ds_rs1 : UIntX    ;
     var ds_rs2 : UIntX    ;
 
     // const value
@@ -161,41 +162,93 @@ module core (
     var ds_imm_u   : UIntX   ;
     var ds_imm_z   : UIntX   ;
 
-    always_comb {
-        ds_op1 = case ds_info.ctrl.op1_sel {
-            Op1Sel::RS1: regfile[ds_rs1_addr],
-            Op1Sel::PC : ds_info.addr,
-            Op1Sel::IMZ: ds_imm_z,
-            default    : XLEN_X,
-        };
-        ds_op2 = case (ds_info.ctrl.op2_sel) {
-            Op2Sel::RS2: regfile[ds_rs2_addr],
-            Op2Sel::IMI: ds_imm_i,
-            Op2Sel::IMS: ds_imm_s,
-            Op2Sel::IMJ: ds_imm_j,
-            Op2Sel::IMU: ds_imm_u,
-            Op2Sel::IMZ: ds_imm_z,
-            default    : XLEN_X,
-        };
-        ds_rs2 = regfile[ds_rs2_addr];
+    function can_foward_exe (
+        wb_sel: input WbSel,
+    ) -> logic {
+        return wb_sel == WbSel::PC;
     }
 
-    let ds_dh_rs1: logic = ds_info.ctrl.op1_sel == Op1Sel::RS1 & ds_rs1_addr != 0 & (
-    // exe
-    ds_exeq_rvalid & exe_regctx.rd_addr == ds_rs1_addr |
-    // mem
-     exe_memq_rvalid & mem_regctx.rd_addr == ds_rs1_addr |
-    // wb
-     mem_wbq_rvalid & wb_regctx.rd_addr == ds_rs1_addr);
-    let ds_dh_rs2: logic = ds_info.ctrl.use_rs2 & ds_rs2_addr != 0 & (
-    // mem
-    ds_exeq_rvalid & exe_regctx.rd_addr == ds_rs2_addr |
-    // mem
-     exe_memq_rvalid & mem_regctx.rd_addr == ds_rs2_addr |
-    // wb
-     mem_wbq_rvalid & wb_regctx.rd_addr == ds_rs2_addr);
+    function can_foward_mem (
+        wb_sel: input WbSel,
+    ) -> logic {
+
+        return wb_sel == WbSel::PC | wb_sel == WbSel::ALU;
+    }
+
+    function can_foward_wb (
+        wb_sel: input WbSel,
+    ) -> logic {
+
+        return 1;
+    }
+
+    let ds_dh_ds_rs1: logic = ds_rs1_addr != 0;
+    let ds_dh_ds_rs2: logic = ds_rs2_addr != 0;
+
+    let ds_dh_exe_rs1: logic = ds_dh_ds_rs1 & ds_exeq_rvalid & exe_info.ctrl.rf_wen & exe_regctx.rd_addr == ds_rs1_addr;
+    let ds_dh_mem_rs1: logic = ds_dh_ds_rs1 & exe_memq_rvalid & mem_info.ctrl.rf_wen & mem_regctx.rd_addr == ds_rs1_addr;
+    let ds_dh_wb_rs1 : logic = ds_dh_ds_rs1 & mem_wbq_rvalid & wb_info.ctrl.rf_wen & wb_regctx.rd_addr == ds_rs1_addr;
+
+    let ds_dh_exe_rs2: logic = ds_dh_ds_rs2 & ds_exeq_rvalid & exe_info.ctrl.rf_wen & exe_regctx.rd_addr == ds_rs2_addr;
+    let ds_dh_mem_rs2: logic = ds_dh_ds_rs2 & exe_memq_rvalid & mem_info.ctrl.rf_wen & mem_regctx.rd_addr == ds_rs2_addr;
+    let ds_dh_wb_rs2 : logic = ds_dh_ds_rs2 & mem_wbq_rvalid & wb_info.ctrl.rf_wen & wb_regctx.rd_addr == ds_rs2_addr;
+
+    let ds_dh_rs1: logic = ds_info.ctrl.op1_sel == Op1Sel::RS1 & ds_dh_ds_rs1 & (if (ds_dh_exe_rs1) {
+        !can_foward_exe(exe_info.ctrl.wb_sel)
+    } else if (ds_dh_mem_rs1) {
+        !can_foward_mem(mem_info.ctrl.wb_sel)
+    } else if (ds_dh_wb_rs1) {
+        !can_foward_wb(wb_info.ctrl.wb_sel)
+    } else {
+        0
+    });
+    let ds_dh_rs2: logic = ds_info.ctrl.use_rs2 & ds_dh_ds_rs2 & (if (ds_dh_exe_rs2) {
+        !can_foward_exe(exe_info.ctrl.wb_sel)
+    } else if (ds_dh_mem_rs2) {
+        !can_foward_mem(mem_info.ctrl.wb_sel)
+    } else if (ds_dh_wb_rs2) {
+        !can_foward_wb(wb_info.ctrl.wb_sel)
+    } else {
+        0
+    });
+
     let ds_stall: logic = ds_dh_rs1 | ds_dh_rs2; // datahazard
 
+    always_comb {
+        ds_rs1 = if ds_dh_exe_rs1 {
+            exe_wb_data
+        } else if ds_dh_mem_rs1 {
+            mem_wb_data
+        } else if ds_dh_wb_rs1 {
+            wb_wb_data
+        } else {
+            regfile[ds_rs1_addr]
+        };
+        ds_rs2 = if ds_dh_exe_rs2 {
+            exe_wb_data
+        } else if ds_dh_mem_rs2 {
+            mem_wb_data
+        } else if ds_dh_wb_rs2 {
+            wb_wb_data
+        } else {
+            regfile[ds_rs2_addr]
+        };
+        case ds_info.ctrl.op1_sel {
+            Op1Sel::RS1: ds_op1 = ds_rs1;
+            Op1Sel::PC : ds_op1 = ds_info.addr;
+            Op1Sel::IMZ: ds_op1 = ds_imm_z;
+            default    : ds_op1 = XLEN_X;
+        }
+        case (ds_info.ctrl.op2_sel) {
+            Op2Sel::RS2: ds_op2 = ds_rs2;
+            Op2Sel::IMI: ds_op2 = ds_imm_i;
+            Op2Sel::IMS: ds_op2 = ds_imm_s;
+            Op2Sel::IMJ: ds_op2 = ds_imm_j;
+            Op2Sel::IMU: ds_op2 = ds_imm_u;
+            Op2Sel::IMZ: ds_op2 = ds_imm_z;
+            default    : ds_op2 = XLEN_X;
+        }
+    }
 
     // ds -> exe queue
     always_comb {
@@ -231,6 +284,7 @@ module core (
     let exe_rs2     : UIntX            = ds_exeq_rdata.rs2;
     let exe_regctx  : register_context = ds_exeq_rdata.regctx;
     var exe_imm_b   : UIntX           ;
+    let exe_wb_data : UIntX            = exe_info.addr + 4;
 
     let exe_stall: logic = !id_dsq_rvalid; // wait ds is valid
 
@@ -263,6 +317,11 @@ module core (
     let mem_rs2           : UIntX            = exe_memq_rdata.rs2;
     var mem_mem_rdata     : UIntX           ;
     let mem_next_pc_actual: Addr             = exe_memq_rdata.nextpc;
+    let mem_wb_data       : UIntX            = if mem_info.ctrl.wb_sel == WbSel::PC {
+        mem_info.addr + 4
+    } else {
+        mem_alu_out
+    };
 
     var mem_csr_rdata      : UIntX;
     var mem_csrunit_stall  : logic;
@@ -295,16 +354,17 @@ module core (
     let wb_alu_out: UIntX            = mem_wbq_rdata.alu_out;
     let wb_mem_out: UIntX            = mem_wbq_rdata.mem_out;
     let wb_csr_out: UIntX            = mem_wbq_rdata.csr_out;
-    let wb_wb_data: UIntX            = case (wb_info.ctrl.wb_sel) {
-        WbSel::ALU: wb_alu_out,
-        WbSel::MEM: wb_mem_out,
-        WbSel::PC : wb_info.addr + 4, // TODO Cext
-        WbSel::CSR: wb_csr_out,
-        default   : 0,
-    };
+    var wb_wb_data: UIntX           ;
 
     always_comb {
         mem_wbq_rready = 1;
+        case (wb_info.ctrl.wb_sel) {
+            WbSel::ALU: wb_wb_data = wb_alu_out;
+            WbSel::MEM: wb_wb_data = wb_mem_out;
+            WbSel::PC : wb_wb_data = wb_info.addr + 4;
+            WbSel::CSR: wb_wb_data = wb_csr_out;
+            default   : wb_wb_data = 'x;
+        }
     }
 
     always_ff (clk, rst) {
