@@ -49,12 +49,18 @@ module core (
         rd_addr : logic<5>,
     }
 
+    struct forwarding_context {
+        valid: logic,
+        data : UIntX,
+    }
+
     struct ds_exeq_type {
-        info  : stageinfo       ,
-        op1   : UIntX           ,
-        op2   : UIntX           ,
-        rs2   : UIntX           ,
-        regctx: register_context,
+        info  : stageinfo         ,
+        op1   : UIntX             ,
+        op2   : UIntX             ,
+        rs2   : UIntX             ,
+        regctx: register_context  ,
+        fwctx : forwarding_context,
     }
     var ds_exeq_wready: logic       ;
     var ds_exeq_wvalid: logic       ;
@@ -64,13 +70,14 @@ module core (
     var ds_exeq_rdata : ds_exeq_type;
 
     struct exe_memq_type {
-        info     : stageinfo       ,
-        rs2      : UIntX           ,
-        regctx   : register_context,
-        alu_out  : UIntX           ,
-        br_taken : logic           ,
-        br_target: Addr            ,
-        nextpc   : Addr            ,
+        info     : stageinfo         ,
+        rs2      : UIntX             ,
+        regctx   : register_context  ,
+        alu_out  : UIntX             ,
+        br_taken : logic             ,
+        br_target: Addr              ,
+        nextpc   : Addr              ,
+        fwctx    : forwarding_context,
     }
     var exe_memq_wready: logic        ;
     var exe_memq_wvalid: logic        ;
@@ -80,11 +87,12 @@ module core (
     var exe_memq_rdata : exe_memq_type;
 
     struct mem_wbq_type {
-        info   : stageinfo       ,
-        regctx : register_context,
-        alu_out: UIntX           ,
-        mem_out: UIntX           ,
-        csr_out: UIntX           ,
+        info   : stageinfo         ,
+        regctx : register_context  ,
+        alu_out: UIntX             ,
+        mem_out: UIntX             ,
+        csr_out: UIntX             ,
+        fwctx  : forwarding_context,
     }
     var mem_wbq_wready: logic       ;
     var mem_wbq_wvalid: logic       ;
@@ -162,26 +170,6 @@ module core (
     var ds_imm_u   : UIntX   ;
     var ds_imm_z   : UIntX   ;
 
-    function can_foward_exe (
-        wb_sel: input WbSel,
-    ) -> logic {
-        return wb_sel == WbSel::PC;
-    }
-
-    function can_foward_mem (
-        wb_sel: input WbSel,
-    ) -> logic {
-
-        return wb_sel == WbSel::PC | wb_sel == WbSel::ALU;
-    }
-
-    function can_foward_wb (
-        wb_sel: input WbSel,
-    ) -> logic {
-
-        return 1;
-    }
-
     let ds_dh_ds_rs1: logic = ds_rs1_addr != 0;
     let ds_dh_ds_rs2: logic = ds_rs2_addr != 0;
 
@@ -194,20 +182,20 @@ module core (
     let ds_dh_wb_rs2 : logic = ds_dh_ds_rs2 & mem_wbq_rvalid & wb_info.ctrl.rf_wen & wb_regctx.rd_addr == ds_rs2_addr;
 
     let ds_dh_rs1: logic = ds_info.ctrl.op1_sel == Op1Sel::RS1 & ds_dh_ds_rs1 & (if (ds_dh_exe_rs1) {
-        !can_foward_exe(exe_info.ctrl.wb_sel)
+        !exe_fwctx.valid
     } else if (ds_dh_mem_rs1) {
-        !can_foward_mem(mem_info.ctrl.wb_sel)
+        !mem_fwctx.valid
     } else if (ds_dh_wb_rs1) {
-        !can_foward_wb(wb_info.ctrl.wb_sel)
+        !wb_fwctx.valid
     } else {
         0
     });
     let ds_dh_rs2: logic = ds_info.ctrl.use_rs2 & ds_dh_ds_rs2 & (if (ds_dh_exe_rs2) {
-        !can_foward_exe(exe_info.ctrl.wb_sel)
+        !exe_fwctx.valid
     } else if (ds_dh_mem_rs2) {
-        !can_foward_mem(mem_info.ctrl.wb_sel)
+        !mem_fwctx.valid
     } else if (ds_dh_wb_rs2) {
-        !can_foward_wb(wb_info.ctrl.wb_sel)
+        !wb_fwctx.valid
     } else {
         0
     });
@@ -216,20 +204,20 @@ module core (
 
     always_comb {
         ds_rs1 = if ds_dh_exe_rs1 {
-            exe_wb_data
+            exe_fwctx.data
         } else if ds_dh_mem_rs1 {
-            mem_wb_data
+            mem_fwctx.data
         } else if ds_dh_wb_rs1 {
-            wb_wb_data
+            wb_fwctx.data
         } else {
             regfile[ds_rs1_addr]
         };
         ds_rs2 = if ds_dh_exe_rs2 {
-            exe_wb_data
+            exe_fwctx.data
         } else if ds_dh_mem_rs2 {
-            mem_wb_data
+            mem_fwctx.data
         } else if ds_dh_wb_rs2 {
-            wb_wb_data
+            wb_fwctx.data
         } else {
             regfile[ds_rs2_addr]
         };
@@ -272,19 +260,21 @@ module core (
         } else {
             0
         };
-        ds_exeq_rready = !ds_exeq_rvalid | exe_memq_wready & exe_memq_wvalid;
+        ds_exeq_wdata.fwctx.valid = ds_info.ctrl.wb_sel == WbSel::PC;
+        ds_exeq_wdata.fwctx.data  = ds_info.addr + 4;
+        ds_exeq_rready            = !ds_exeq_rvalid | exe_memq_wready & exe_memq_wvalid;
     }
 
     // exe stage
-    let exe_info    : stageinfo        = ds_exeq_rdata.info;
-    var exe_alu_out : UIntX           ;
-    var exe_br_taken: logic           ;
-    let exe_op1     : UIntX            = ds_exeq_rdata.op1;
-    let exe_op2     : UIntX            = ds_exeq_rdata.op2;
-    let exe_rs2     : UIntX            = ds_exeq_rdata.rs2;
-    let exe_regctx  : register_context = ds_exeq_rdata.regctx;
-    var exe_imm_b   : UIntX           ;
-    let exe_wb_data : UIntX            = exe_info.addr + 4;
+    let exe_info    : stageinfo          = ds_exeq_rdata.info;
+    var exe_alu_out : UIntX             ;
+    var exe_br_taken: logic             ;
+    let exe_op1     : UIntX              = ds_exeq_rdata.op1;
+    let exe_op2     : UIntX              = ds_exeq_rdata.op2;
+    let exe_rs2     : UIntX              = ds_exeq_rdata.rs2;
+    let exe_regctx  : register_context   = ds_exeq_rdata.regctx;
+    let exe_fwctx   : forwarding_context = ds_exeq_rdata.fwctx;
+    var exe_imm_b   : UIntX             ;
 
     let exe_stall: logic = !id_dsq_rvalid; // wait ds is valid
 
@@ -302,26 +292,28 @@ module core (
             default   : exe_info.addr + exe_imm_b // branch
             ,
         } & (~1);
-        exe_memq_wdata.nextpc = ds_info.addr;
+        exe_memq_wdata.nextpc      = ds_info.addr;
+        exe_memq_wdata.fwctx.valid = exe_fwctx.valid | exe_info.ctrl.wb_sel == WbSel::ALU;
+        exe_memq_wdata.fwctx.data  = if (exe_fwctx.valid) {
+            exe_fwctx.data
+        } else {
+            exe_alu_out
+        };
     }
 
     // mem stage
-    let mem_valid         : logic            = exe_memq_rvalid;
-    var mem_is_new        : logic           ;
-    var mem_memunit_stall : logic           ;
-    let mem_info          : stageinfo        = exe_memq_rdata.info;
-    let mem_regctx        : register_context = exe_memq_rdata.regctx;
-    let mem_alu_out       : UIntX            = exe_memq_rdata.alu_out;
-    let mem_br_taken      : logic            = exe_memq_rdata.br_taken;
-    let mem_br_target     : Addr             = exe_memq_rdata.br_target;
-    let mem_rs2           : UIntX            = exe_memq_rdata.rs2;
-    var mem_mem_rdata     : UIntX           ;
-    let mem_next_pc_actual: Addr             = exe_memq_rdata.nextpc;
-    let mem_wb_data       : UIntX            = if mem_info.ctrl.wb_sel == WbSel::PC {
-        mem_info.addr + 4
-    } else {
-        mem_alu_out
-    };
+    let mem_valid         : logic              = exe_memq_rvalid;
+    var mem_is_new        : logic             ;
+    var mem_memunit_stall : logic             ;
+    let mem_info          : stageinfo          = exe_memq_rdata.info;
+    let mem_regctx        : register_context   = exe_memq_rdata.regctx;
+    let mem_fwctx         : forwarding_context = exe_memq_rdata.fwctx;
+    let mem_alu_out       : UIntX              = exe_memq_rdata.alu_out;
+    let mem_br_taken      : logic              = exe_memq_rdata.br_taken;
+    let mem_br_target     : Addr               = exe_memq_rdata.br_target;
+    let mem_rs2           : UIntX              = exe_memq_rdata.rs2;
+    var mem_mem_rdata     : UIntX             ;
+    let mem_next_pc_actual: Addr               = exe_memq_rdata.nextpc;
 
     var mem_csr_rdata      : UIntX;
     var mem_csrunit_stall  : logic;
@@ -338,33 +330,35 @@ module core (
     assign mem_is_branch_hazard = mem_valid & mem_next_pc_expected != mem_next_pc_actual;
 
     always_comb {
-        exe_memq_rready       = !mem_memunit_stall & !mem_csrunit_stall & mem_wbq_wready;
-        mem_wbq_wvalid        = mem_valid & !mem_memunit_stall & !mem_csrunit_stall;
-        mem_wbq_wdata.info    = mem_info;
-        mem_wbq_wdata.regctx  = mem_regctx;
-        mem_wbq_wdata.alu_out = mem_alu_out;
-        mem_wbq_wdata.mem_out = mem_mem_rdata;
-        mem_wbq_wdata.csr_out = mem_csr_rdata;
+        exe_memq_rready           = !mem_memunit_stall & !mem_csrunit_stall & mem_wbq_wready;
+        mem_wbq_wvalid            = mem_valid & !mem_memunit_stall & !mem_csrunit_stall;
+        mem_wbq_wdata.info        = mem_info;
+        mem_wbq_wdata.regctx      = mem_regctx;
+        mem_wbq_wdata.alu_out     = mem_alu_out;
+        mem_wbq_wdata.mem_out     = mem_mem_rdata;
+        mem_wbq_wdata.csr_out     = mem_csr_rdata;
+        mem_wbq_wdata.fwctx.valid = 1;
+        mem_wbq_wdata.fwctx.data  = if (mem_fwctx.valid) {
+            mem_fwctx.data
+        } else if (mem_info.ctrl.wb_sel == WbSel::MEM) {
+            mem_mem_rdata
+        } else {
+            mem_csr_rdata
+        };
     }
 
     // wb stage
-    let wb_valid  : logic            = mem_wbq_rvalid;
-    let wb_info   : stageinfo        = mem_wbq_rdata.info;
-    let wb_regctx : register_context = mem_wbq_rdata.regctx;
-    let wb_alu_out: UIntX            = mem_wbq_rdata.alu_out;
-    let wb_mem_out: UIntX            = mem_wbq_rdata.mem_out;
-    let wb_csr_out: UIntX            = mem_wbq_rdata.csr_out;
-    var wb_wb_data: UIntX           ;
+    let wb_valid : logic            = mem_wbq_rvalid;
+    let wb_info  : stageinfo        = mem_wbq_rdata.info;
+    let wb_regctx: register_context = mem_wbq_rdata.regctx;
+    // let wb_alu_out: UIntX              = mem_wbq_rdata.alu_out;
+    // let wb_mem_out: UIntX              = mem_wbq_rdata.mem_out;
+    // let wb_csr_out: UIntX              = mem_wbq_rdata.csr_out;
+    let wb_fwctx  : forwarding_context = mem_wbq_rdata.fwctx;
+    let wb_wb_data: UIntX              = wb_fwctx.data;
 
     always_comb {
         mem_wbq_rready = 1;
-        case (wb_info.ctrl.wb_sel) {
-            WbSel::ALU: wb_wb_data = wb_alu_out;
-            WbSel::MEM: wb_wb_data = wb_mem_out;
-            WbSel::PC : wb_wb_data = wb_info.addr + 4;
-            WbSel::CSR: wb_wb_data = wb_csr_out;
-            default   : wb_wb_data = 'x;
-        }
     }
 
     always_ff (clk, rst) {
