@@ -7,3 +7,13 @@ jobs:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/install-veryl
     - run: make check
+  install-verilator:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/install-verilator
+  install-veryl:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/install-veryl

@@ -8,9 +8,12 @@ runs:
       shell: bash
       run: |
         sudo apt update
+        # sudo apt install -y verilator
+        # verilator --version
         sudo apt-get -y install libunwind-dev
         sudo apt-get -y install git help2man perl python3 make autoconf g++ flex bison ccache
         sudo apt-get -y install libgoogle-perftools-dev numactl perl-doc
+        sudo apt-get -y install mold
     - name: Cache
       id: verilator_cache
       uses: actions/cache@v2
@@ -33,7 +36,7 @@ runs:
         unset VERILATOR_ROOT
         autoconf
         ./configure
-        make
+        make -j6
     - name: Install
       shell: bash
       run: |

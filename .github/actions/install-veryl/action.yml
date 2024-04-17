@@ -5,8 +5,25 @@ runs:
   using: composite
   steps:
     - uses: veryl-lang/setup-veryl@v1
-    - name: install custom veryl
+    - name: clone veryl
       shell: bash
       run: |
-        git clone https://github.com/nananapo/veryl ../veryl
-        make -C ../veryl
+        git clone https://github.com/nananapo/veryl veryl
+        sudo apt-get install -y gawk
+        git -C veryl log | head -1 | cut -d" " -f 2 > .veryl_version
+      continue-on-error: true
+    - name: Cache
+      id: veryl_cache
+      uses: actions/cache@v2
+      with:
+        path: veryl
+        key: ${{ runner.os }}-veryl-${{ hashFiles('.veryl_version') }}
+    - name: install custom veryl
+      if: steps.veryl_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        make -j6 -C veryl
+    - name: copy veryl
+      shell: bash
+      run: |
+        cp -R veryl ../veryl

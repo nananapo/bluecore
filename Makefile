@@ -34,3 +34,5 @@ check:
 clean:
 	make -C $(CORE) clean
 	rm -rf obj_dir
+
+.PHONY: build verilator iverilog fmt check clean
