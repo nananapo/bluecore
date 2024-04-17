@@ -1,0 +1,12 @@
+name: Install Veryl
+on:
+  workflow_call:
+runs:
+  using: composite
+  steps:
+    - uses: veryl-lang/setup-veryl@v1
+    - name: install custom veryl
+      shell: bash
+      run: |
+        git clone https://github.com/nananapo/veryl ../veryl
+        make -C ../veryl

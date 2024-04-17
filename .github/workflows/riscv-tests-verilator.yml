@@ -55,9 +55,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: ./.github/actions/install-veryl
       - uses: ./.github/actions/install-verilator
       - name: Test
         run: |
+          make build
           cd test && python3 test.py ui-p-
   # ui-v:
   #   runs-on: ubuntu-latest

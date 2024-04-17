@@ -5,9 +5,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: veryl-lang/setup-veryl@v1
-    - name: install custom veryl
-      run: |
-        git clone https://github.com/nananapo/veryl ../veryl
-        make -C ../veryl
+    - uses: ./.github/actions/install-veryl
     - run: make check
