@@ -13,22 +13,24 @@ module alu (
 
     let sra_result: SIntX = op1_s >>> op2_s[4:0];
 
-    assign result = case (cmd) {
-        AluCmd::ADD: op1_data + op2_data,
-        AluCmd::SUB: op1_data - op2_data,
-        AluCmd::AND: op1_data & op2_data,
-        AluCmd::OR : op1_data | op2_data,
-        AluCmd::XOR: op1_data ^ op2_data,
-        AluCmd::SLL: op1_data << op2_data[4:0],
-        AluCmd::SRL: op1_data >> op2_data[4:0],
-        AluCmd::SRA: sra_result,
-        AluCmd::SLT: if (is_signed) {
-            {1'b0 repeat XLEN - 1, (op1_s <: op2_s)} // SLT
-        } else {
-            {1'b0 repeat XLEN - 1, op1_data <: op2_data} // SLTU
-        },
-        AluCmd::JALR : (op1_data + op2_data) & (~1),
-        AluCmd::COPY1: op1_data,
-        default      : XLEN_X,
-    };
+    always_comb {
+        case (cmd) {
+            AluCmd::ADD: result = op1_data + op2_data;
+            AluCmd::SUB: result = op1_data - op2_data;
+            AluCmd::AND: result = op1_data & op2_data;
+            AluCmd::OR : result = op1_data | op2_data;
+            AluCmd::XOR: result = op1_data ^ op2_data;
+            AluCmd::SLL: result = op1_data << op2_data[4:0];
+            AluCmd::SRL: result = op1_data >> op2_data[4:0];
+            AluCmd::SRA: result = sra_result;
+            AluCmd::SLT: result = if (is_signed) {
+                             {1'b0 repeat XLEN - 1, (op1_s <: op2_s)} // SLT
+                                      } else {
+                             {1'b0 repeat XLEN - 1, op1_data <: op2_data} // SLTU
+                                      };
+            AluCmd::JALR : result = (op1_data + op2_data) & (~1);
+            AluCmd::COPY1: result = op1_data;
+            default      : result = XLEN_X;
+        }
+    }
 }
