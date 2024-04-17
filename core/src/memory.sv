@@ -42,9 +42,15 @@ typedef enum logic {
 
 State state;
 
+logic [ADDR_WIDTH-1:0] addr_saved;
+logic [DATA_WIDTH-1:0] wdata_saved;
+logic [DATA_WIDTH/8-1:0] wmask_saved;
+
+wire logic [ADDR_WIDTH-1:0] addr_op = state == STATE_READY ? addr : addr_saved;
+
 wire logic [DATA_WIDTH-1:0] wmask_expand;
 for (genvar i=0; i<DATA_WIDTH; i++) begin : wm_expand_block
-    assign wmask_expand[i] = wmask[i / 8];
+    assign wmask_expand[i] = wmask_saved[i / 8];
 end
 
 assign ready = state == STATE_READY;
@@ -58,7 +64,12 @@ always @(posedge clk) begin
         if (state == STATE_READY) begin
             if (valid) begin
                 rvalid  <= !wen;
-                rdata   <= mem_data[addr];
+                rdata   <= mem_data[addr_op];
+
+                addr_saved  <= addr;
+                wdata_saved <= wdata;
+                wmask_saved <= wmask;
+
                 if (wen) begin
                     state <= STATE_WRITE;
                 end
@@ -67,7 +78,7 @@ always @(posedge clk) begin
             end
         end else if (state == STATE_WRITE) begin
             rvalid <= 1;
-            mem_data[addr] <= wdata & wmask_expand | rdata & ~wmask_expand;
+            mem_data[addr_op] <= wdata_saved & wmask_expand | rdata & ~wmask_expand;
             state <= STATE_READY;
         end
     end
