@@ -31,7 +31,7 @@ module memunit (
         }
         dreq.wen   = ctrl.mem_cmd == MemCmd::S;
         dreq.addr  = addr;
-        dreq.wdata = {1'b0 repeat $bits(dreq.wdata) - XLEN, rs2} << addr[2:0];
+        dreq.wdata = {1'b0 repeat $bits(dreq.wdata) - XLEN, rs2} << {addr[2:0], 3'b000};
         dreq.wmask = case ctrl.mem_size {
             Size::B: 8'b1 << addr[2:0],
             Size::H: case addr[2:0] {
