@@ -44,11 +44,25 @@ def test(cmd, filename):
         print("FAIL : "+ filename)
     return (filename, success)
 
+MAX_WORKERS = 1
+
 args = sys.argv[1:]
+
+if args[0] == "-j":
+    args = args[1:]
+    if len(args) == 0:
+        print("Usage: -j [num]")
+        exit()
+    try:
+        MAX_WORKERS = int(args[0])
+    except:
+        print("Usage: -j [num]")
+        exit()
+    args = args[1:]
 
 import concurrent.futures
 
-with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
+with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
     processes = []
 
