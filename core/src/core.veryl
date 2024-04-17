@@ -219,7 +219,7 @@ module core (
         } else {
             0
         };
-        ds_exeq_rready = !ds_exeq_wvalid | exe_memq_wready & exe_memq_wvalid;
+        ds_exeq_rready = !ds_exeq_rvalid | exe_memq_wready & exe_memq_wvalid;
     }
 
     // exe stage
@@ -383,13 +383,14 @@ module core (
                 $display("  stall     : %d", ds_stall);
                 $display("  op1       : %h", ds_op1);
                 $display("  op2       : %h", ds_op2);
+                $display("  rs2       : %h", ds_rs2);
             }
 
             // exe stage
             $display("Exe Stage ---");
             if (ds_exeq_rvalid) {
                 $display("  %h:%h", exe_info.addr, exe_info.instbit);
-                $display("  stall     : %d", exe_stall);
+                $display("  stall     : %d", !exe_memq_wvalid | !exe_memq_wready);
                 $display("  alu_cmd   : %2d", exe_info.ctrl.alu_cmd);
                 $display("  op1       : %h", exe_op1);
                 $display("  op2       : %h", exe_op2);
@@ -402,6 +403,7 @@ module core (
                 $display  ("  %h:%h", mem_info.addr, mem_info.instbit);
                 $display  ("  mu_stall     : %d", mem_memunit_stall);
                 $display  ("  mem_cmd      : %d", mem_info.ctrl.mem_cmd);
+                $display  ("  mem_out      : %h", mem_mem_rdata);
                 $display  ("  cu_stall     : %d", mem_csrunit_stall);
                 $display  ("  csr_cmd      : %d", mem_info.ctrl.csr_cmd);
                 if (mem_csr_is_trap) {
