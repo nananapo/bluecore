@@ -35,7 +35,7 @@ module top (
     var mem_rvalid: logic    ;
     var mem_rdata : UInt64   ;
 
-    local DataAddrWidth: u32 = 10;
+    local DataAddrWidth: u32 = 16;
 
     inst datamemory: $sv::memory #(
         DATA_WIDTH: 64           ,
