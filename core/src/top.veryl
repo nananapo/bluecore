@@ -61,8 +61,8 @@ module top (
     var last_req_is_i: logic;
 
     always_comb {
-        ireq.ready = !dreq.valid;
-        dreq.ready = 1;
+        ireq.ready = mem_ready & !dreq.valid;
+        dreq.ready = mem_ready;
 
         iresp.valid = last_req_is_i & mem_rvalid;
         iresp.rdata = mem_rdata;
