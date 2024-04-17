@@ -1,0 +1,33 @@
+name: Install iverilog
+on:
+  workflow_call:
+runs:
+  using: composite
+  steps:
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache
+      id: iverilog_cache
+      uses: actions/cache@v2
+      with:
+        path: iverilog
+        key: ubuntu-iverilog-deps-v12
+    - name: Build
+      if: steps.iverilog_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        sudo apt update
+        sudo apt-get install -y autoconf gperf
+        git clone https://github.com/steveicarus/iverilog.git
+        cd iverilog
+        git checkout --track -b v12-branch origin/v12-branch
+        sh autoconf.sh
+        ./configure
+        make
+    - name: Install
+      shell: bash
+      run: |
+        cd iverilog
+        sudo sh -c "make install"

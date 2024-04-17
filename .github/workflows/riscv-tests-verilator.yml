@@ -1,0 +1,91 @@
+name: riscv-tests
+run-name: Run riscv-tests@verilator
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+jobs:
+  # mi-p:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - uses: ./.github/actions/install-verilator
+  #     - name: Test
+  #       run: |
+  #         cd test && python3 test.py mi-p-
+  # si-p:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - uses: ./.github/actions/install-verilator
+  #     - name: Test
+  #       run: |
+  #         cd test && python3 test.py si-p-
+  # ua-p:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - uses: ./.github/actions/install-verilator
+  #     - name: Test
+  #       run: |
+  #         cd test && python3 test.py ua-p-
+  # ua-v:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - uses: ./.github/actions/install-verilator
+  #     - name: Test
+  #       run: |
+  #         cd test && python3 test.py ua-v-
+  ui-p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/install-verilator
+      - name: Test
+        run: |
+          cd test && python3 test.py ui-p-
+  # ui-v:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - uses: ./.github/actions/install-verilator
+  #     - name: Test
+  #       run: |
+  #         cd test && python3 test.py ui-v-
+  # um-p:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - uses: ./.github/actions/install-verilator
+  #     - name: Test
+  #       run: |
+  #         cd test && python3 test.py um-p-
+  # um-v:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - uses: ./.github/actions/install-verilator
+  #     - name: Test
+  #       run: |
+  #         cd test && python3 test.py um-v-

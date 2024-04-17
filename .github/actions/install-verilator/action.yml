@@ -1,0 +1,41 @@
+name: Install verilator
+on:
+  workflow_call:
+runs:
+  using: composite
+  steps:
+    - name: Install dependency
+      shell: bash
+      run: |
+        sudo apt update
+        sudo apt-get -y install libunwind-dev
+        sudo apt-get -y install git help2man perl python3 make autoconf g++ flex bison ccache
+        sudo apt-get -y install libgoogle-perftools-dev numactl perl-doc
+    - name: Cache
+      id: verilator_cache
+      uses: actions/cache@v2
+      with:
+        path: verilator
+        key: ubuntu-verilator-deps-v5.016
+    - name: Build
+      if: steps.verilator_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        git clone https://github.com/verilator/verilator
+        cd verilator
+        git checkout v5.016
+        git clone https://github.com/westes/flex .flex
+        cd .flex
+        git checkout v2.6.4
+        cd ..
+        cp .flex/src/FlexLexer.h include/FlexLexer.h
+        cp .flex/src/FlexLexer.h FlexLexer.h
+        unset VERILATOR_ROOT
+        autoconf
+        ./configure
+        make
+    - name: Install
+      shell: bash
+      run: |
+        cd verilator
+        sudo make install
