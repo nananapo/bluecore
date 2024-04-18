@@ -2,14 +2,11 @@ import sys
 from os import system
 import os
 import subprocess
+import concurrent.futures
 
 TESTS_PATH = "riscv-tests-bin/"
 MAKE_COMMAND_VERILATOR = "make -C ../ verilator "
-
-os.makedirs("../test/results", exist_ok=True)
-
-results = []
-resultstatus = []
+MAX_WORKERS = 1
 
 proc = None
 
@@ -44,60 +41,61 @@ def test(cmd, filename):
         print("FAIL : "+ filename)
     return (filename, success)
 
-MAX_WORKERS = 1
 
-args = sys.argv[1:]
+if __name__ == '__main__':
+    os.makedirs("../test/results", exist_ok=True)
+    results = []
+    resultstatus = []
+    args = sys.argv[1:]
 
-if args[0] == "-j":
-    args = args[1:]
-    if len(args) == 0:
-        print("Usage: -j [num]")
-        exit()
-    try:
-        MAX_WORKERS = int(args[0])
-    except:
-        print("Usage: -j [num]")
-        exit()
-    args = args[1:]
+    if args[0] == "-j":
+        args = args[1:]
+        if len(args) == 0:
+            print("Usage: -j [num]")
+            exit()
+        try:
+            MAX_WORKERS = int(args[0])
+        except:
+            print("Usage: -j [num]")
+            exit()
+        args = args[1:]
 
-import concurrent.futures
+    with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
-with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        processes = []
 
-    processes = []
+        for fileName in sorted(os.listdir(TESTS_PATH)):
+            if not fileName.endswith(".aligned"):
+                continue
+            abpath = os.getcwd() + "/" + TESTS_PATH + "/" + fileName
 
-    for fileName in sorted(os.listdir(TESTS_PATH)):
-        if not fileName.endswith(".aligned"):
-            continue
-        abpath = os.getcwd() + "/" + TESTS_PATH + "/" + fileName
-
-        if len(args) == 0 or fileName.find(args[0]) != -1:
-            mcmd = MAKE_COMMAND_VERILATOR
-            options = []
-            options.append("MEMFILE="+abpath)
-            options.append("CYCLE=5000")
-            options.append("MDIR="+"obj_dir/"+fileName+"/")
-            processes.append(executor.submit(test, mcmd + " " + " ".join(options), fileName))
+            if len(args) == 0 or fileName.find(args[0]) != -1:
+                mcmd = MAKE_COMMAND_VERILATOR
+                options = []
+                options.append("MEMFILE="+abpath)
+                options.append("CYCLE=5000")
+                options.append("MDIR="+"obj_dir/"+fileName+"/")
+                processes.append(executor.submit(test, mcmd + " " + " ".join(options), fileName))
 
 
-    for _ in concurrent.futures.as_completed(processes):
-        f, s = _.result()
-        if s:
-            results.append("PASS: " + f)
-        else:
-            results.append("FAIL: " + f)
-        resultstatus.append(s)
+        for _ in concurrent.futures.as_completed(processes):
+            f, s = _.result()
+            if s:
+                results.append("PASS: " + f)
+            else:
+                results.append("FAIL: " + f)
+            resultstatus.append(s)
 
-results = sorted(results)
+    results = sorted(results)
 
-successCount = str(sum(resultstatus))
-statusText = "Test Result : " + successCount + " / " + str(len(resultstatus))
+    successCount = str(sum(resultstatus))
+    statusText = "Test Result : " + successCount + " / " + str(len(resultstatus))
 
-with open("results/result.txt", "w", encoding='utf-8') as f:
-    f.write(statusText + "\n")
-    f.write("\n".join(results))
+    with open("results/result.txt", "w", encoding='utf-8') as f:
+        f.write(statusText + "\n")
+        f.write("\n".join(results))
 
-print(statusText)
+    print(statusText)
 
-if sum(resultstatus) != len(resultstatus):
-    exit(1)
+    if sum(resultstatus) != len(resultstatus):
+        exit(1)
