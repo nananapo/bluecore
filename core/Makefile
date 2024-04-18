@@ -1,4 +1,4 @@
-VERYL = ../../veryl/target/debug/veryl
+VERYL = veryl
 
 build:
 	$(VERYL) build

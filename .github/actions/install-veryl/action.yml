@@ -4,7 +4,7 @@ on:
 runs:
   using: composite
   steps:
-    - uses: veryl-lang/setup-veryl@v1
+    # - uses: veryl-lang/setup-veryl@v1
     - name: clone veryl
       shell: bash
       run: |
@@ -23,7 +23,7 @@ runs:
       shell: bash
       run: |
         make -j6 -C veryl
-    - name: copy veryl
+    - name: install veryl
       shell: bash
       run: |
-        cp -R veryl ../veryl
+        echo "$(pwd)/veryl/target/debug/" >> $GITHUB_PATH
