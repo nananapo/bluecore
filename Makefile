@@ -2,11 +2,13 @@ CORE = core
 
 PWD := $(shell pwd)/
 
-FILELISTS := $(CORE)/$(CORE).f $(CORE)/sv.f
+FILELISTS := $(CORE)/$(CORE).f
 FILELISTS_AB = $(addprefix $(PWD),$(FILELISTS))
 TOPMODULE = core_top
 
-MDIR = "obj_dir/"
+OBJDIR = "obj_dir/"
+
+MDIR = ""
 OPTION = ""
 MEMFILE = ""
 CYCLE=
@@ -14,22 +16,22 @@ CYCLE=
 build:
 	make -C $(CORE)
 
-verilator:
-	mkdir -p $(MDIR)
-	verilator --Mdir $(MDIR) $(OPTION) -DFILEPATH=\"$(MEMFILE)\" --cc $(addprefix -f ,$(FILELISTS_AB)) --top-module $(TOPMODULE) --exe $(PWD)src/tb.cpp
-	make -C $(MDIR)/ -f V$(TOPMODULE).mk
-	$(MDIR)/V$(TOPMODULE) $(CYCLE)
-
-iverilog:
-	mkdir -p $(MDIR)
-	iverilog -g2012 $(OPTION) -DFILEPATH=\"$(MEMFILE)\" $(addprefix -f ,$(FILELISTS_AB)) -m $(TOPMODULE) -o $(MDIR)/a.out
-	vvp $(MDIR)/a.out
-
 fmt:
 	make fmt -C $(CORE)
 
 check:
 	make check -C $(CORE)
+
+verilator:
+	mkdir -p $(OBJDIR)$(MDIR)
+	verilator --Mdir $(OBJDIR)$(MDIR) $(OPTION) -DFILEPATH=\"$(MEMFILE)\" --cc $(addprefix -f ,$(FILELISTS_AB)) --top-module $(TOPMODULE) --exe $(PWD)src/tb.cpp
+	make -C $(OBJDIR)$(MDIR)/ -f V$(TOPMODULE).mk
+	$(OBJDIR)$(MDIR)/V$(TOPMODULE) $(CYCLE)
+
+iverilog:
+	mkdir -p $(OBJDIR)$(MDIR)
+	iverilog -g2012 $(OPTION) -DFILEPATH=\"$(MEMFILE)\" $(addprefix -f ,$(FILELISTS_AB)) -m $(TOPMODULE) -o $(OBJDIR)$(MDIR)/a.out
+	vvp $(OBJDIR)$(MDIR)/a.out
 
 clean:
 	make -C $(CORE) clean

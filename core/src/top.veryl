@@ -1,12 +1,28 @@
+include (inline, "memory.sv");
+
 module top (
     clk_in: input  logic   ,
     rst_in: input  logic   ,
     led   : output logic<6>,
     key   : input  logic<4>,
 ) {
+    import eei::*;
 
-    import conf::*;
+    local LED_RESET  : logic<6> = 6'b000000;
+    local LED_RUN    : logic<6> = 6'b111111;
+    local LED_SUCCESS: logic<6> = 6'b111110;
+    local LED_FAIL   : logic<6> = 6'b111101;
 
+    enum LEDState: logic<2> {
+        Reset,
+        Run,
+        Success,
+        Fail,
+    }
+
+    var led_state: LEDState;
+
+    // クロックを生成
     var clk: logic;
     var rst: logic;
 
@@ -16,12 +32,26 @@ module top (
             clkin  : clk_in,
         );
         always_comb {
-            rst = key[3] & state != 1;
+            rst = key[3] & led_state != 1;
         }
     } else {
         always_comb {
             clk = clk_in;
             rst = rst_in;
+        }
+    }
+
+    // LED
+    always_ff (clk, rst) {
+        if_reset {
+            led = LED_RESET;
+        } else {
+            led = case led_state {
+                LEDState::Run    : LED_RUN,
+                LEDState::Success: LED_SUCCESS,
+                LEDState::Fail   : LED_FAIL,
+                default          : LED_RESET,
+            };
         }
     }
 
@@ -53,44 +83,34 @@ module top (
         rdata : mem_rdata                        ,
     );
 
-    inst ireq : meminterface_req;
-    inst iresp: meminterface_resp;
-    inst dreq : meminterface_req;
-    inst dresp: meminterface_resp;
+    inst ibus_if: membus_if;
+    inst dbus_if: membus_if;
 
     var last_req_is_i: logic;
 
     always_comb {
-        ireq.ready = mem_ready & !dreq.valid;
-        dreq.ready = mem_ready;
+        ibus_if.ready = mem_ready & !dbus_if.valid;
+        dbus_if.ready = mem_ready;
 
-        iresp.valid = last_req_is_i & mem_rvalid;
-        iresp.rdata = mem_rdata;
+        ibus_if.resp_valid = last_req_is_i & mem_rvalid;
+        ibus_if.resp_rdata = mem_rdata;
 
-        dresp.valid = !last_req_is_i & mem_rvalid;
-        dresp.rdata = mem_rdata;
+        dbus_if.resp_valid = !last_req_is_i & mem_rvalid;
+        dbus_if.resp_rdata = mem_rdata;
 
-        mem_valid = ireq.valid | dreq.valid;
-        if (dreq.valid) {
-            mem_wen   = dreq.wen;
-            mem_addr  = dreq.addr;
-            mem_wdata = dreq.wdata;
-            mem_wmask = dreq.wmask;
+        mem_valid = ibus_if.valid | dbus_if.valid;
+        if (dbus_if.valid) {
+            mem_wen   = dbus_if.wen;
+            mem_addr  = dbus_if.addr;
+            mem_wdata = dbus_if.wdata;
+            mem_wmask = dbus_if.wmask;
         } else {
             mem_wen   = 0;
-            mem_addr  = ireq.addr;
-            mem_wdata = ireq.wdata;
-            mem_wmask = ireq.wmask;
+            mem_addr  = ibus_if.addr;
+            mem_wdata = ibus_if.wdata;
+            mem_wmask = ibus_if.wmask;
         }
     }
-
-    local RISCVTESTS_EXIT_ADDR    : Addr   = ('h1000) as Addr;
-    local RISCVTESTS_WDATA_SUCCESS: UInt64 = 1;
-
-    local LED_RESET  : logic<6> = 6'b000000;
-    local LED_RUN    : logic<6> = 6'b111111;
-    local LED_SUCCESS: logic<6> = 6'b111110;
-    local LED_FAIL   : logic<6> = 6'b111101;
 
     // memory arbiter
     always_ff (clk, rst) {
@@ -98,52 +118,38 @@ module top (
             last_req_is_i = 0;
         } else {
             if (mem_ready) {
-                last_req_is_i = !dreq.valid;
+                last_req_is_i = !dbus_if.valid;
             }
-        }
-    }
-
-    var state: logic<2>;
-
-    // LED
-    always_ff (clk, rst) {
-        if_reset {
-            led = LED_RESET;
-        } else {
-            led = case state {
-                0      : LED_RUN,
-                1      : LED_SUCCESS,
-                2      : LED_FAIL,
-                default: LED_RESET,
-            };
         }
     }
 
     // riscv-tests
     always_ff (clk, rst) {
         if_reset {
-            state = 0;
+            led_state = LEDState::Reset;
         } else {
-            if (dreq.valid & dreq.wen & dreq.addr == RISCVTESTS_EXIT_ADDR) {
-                $display("wdata: %h", dreq.wdata);
-                if (dreq.wdata == RISCVTESTS_WDATA_SUCCESS) {
-                    $display("riscv-tests: Success!");
-                    state    = 1;
+            if (dbus_if.valid & dbus_if.wen & dbus_if.addr == eei::RISCVTESTS_EXIT_ADDR) {
+                $display("wdata: %h", dbus_if.wdata);
+                if (dbus_if.wdata == eei::RISCVTESTS_WDATA_SUCCESS) {
+                    $display ("riscv-tests: Success!");
+                    led_state = LEDState::Success;
                 } else {
-                    $error("riscv-tests: Fail");
-                    state  = 2;
+                    $error   ("riscv-tests: Fail");
+                    led_state = LEDState::Fail;
                 }
                 $finish();
+            } else {
+                if (led_state != LEDState::Success && led_state != LEDState::Fail) {
+                    led_state = LEDState::Run;
+                }
             }
         }
     }
 
     inst c: core (
-        clk    ,
-        rst    ,
-        ireq   ,
-        iresp  ,
-        dreq   ,
-        dresp  ,
+        clk      ,
+        rst      ,
+        ibus_if  ,
+        dbus_if  ,
     );
 }

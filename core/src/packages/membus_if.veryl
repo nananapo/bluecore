@@ -1,0 +1,30 @@
+interface membus_if {
+    var ready: logic         ;
+    var valid: logic         ;
+    var addr : eei::Addr     ;
+    var wen  : logic         ;
+    var wdata: eei::UInt64   ;
+    var wmask: logic      <8>;
+
+    var resp_valid: logic      ;
+    var resp_rdata: eei::UInt64;
+
+    modport master {
+        ready: output,
+        valid: input ,
+        addr : input ,
+        wen  : input ,
+        wdata: input ,
+        wmask: input ,
+    }
+    modport slave {
+        ready     : input ,
+        valid     : output,
+        addr      : output,
+        wen       : output,
+        wdata     : output,
+        wmask     : output,
+        resp_valid: input ,
+        resp_rdata: input ,
+    }
+}

@@ -31,7 +31,6 @@ module fifo_f #(
     assign rvalid = head != tail;
     assign rdata  = dataList[head];
 
-    // TODO width cast?
     let head_1: Addr = head - 1;
     let head_2: Addr = head_1 - 1;
 

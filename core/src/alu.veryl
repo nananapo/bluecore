@@ -1,17 +1,16 @@
+import eei::*;
+import corectrl::*;
+
 module alu (
-    cmd      : input  stage::AluCmd,
-    is_signed: input  logic        ,
-    op1_data : input  conf::UIntX  ,
-    op2_data : input  conf::UIntX  ,
-    result   : output conf::UIntX  ,
+    cmd      : input  AluCmd,
+    is_signed: input  logic ,
+    op1_data : input  UIntX ,
+    op2_data : input  UIntX ,
+    result   : output UIntX ,
 ) {
-    import conf::*;
-    import stage::*;
 
     let op1_s: SIntX = op1_data;
     let op2_s: SIntX = op2_data;
-
-    let sra_result: SIntX = op1_s >>> op2_s[4:0];
 
     always_comb {
         case (cmd) {
@@ -22,7 +21,7 @@ module alu (
             AluCmd::XOR: result = op1_data ^ op2_data;
             AluCmd::SLL: result = op1_data << op2_data[4:0];
             AluCmd::SRL: result = op1_data >> op2_data[4:0];
-            AluCmd::SRA: result = sra_result;
+            AluCmd::SRA: result = $signed(op1_s >>> op2_s[4:0]);
             AluCmd::SLT: result = if (is_signed) {
                              {1'b0 repeat XLEN - 1, (op1_s <: op2_s)} // SLT
                                       } else {

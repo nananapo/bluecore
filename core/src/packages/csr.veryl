@@ -15,11 +15,8 @@ package csr {
         MCAUSE = 12'h342,
     }
 
-    local CAUSE_ENVIRONMENT_CALL_FROM_U_MODE: conf::UIntX = 8;
-    /* Currently veryl can't use large width enum 
-    enum CsrCause: logic<conf::XLEN> {
+    enum CsrCause: logic<eei::XLEN> {
         ENVIRONMENT_CALL_FROM_U_MODE = 8,
     }
-    */
 
 }

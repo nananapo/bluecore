@@ -17,7 +17,7 @@ runs:
       uses: actions/cache@v2
       with:
         path: verilator
-        key: ubuntu-verilator-deps-v5.016
+        key: ${{ runner.os }}-verilator-v5.016
     - name: Build
       if: steps.verilator_cache.outputs.cache-hit != 'true'
       shell: bash

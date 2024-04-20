@@ -17,17 +17,13 @@ module memory #(
 
 logic [DATA_WIDTH-1:0] mem_data [2**ADDR_WIDTH-1:0];
 
-`ifndef FILEPATH
-    initial begin
-        $display("FILEPATH not found");
-    end
-    `error "FILEPATH not found"
-    `define FILEPATH ""
-`endif
-
 initial begin
     assert(ADDR_WIDTH > 0);
     assert(DATA_WIDTH > 0);
+    `ifndef FILEPATH
+        $error("FILEPATH not found");
+        $finish;
+    `endif
     if (`FILEPATH != "") begin
         $display("FILEPATH: %s", `FILEPATH);
         $readmemh(`FILEPATH, mem_data);

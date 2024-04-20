@@ -8,7 +8,7 @@ runs:
     - name: clone veryl
       shell: bash
       run: |
-        git clone https://github.com/nananapo/veryl veryl
+        git clone https://github.com/veryl/veryl veryl
         sudo apt-get install -y gawk
         git -C veryl log | head -1 | cut -d" " -f 2 > .veryl_version
       continue-on-error: true

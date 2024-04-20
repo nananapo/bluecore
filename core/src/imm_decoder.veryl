@@ -1,14 +1,14 @@
-module imm_decoder (
-    data : input  conf::Inst ,
-    imm_i: output conf::UIntX,
-    imm_s: output conf::UIntX,
-    imm_b: output conf::UIntX,
-    imm_j: output conf::UIntX,
-    imm_u: output conf::UIntX,
-    imm_z: output conf::UIntX,
-) {
-    import conf::*;
+import eei::*;
 
+module imm_decoder (
+    data : input  Inst ,
+    imm_i: output UIntX,
+    imm_s: output UIntX,
+    imm_b: output UIntX,
+    imm_j: output UIntX,
+    imm_u: output UIntX,
+    imm_z: output UIntX,
+) {
     let imm_i_g: logic<12> = data[31:20];
     let imm_s_g: logic<12> = {data[31:25], data[11:7]};
     let imm_b_g: logic<12> = {data[31], data[7], data[30:25], data[11:8]};

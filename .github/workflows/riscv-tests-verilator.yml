@@ -18,7 +18,8 @@ jobs:
   #     - uses: ./.github/actions/install-verilator
   #     - name: Test
   #       run: |
-  #         cd test && python3 test.py mi-p-
+  #         make build
+  #         cd test && python3 riscvtests.py mi-p-
   # si-p:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -28,7 +29,8 @@ jobs:
   #     - uses: ./.github/actions/install-verilator
   #     - name: Test
   #       run: |
-  #         cd test && python3 test.py si-p-
+  #         make build
+  #         cd test && python3 riscvtests.py si-p-
   # ua-p:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -38,7 +40,8 @@ jobs:
   #     - uses: ./.github/actions/install-verilator
   #     - name: Test
   #       run: |
-  #         cd test && python3 test.py ua-p-
+  #         make build
+  #         cd test && python3 riscvtests.py ua-p-
   # ua-v:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -48,7 +51,8 @@ jobs:
   #     - uses: ./.github/actions/install-verilator
   #     - name: Test
   #       run: |
-  #         cd test && python3 test.py ua-v-
+  #         make build
+  #         cd test && python3 riscvtests.py ua-v-
   ui-p:
     runs-on: ubuntu-latest
     steps:
@@ -60,11 +64,7 @@ jobs:
       - name: Test
         run: |
           make build
-          which verilator
-          which veryl
-          verilator --version
-          veryl --version
-          cd test && python3 test.py ui-p-
+          cd test && python3 riscvtests.py ui-p-
   # ui-v:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -74,7 +74,8 @@ jobs:
   #     - uses: ./.github/actions/install-verilator
   #     - name: Test
   #       run: |
-  #         cd test && python3 test.py ui-v-
+  #         make build
+  #         cd test && python3 riscvtests.py ui-v-
   # um-p:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -84,7 +85,8 @@ jobs:
   #     - uses: ./.github/actions/install-verilator
   #     - name: Test
   #       run: |
-  #         cd test && python3 test.py um-p-
+  #         make build
+  #         cd test && python3 riscvtests.py um-p-
   # um-v:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -94,4 +96,5 @@ jobs:
   #     - uses: ./.github/actions/install-verilator
   #     - name: Test
   #       run: |
-  #         cd test && python3 test.py um-v-
+  #         make build
+  #         cd test && python3 riscvtests.py um-v-

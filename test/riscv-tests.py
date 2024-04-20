@@ -1,5 +1,4 @@
 import sys
-from os import system
 import os
 import subprocess
 import concurrent.futures
@@ -42,28 +41,31 @@ def test(cmd, filename):
     return (filename, success)
 
 
+
 if __name__ == '__main__':
     os.makedirs("../test/results", exist_ok=True)
     results = []
     resultstatus = []
     args = sys.argv[1:]
 
-    if args[0] == "-j":
-        args = args[1:]
-        if len(args) == 0:
-            print("Usage: -j [num]")
-            exit()
-        try:
-            MAX_WORKERS = int(args[0])
-        except:
-            print("Usage: -j [num]")
-            exit()
-        args = args[1:]
+    while True:
+        if len(args) > 0:
+            flg = args[0]
+            if flg == "-j":
+                args = args[1:]
+                try:
+                    MAX_WORKERS = int(args[0])
+                except:
+                    print("Usage: -j [num]")
+                    exit()
+                args = args[1:]
+            else:
+                break
+        else:
+            break
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-
         processes = []
-
         for fileName in sorted(os.listdir(TESTS_PATH)):
             if not fileName.endswith(".aligned"):
                 continue
@@ -74,7 +76,7 @@ if __name__ == '__main__':
                 options = []
                 options.append("MEMFILE="+abpath)
                 options.append("CYCLE=5000")
-                options.append("MDIR="+"obj_dir/"+fileName+"/")
+                options.append("MDIR="+fileName+"/")
                 processes.append(executor.submit(test, mcmd + " " + " ".join(options), fileName))
 
 

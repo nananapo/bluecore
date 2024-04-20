@@ -1,22 +1,21 @@
+import csr::*;
+import eei::*;
+import corectrl::*;
+
 module csrunit (
-    clk        : input  logic        ,
-    rst        : input  logic        ,
-    valid      : input  logic        ,
-    is_new     : input  logic        ,
-    pc         : input  conf::Addr   ,
-    cmd        : input  stage::CsrCmd,
-    csr_addr   : input  conf::UInt12 ,
-    op1_data   : input  conf::UIntX  ,
-    csr_rdata  : output conf::UIntX  ,
-    is_stall   : output logic        ,
-    is_trap    : output logic        ,
-    trap_vector: output conf::Addr   ,
+    clk        : input  logic ,
+    rst        : input  logic ,
+    valid      : input  logic ,
+    is_new     : input  logic ,
+    pc         : input  Addr  ,
+    cmd        : input  CsrCmd,
+    csr_addr   : input  UInt12,
+    op1_data   : input  UIntX ,
+    csr_rdata  : output UIntX ,
+    is_stall   : output logic ,
+    is_trap    : output logic ,
+    trap_vector: output Addr  ,
 ) {
-
-    import csr::*;
-    import conf::*;
-    import stage::CsrCmd;
-
     var mode: CsrMode;
 
     // registers
@@ -52,7 +51,7 @@ module csrunit (
 
     let raise_expt: logic = cmd == CsrCmd::ECALL;
     let cause_expt: UIntX = if (cmd == CsrCmd::ECALL) {
-        CAUSE_ENVIRONMENT_CALL_FROM_U_MODE + {1'b0 repeat XLEN - $bits(mode), mode}
+        CsrCause::ENVIRONMENT_CALL_FROM_U_MODE + {1'b0 repeat XLEN - $bits(mode), mode}
     } else {
         0
     };
@@ -97,7 +96,7 @@ module csrunit (
                     } else {
                         if (cmd == CsrCmd::MRET) {
                             last_is_trap = 1;
-                            mode         = CsrMode::S; // TODO
+                            mode         = CsrMode::S;
                             trap_vector  = mepc;
                         } else if (cmd == CsrCmd::SRET) {
                             last_is_trap = 1;

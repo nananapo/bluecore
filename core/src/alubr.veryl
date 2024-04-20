@@ -1,13 +1,13 @@
-module alubr (
-    cmd      : input  stage::BrCmd,
-    is_signed: input  logic       ,
-    op1_data : input  conf::UIntX ,
-    op2_data : input  conf::UIntX ,
-    take     : output logic       ,
-) {
-    import conf::*;
-    import stage::*;
+import eei::*;
+import corectrl::*;
 
+module alubr (
+    cmd      : input  BrCmd,
+    is_signed: input  logic,
+    op1_data : input  UIntX,
+    op2_data : input  UIntX,
+    take     : output logic,
+) {
     let op1_s: SIntX = op1_data;
     let op2_s: SIntX = op2_data;
 

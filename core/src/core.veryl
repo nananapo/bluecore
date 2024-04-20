@@ -1,47 +1,30 @@
 module core (
-    clk  : input   logic                   ,
-    rst  : input   logic                   ,
-    ireq : modport meminterface_req::slave ,
-    iresp: modport meminterface_resp::slave,
-    dreq : modport meminterface_req::slave ,
-    dresp: modport meminterface_resp::slave,
-
+    clk    : input   logic           ,
+    rst    : input   logic           ,
+    ibus_if: modport membus_if::slave,
+    dbus_if: modport membus_if::slave,
 ) {
-
-    import conf::*;
-    import stage::*;
+    import eei::*;
+    import corectrl::*;
 
     // clock count
     var clock_count: u64;
 
     // stage var
-    struct if_idq_type {
-        addr   : Addr,
-        instbit: Inst,
-    }
-    var if_idq_wready_do_not_use: logic      ;
-    var if_idq_wready_next      : logic      ;
-    var if_idq_wvalid           : logic      ;
-    var if_idq_wdata            : if_idq_type;
-    var if_idq_rready           : logic      ;
-    var if_idq_rvalid           : logic      ;
-    var if_idq_rdata            : if_idq_type;
-
     struct stageinfo {
         addr   : Addr    ,
         instbit: Inst    ,
         ctrl   : InstCtrl,
     }
 
+    struct if_idq_type {
+        addr   : Addr,
+        instbit: Inst,
+    }
+
     struct id_dsq_type {
         info: stageinfo,
     }
-    var id_dsq_wready: logic      ;
-    var id_dsq_wvalid: logic      ;
-    var id_dsq_wdata : id_dsq_type;
-    var id_dsq_rready: logic      ;
-    var id_dsq_rvalid: logic      ;
-    var id_dsq_rdata : id_dsq_type;
 
     struct register_context {
         rs1_addr: logic<5>,
@@ -62,13 +45,6 @@ module core (
         regctx: register_context  ,
         fwctx : forwarding_context,
     }
-    var ds_exeq_wready: logic       ;
-    var ds_exeq_wvalid: logic       ;
-    var ds_exeq_wdata : ds_exeq_type;
-    var ds_exeq_rready: logic       ;
-    var ds_exeq_rvalid: logic       ;
-    var ds_exeq_rdata : ds_exeq_type;
-
     struct exe_memq_type {
         info     : stageinfo         ,
         rs2      : UIntX             ,
@@ -79,13 +55,6 @@ module core (
         nextpc   : Addr              ,
         fwctx    : forwarding_context,
     }
-    var exe_memq_wready: logic        ;
-    var exe_memq_wvalid: logic        ;
-    var exe_memq_wdata : exe_memq_type;
-    var exe_memq_rready: logic        ;
-    var exe_memq_rvalid: logic        ;
-    var exe_memq_rdata : exe_memq_type;
-
     struct mem_wbq_type {
         info   : stageinfo         ,
         regctx : register_context  ,
@@ -94,6 +63,36 @@ module core (
         csr_out: UIntX             ,
         fwctx  : forwarding_context,
     }
+
+    var if_idq_wready_do_not_use: logic      ;
+    var if_idq_wready_next      : logic      ;
+    var if_idq_wvalid           : logic      ;
+    var if_idq_wdata            : if_idq_type;
+    var if_idq_rready           : logic      ;
+    var if_idq_rvalid           : logic      ;
+    var if_idq_rdata            : if_idq_type;
+
+    var id_dsq_wready: logic      ;
+    var id_dsq_wvalid: logic      ;
+    var id_dsq_wdata : id_dsq_type;
+    var id_dsq_rready: logic      ;
+    var id_dsq_rvalid: logic      ;
+    var id_dsq_rdata : id_dsq_type;
+
+    var ds_exeq_wready: logic       ;
+    var ds_exeq_wvalid: logic       ;
+    var ds_exeq_wdata : ds_exeq_type;
+    var ds_exeq_rready: logic       ;
+    var ds_exeq_rvalid: logic       ;
+    var ds_exeq_rdata : ds_exeq_type;
+
+    var exe_memq_wready: logic        ;
+    var exe_memq_wvalid: logic        ;
+    var exe_memq_wdata : exe_memq_type;
+    var exe_memq_rready: logic        ;
+    var exe_memq_rvalid: logic        ;
+    var exe_memq_rdata : exe_memq_type;
+
     var mem_wbq_wready: logic       ;
     var mem_wbq_wvalid: logic       ;
     var mem_wbq_wdata : mem_wbq_type;
@@ -113,23 +112,23 @@ module core (
 
     // fetch
     always_comb {
-        ireq.valid = if_idq_wready_next & (!if_is_requested | iresp.valid);
-        ireq.addr  = if_pc;
-        ireq.wen   = 0;
-        ireq.wdata = 'x;
-        ireq.wmask = 0;
+        ibus_if.valid = if_idq_wready_next & (!if_is_requested | ibus_if.resp_valid);
+        ibus_if.addr  = if_pc;
+        ibus_if.wen   = 0;
+        ibus_if.wdata = 'x;
+        ibus_if.wmask = 0;
     }
 
     // fetched inst
     let if_fetch_inst: Inst = if (if_requested_pc[2] == 0) {
-        iresp.rdata[31:0]
+        ibus_if.resp_rdata[31:0]
     } else {
-        iresp.rdata[63:32]
+        ibus_if.resp_rdata[63:32]
     };
 
     // if -> id queue
     always_comb {
-        if_idq_wvalid        = if_is_requested & iresp.valid;
+        if_idq_wvalid        = if_is_requested & ibus_if.resp_valid;
         if_idq_wdata.addr    = if_requested_pc;
         if_idq_wdata.instbit = if_fetch_inst;
         if_idq_rready        = id_dsq_wready;
@@ -326,7 +325,6 @@ module core (
         mem_br_target
     };
 
-    // TODO assert
     assign mem_is_branch_hazard = mem_valid & mem_next_pc_expected != mem_next_pc_actual;
 
     always_comb {
@@ -348,12 +346,9 @@ module core (
     }
 
     // wb stage
-    let wb_valid : logic            = mem_wbq_rvalid;
-    let wb_info  : stageinfo        = mem_wbq_rdata.info;
-    let wb_regctx: register_context = mem_wbq_rdata.regctx;
-    // let wb_alu_out: UIntX              = mem_wbq_rdata.alu_out;
-    // let wb_mem_out: UIntX              = mem_wbq_rdata.mem_out;
-    // let wb_csr_out: UIntX              = mem_wbq_rdata.csr_out;
+    let wb_valid  : logic              = mem_wbq_rvalid;
+    let wb_info   : stageinfo          = mem_wbq_rdata.info;
+    let wb_regctx : register_context   = mem_wbq_rdata.regctx;
     let wb_fwctx  : forwarding_context = mem_wbq_rdata.fwctx;
     let wb_wb_data: UIntX              = wb_fwctx.data;
 
@@ -387,10 +382,10 @@ module core (
                 };
             } else {
                 if (if_is_requested) {
-                    if iresp.valid {
+                    if ibus_if.resp_valid {
                         $display("  fetched: %h:%h", if_requested_pc, if_fetch_inst);
                         // TODO task? (function emits blocking assignment...)
-                        if (ireq.ready & if_idq_wready_next) {
+                        if (ibus_if.ready & if_idq_wready_next) {
                             $display       ("  fetch req: %h", if_pc);
                             if_pc           = if_pc + 4;
                             if_is_requested = 1;
@@ -400,7 +395,7 @@ module core (
                         }
                     }
                 } else {
-                    if (ireq.ready & if_idq_wready_next) {
+                    if (ibus_if.ready & if_idq_wready_next) {
                         $display       ("  fetch req: %h", if_pc);
                         if_pc           = if_pc + 4;
                         if_is_requested = 1;
@@ -524,8 +519,7 @@ module core (
     inst mem_memunit: memunit (
         clk                        ,
         rst                        ,
-        dreq                       ,
-        dresp                      ,
+        dbus_if                    ,
         valid   : mem_valid        ,
         is_new  : mem_is_new       ,
         ctrl    : mem_info.ctrl    ,

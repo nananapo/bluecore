@@ -1,18 +1,18 @@
+import corectrl::*;
+import eei::*;
+
 module decoder (
-    instbit: input  conf::Inst     ,
-    ctrl   : output stage::InstCtrl,
+    instbit: input  Inst    ,
+    ctrl   : output InstCtrl,
 ) {
 
-    import stage::*;
-
-    type Alu = stage::AluCmd;
-    type Br  = stage::BrCmd ;
-    type Op1 = stage::Op1Sel;
-    type Op2 = stage::Op2Sel;
-    type Mem = stage::MemCmd;
-    // type Size = stage::Size  ; // 変なエラーメッセージ?
-    type Csr = stage::CsrCmd;
-    type Wb  = stage::WbSel ;
+    type Alu = AluCmd;
+    type Br  = BrCmd ;
+    type Op1 = Op1Sel;
+    type Op2 = Op2Sel;
+    type Mem = MemCmd;
+    type Csr = CsrCmd;
+    type Wb  = WbSel ;
 
     local Z_13: logic<13> = 0;
 
@@ -96,18 +96,18 @@ module decoder (
     local LUI_OP  : logic<7> = 7'b0110111;
     local AUIPC_OP: logic<7> = 7'b0010111;
 
-    local ECALL : conf::Inst = {7'b0, 5'b0, Z_13, SYSTEM_OP};
-    local EBREAK: conf::Inst = {7'b0, 5'b1, Z_13, SYSTEM_OP};
+    local ECALL : eei::Inst = {7'b0, 5'b0, Z_13, SYSTEM_OP};
+    local EBREAK: eei::Inst = {7'b0, 5'b1, Z_13, SYSTEM_OP};
 
-    local SRET: conf::Inst = {25'b0001000_00010_00000_000_00000, SYSTEM_OP};
-    local MRET: conf::Inst = {25'b0011000_00010_00000_000_00000, SYSTEM_OP};
+    local SRET: eei::Inst = {25'b0001000_00010_00000_000_00000, SYSTEM_OP};
+    local MRET: eei::Inst = {25'b0011000_00010_00000_000_00000, SYSTEM_OP};
 
-    local NOP_Y: stage::InstCtrl = {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::W, Csr::X, F, Wb::ALU};
-    local NOP_N: stage::InstCtrl = {F, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::W, Csr::X, F, Wb::ALU};
+    local NOP_Y: corectrl::InstCtrl = {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::W, Csr::X, F, Wb::ALU};
+    local NOP_N: corectrl::InstCtrl = {F, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::W, Csr::X, F, Wb::ALU};
 
     function decode (
-        bits: input conf::Inst     ,
-    ) -> stage::InstCtrl {
+        bits: input eei::Inst         ,
+    ) -> corectrl::InstCtrl {
         case bits {
             {X_7, X_X, X_3, X_5, LUI_OP}: //LUI
              return {T, Alu::ADD, Br::X, T, Op1::X, Op2::IMU, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};

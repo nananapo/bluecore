@@ -1,4 +1,4 @@
-package stage {
+package corectrl {
     enum AluCmd: logic<4> {
         X,
         ADD,
