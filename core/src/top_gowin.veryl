@@ -1,0 +1,25 @@
+module top_gowin (
+    clk_in: input  logic   ,
+    rst_in: input  logic   ,
+    led   : output logic<6>,
+    key   : input  logic<4>,
+) {
+    import eei::*;
+
+    var clk: logic;
+    var rst: logic;
+
+    // クロックとリセット信号を生成する
+    inst gowin_pll: $sv::Gowin_PLL (
+        clkout0: clk   ,
+        clkin  : clk_in,
+    );
+    assign rst = key[3];
+
+    // topモジュールをインスタンス化
+    inst t: top (
+        clk  ,
+        rst  ,
+        led  ,
+    );
+}

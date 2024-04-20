@@ -64,13 +64,12 @@ module core (
         fwctx  : forwarding_context,
     }
 
-    var if_idq_wready_do_not_use: logic      ;
-    var if_idq_wready_next      : logic      ;
-    var if_idq_wvalid           : logic      ;
-    var if_idq_wdata            : if_idq_type;
-    var if_idq_rready           : logic      ;
-    var if_idq_rvalid           : logic      ;
-    var if_idq_rdata            : if_idq_type;
+    var if_idq_wready_next: logic      ;
+    var if_idq_wvalid     : logic      ;
+    var if_idq_wdata      : if_idq_type;
+    var if_idq_rready     : logic      ;
+    var if_idq_rvalid     : logic      ;
+    var if_idq_rdata      : if_idq_type;
 
     var id_dsq_wready: logic      ;
     var id_dsq_wvalid: logic      ;
@@ -120,7 +119,7 @@ module core (
     }
 
     // fetched inst
-    let if_fetch_inst: Inst = if (if_requested_pc[2] == 0) {
+    let if_fetch_inst: Inst = if if_requested_pc[2] == 0 {
         ibus_if.resp_rdata[31:0]
     } else {
         ibus_if.resp_rdata[63:32]
@@ -139,7 +138,6 @@ module core (
     always_comb {
         id_info.addr    = if_idq_rdata.addr;
         id_info.instbit = if_idq_rdata.instbit;
-        // ctrl is assigned in decoder instance
     }
 
     // id -> ds queue
@@ -180,20 +178,20 @@ module core (
     let ds_dh_mem_rs2: logic = ds_dh_ds_rs2 & exe_memq_rvalid & mem_info.ctrl.rf_wen & mem_regctx.rd_addr == ds_rs2_addr;
     let ds_dh_wb_rs2 : logic = ds_dh_ds_rs2 & mem_wbq_rvalid & wb_info.ctrl.rf_wen & wb_regctx.rd_addr == ds_rs2_addr;
 
-    let ds_dh_rs1: logic = ds_info.ctrl.op1_sel == Op1Sel::RS1 & ds_dh_ds_rs1 & (if (ds_dh_exe_rs1) {
+    let ds_dh_rs1: logic = ds_info.ctrl.op1_sel == Op1Sel::RS1 & ds_dh_ds_rs1 & (if ds_dh_exe_rs1 {
         !exe_fwctx.valid
-    } else if (ds_dh_mem_rs1) {
+    } else if ds_dh_mem_rs1 {
         !mem_fwctx.valid
-    } else if (ds_dh_wb_rs1) {
+    } else if ds_dh_wb_rs1 {
         !wb_fwctx.valid
     } else {
         0
     });
-    let ds_dh_rs2: logic = ds_info.ctrl.use_rs2 & ds_dh_ds_rs2 & (if (ds_dh_exe_rs2) {
+    let ds_dh_rs2: logic = ds_info.ctrl.use_rs2 & ds_dh_ds_rs2 & (if ds_dh_exe_rs2 {
         !exe_fwctx.valid
-    } else if (ds_dh_mem_rs2) {
+    } else if ds_dh_mem_rs2 {
         !mem_fwctx.valid
-    } else if (ds_dh_wb_rs2) {
+    } else if ds_dh_wb_rs2 {
         !wb_fwctx.valid
     } else {
         0
@@ -226,7 +224,7 @@ module core (
             Op1Sel::IMZ: ds_op1 = ds_imm_z;
             default    : ds_op1 = XLEN_X;
         }
-        case (ds_info.ctrl.op2_sel) {
+        case ds_info.ctrl.op2_sel {
             Op2Sel::RS2: ds_op2 = ds_rs2;
             Op2Sel::IMI: ds_op2 = ds_imm_i;
             Op2Sel::IMS: ds_op2 = ds_imm_s;
@@ -244,17 +242,17 @@ module core (
         ds_exeq_wdata.op1             = ds_op1;
         ds_exeq_wdata.op2             = ds_op2;
         ds_exeq_wdata.rs2             = ds_rs2;
-        ds_exeq_wdata.regctx.rs1_addr = if (ds_info.ctrl.op1_sel == Op1Sel::RS1) {
+        ds_exeq_wdata.regctx.rs1_addr = if ds_info.ctrl.op1_sel == Op1Sel::RS1 {
             ds_rs1_addr
         } else {
             0
         };
-        ds_exeq_wdata.regctx.rs2_addr = if (ds_info.ctrl.use_rs2) {
+        ds_exeq_wdata.regctx.rs2_addr = if ds_info.ctrl.use_rs2 {
             ds_rs2_addr
         } else {
             0
         };
-        ds_exeq_wdata.regctx.rd_addr = if (ds_info.ctrl.rf_wen) {
+        ds_exeq_wdata.regctx.rd_addr = if ds_info.ctrl.rf_wen {
             ds_rd_addr
         } else {
             0
@@ -285,7 +283,7 @@ module core (
         exe_memq_wdata.regctx    = exe_regctx;
         exe_memq_wdata.alu_out   = exe_alu_out;
         exe_memq_wdata.br_taken  = exe_br_taken | exe_info.ctrl.br_cmd == BrCmd::JLI | exe_info.ctrl.br_cmd == BrCmd::JLR;
-        exe_memq_wdata.br_target = case (exe_info.ctrl.br_cmd) {
+        exe_memq_wdata.br_target = case exe_info.ctrl.br_cmd {
             BrCmd::JLI: exe_alu_out,
             BrCmd::JLR: exe_alu_out,
             default   : exe_info.addr + exe_imm_b // branch
@@ -293,7 +291,7 @@ module core (
         } & (~1);
         exe_memq_wdata.nextpc      = ds_info.addr;
         exe_memq_wdata.fwctx.valid = exe_fwctx.valid | exe_info.ctrl.wb_sel == WbSel::ALU;
-        exe_memq_wdata.fwctx.data  = if (exe_fwctx.valid) {
+        exe_memq_wdata.fwctx.data  = if exe_fwctx.valid {
             exe_fwctx.data
         } else {
             exe_alu_out
@@ -319,7 +317,7 @@ module core (
     var mem_csr_is_trap    : logic;
     var mem_csr_trap_vector: Addr ;
 
-    assign mem_next_pc_expected = if (mem_info.ctrl.br_cmd == BrCmd::X | !mem_br_taken) {
+    assign mem_next_pc_expected = if mem_info.ctrl.br_cmd == BrCmd::X | !mem_br_taken {
         mem_info.addr + 4
     } else {
         mem_br_target
@@ -336,9 +334,9 @@ module core (
         mem_wbq_wdata.mem_out     = mem_mem_rdata;
         mem_wbq_wdata.csr_out     = mem_csr_rdata;
         mem_wbq_wdata.fwctx.valid = 1;
-        mem_wbq_wdata.fwctx.data  = if (mem_fwctx.valid) {
+        mem_wbq_wdata.fwctx.data  = if mem_fwctx.valid {
             mem_fwctx.data
-        } else if (mem_info.ctrl.wb_sel == WbSel::MEM) {
+        } else if mem_info.ctrl.wb_sel == WbSel::MEM {
             mem_mem_rdata
         } else {
             mem_csr_rdata
@@ -371,21 +369,20 @@ module core (
             clock_count = clock_count + 1;
             // fetch stage
             $display("Fetch Stage ---");
-            if (reset_before_memstage) {
+            if reset_before_memstage {
                 if_is_requested = 0;
-                if_pc           = if (mem_csr_is_trap) {
+                if_pc           = if mem_csr_is_trap {
                     mem_csr_trap_vector
-                } else if (mem_is_branch_hazard) {
+                } else if mem_is_branch_hazard {
                     mem_next_pc_expected
                 } else {
                     0
                 };
             } else {
-                if (if_is_requested) {
+                if if_is_requested {
                     if ibus_if.resp_valid {
                         $display("  fetched: %h:%h", if_requested_pc, if_fetch_inst);
-                        // TODO task? (function emits blocking assignment...)
-                        if (ibus_if.ready & if_idq_wready_next) {
+                        if ibus_if.ready & if_idq_wready_next {
                             $display       ("  fetch req: %h", if_pc);
                             if_pc           = if_pc + 4;
                             if_is_requested = 1;
@@ -395,7 +392,7 @@ module core (
                         }
                     }
                 } else {
-                    if (ibus_if.ready & if_idq_wready_next) {
+                    if ibus_if.ready & if_idq_wready_next {
                         $display       ("  fetch req: %h", if_pc);
                         if_pc           = if_pc + 4;
                         if_is_requested = 1;
@@ -409,7 +406,7 @@ module core (
 
             // decode stage
             $display("Decode Stage ---");
-            if (if_idq_rvalid) {
+            if if_idq_rvalid {
                 $display("  %h:%h", if_idq_rdata.addr, if_idq_rdata.instbit);
                 $display("  is_legal  : %2d", id_info.ctrl.is_legal);
                 $display("  alu_cmd   : %2d", id_info.ctrl.alu_cmd);
@@ -427,7 +424,7 @@ module core (
 
             // ds stage
             $display("Data Stage ---");
-            if (id_dsq_rvalid) {
+            if id_dsq_rvalid {
                 $display("  %h:%h", ds_info.addr, ds_info.instbit);
                 $display("  stall     : %d", ds_stall);
                 $display("  op1       : %h", ds_op1);
@@ -437,7 +434,7 @@ module core (
 
             // exe stage
             $display("Exe Stage ---");
-            if (ds_exeq_rvalid) {
+            if ds_exeq_rvalid {
                 $display("  %h:%h", exe_info.addr, exe_info.instbit);
                 $display("  stall     : %d", !exe_memq_wvalid | !exe_memq_wready);
                 $display("  alu_cmd   : %2d", exe_info.ctrl.alu_cmd);
@@ -447,7 +444,7 @@ module core (
             }
             // mem stage
             $display("Mem Stage ---");
-            if (mem_valid) {
+            if mem_valid {
                 mem_is_new = exe_memq_rready;
                 $display  ("  %h:%h", mem_info.addr, mem_info.instbit);
                 $display  ("  mu_stall     : %d", mem_memunit_stall);
@@ -455,9 +452,9 @@ module core (
                 $display  ("  mem_out      : %h", mem_mem_rdata);
                 $display  ("  cu_stall     : %d", mem_csrunit_stall);
                 $display  ("  csr_cmd      : %d", mem_info.ctrl.csr_cmd);
-                if (mem_csr_is_trap) {
+                if mem_csr_is_trap {
                     $display("  csr hazard: %h", mem_csr_trap_vector);
-                } else if (mem_is_branch_hazard) {
+                } else if mem_is_branch_hazard {
                     $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, mem_next_pc_actual);
                 }
             } else {
@@ -465,9 +462,9 @@ module core (
             }
 
             $display("Wb Stage---");
-            if (wb_valid) {
+            if wb_valid {
                 $display("  %h:%h", wb_info.addr, wb_info.instbit);
-                if (wb_info.ctrl.rf_wen & wb_regctx.rd_addr != 0) {
+                if wb_info.ctrl.rf_wen & wb_regctx.rd_addr != 0 {
                     $display                  ("  writebacked [%d] <= %h", wb_regctx.rd_addr, wb_wb_data);
                     regfile[wb_regctx.rd_addr] = wb_wb_data;
                 }
@@ -475,7 +472,7 @@ module core (
         }
     }
 
-    inst decode_unit: decoder (
+    inst decode_unit: inst_decode (
         instbit: if_idq_rdata.instbit,
         ctrl   : id_info.ctrl        ,
     );
@@ -496,7 +493,7 @@ module core (
         take     : exe_br_taken           ,
     );
 
-    inst ds_immdec: imm_decoder (
+    inst ds_immdec: imm_decode (
         data : ds_info.instbit,
         imm_i: ds_imm_i       ,
         imm_s: ds_imm_s       ,
@@ -506,7 +503,7 @@ module core (
         imm_z: ds_imm_z       ,
     );
 
-    inst exe_immdec: imm_decoder (
+    inst exe_immdec: imm_decode (
         data : exe_info.instbit,
         imm_i: _               ,
         imm_s: _               ,
@@ -544,21 +541,21 @@ module core (
         trap_vector: mem_csr_trap_vector    ,
     );
 
-    inst fifo_fetch_decode: fifo_f #(
+    inst fifo_fetch_decode: fifo #(
         Width   : 3          ,
         DataType: if_idq_type,
     ) (
-        clk                                  ,
-        rst                                  ,
-        rst_pos    : reset_before_memstage   ,
-        wready     : if_idq_wready_do_not_use,
-        wready_next: if_idq_wready_next      ,
-        wvalid     : if_idq_wvalid           ,
-        wdata      : if_idq_wdata            ,
-        rready     : if_idq_rready           ,
-        rvalid     : if_idq_rvalid           ,
-        rdata      : if_idq_rdata            ,
+        clk                           ,
+        rst                           ,
+        rst_pos: reset_before_memstage,
+        wready : _                    ,
+        wvalid : if_idq_wvalid        ,
+        wdata  : if_idq_wdata         ,
+        rready : if_idq_rready        ,
+        rvalid : if_idq_rvalid        ,
+        rdata  : if_idq_rdata         ,
     );
+    assign if_idq_wready_next = fifo_fetch_decode.wready_next;
 
     inst fifo_decode_ds: fifo #(
         Width   : 0          ,

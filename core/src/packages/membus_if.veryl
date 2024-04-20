@@ -1,4 +1,6 @@
 interface membus_if {
+    import eei::*;
+
     var ready: logic         ;
     var valid: logic         ;
     var addr : eei::Addr     ;
@@ -17,6 +19,7 @@ interface membus_if {
         wdata: input ,
         wmask: input ,
     }
+
     modport slave {
         ready     : input ,
         valid     : output,

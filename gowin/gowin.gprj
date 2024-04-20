@@ -16,11 +16,11 @@
         <File path="../core/src/alubr.sv" type="file.verilog" enable="1"/>
         <File path="../core/src/core.sv" type="file.verilog" enable="1"/>
         <File path="../core/src/csrunit.sv" type="file.verilog" enable="1"/>
-        <File path="../core/src/decoder.sv" type="file.verilog" enable="1"/>
+        <File path="../core/src/inst_decode.sv" type="file.verilog" enable="1"/>
         <File path="../core/src/fifo.sv" type="file.verilog" enable="1"/>
-        <File path="../core/src/fifo_f.sv" type="file.verilog" enable="1"/>
-        <File path="../core/src/imm_decoder.sv" type="file.verilog" enable="1"/>
+        <File path="../core/src/imm_decode.sv" type="file.verilog" enable="1"/>
         <File path="../core/src/memunit.sv" type="file.verilog" enable="1"/>
         <File path="../core/src/top.sv" type="file.verilog" enable="1"/>
+        <File path="../core/src/top_gowin.sv" type="file.verilog" enable="1"/>
     </FileList>
 </Project>

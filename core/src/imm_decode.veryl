@@ -1,6 +1,6 @@
 import eei::*;
 
-module imm_decoder (
+module imm_decode (
     data : input  Inst ,
     imm_i: output UIntX,
     imm_s: output UIntX,

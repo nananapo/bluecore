@@ -13,24 +13,27 @@ module fifo #(
     rdata  : output DataType,
 ) {
 
+    var wready_next: logic;
+
     if Width == 0 :widthIfBlock {
         var dvalid: logic   ;
         var data  : DataType;
 
-        assign rvalid = dvalid;
-        assign rdata  = data;
-        assign wready = !dvalid | rready;
+        assign rvalid      = dvalid;
+        assign rdata       = data;
+        assign wready      = !dvalid | rready;
+        assign wready_next = 0;
 
         always_ff (clk, rst) {
             if_reset {
                 dvalid = 0;
                 data   = 0;
             } else {
-                if (rst_pos) {
+                if rst_pos {
                     dvalid = 0;
                     data   = 0;
                 } else {
-                    if (dvalid) {
+                    if dvalid {
                         if rready & wvalid {
                             data = wdata;
                         } else if rready {
@@ -58,8 +61,10 @@ module fifo #(
         assign rvalid = head != tail;
         assign rdata  = dataList[head];
 
-        let head_1: Addr = head - 1;
-        assign wready = head_1 != tail;
+        let head_1     : Addr = head - 1;
+        let head_2     : Addr = head_1 - 1;
+        assign wready      = head_1 != tail;
+        assign wready_next = head_1 != tail & head_2 != tail;
 
         always_ff (clk, rst) {
             if_reset {
@@ -67,14 +72,14 @@ module fifo #(
                 tail     = 0;
                 dataList = 'x;
             } else {
-                if (rst_pos) {
+                if rst_pos {
                     head = 0;
                     tail = 0;
                 } else {
-                    if (rready & rvalid) {
+                    if rready & rvalid {
                         head = head + 1;
                     }
-                    if (wready & wvalid) {
+                    if wready & wvalid {
                         dataList[tail] = wdata;
                         tail           = tail + 1;
                     }

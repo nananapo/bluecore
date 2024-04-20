@@ -9,11 +9,8 @@ module alu (
     result   : output UIntX ,
 ) {
 
-    let op1_s: SIntX = op1_data;
-    let op2_s: SIntX = op2_data;
-
     always_comb {
-        case (cmd) {
+        case cmd {
             AluCmd::ADD: result = op1_data + op2_data;
             AluCmd::SUB: result = op1_data - op2_data;
             AluCmd::AND: result = op1_data & op2_data;
@@ -21,9 +18,9 @@ module alu (
             AluCmd::XOR: result = op1_data ^ op2_data;
             AluCmd::SLL: result = op1_data << op2_data[4:0];
             AluCmd::SRL: result = op1_data >> op2_data[4:0];
-            AluCmd::SRA: result = $signed(op1_s >>> op2_s[4:0]);
-            AluCmd::SLT: result = if (is_signed) {
-                             {1'b0 repeat XLEN - 1, (op1_s <: op2_s)} // SLT
+            AluCmd::SRA: result = $signed(op1_data) >>> $signed(op2_data[4:0]);
+            AluCmd::SLT: result = if is_signed {
+                             {1'b0 repeat XLEN - 1, $signed(op1_data) <: $signed(op2_data)} // SLT
                                       } else {
                              {1'b0 repeat XLEN - 1, op1_data <: op2_data} // SLTU
                                       };

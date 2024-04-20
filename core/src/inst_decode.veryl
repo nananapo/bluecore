@@ -1,7 +1,7 @@
 import corectrl::*;
 import eei::*;
 
-module decoder (
+module inst_decode (
     instbit: input  Inst    ,
     ctrl   : output InstCtrl,
 ) {

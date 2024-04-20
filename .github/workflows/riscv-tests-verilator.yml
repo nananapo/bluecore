@@ -17,7 +17,7 @@ jobs:
           submodules: recursive
       - uses: ./.github/actions/install-veryl
       - uses: ./.github/actions/install-verilator
+      - name: Build
+        run: make build
       - name: Test
-        run: |
-          make build
-          cd test && python3 riscv-tests.py ui-p-
+        run: cd test && python3 riscv-tests.py ui-p-

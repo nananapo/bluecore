@@ -8,24 +8,18 @@ module alubr (
     op2_data : input  UIntX,
     take     : output logic,
 ) {
-    let op1_s: SIntX = op1_data;
-    let op2_s: SIntX = op2_data;
-
+    let blt: logic = if is_signed {
+        $signed(op1_data) <: $signed(op2_data)
+    } else {
+        op1_data <: op2_data
+    };
     always_comb {
-        case (cmd) {
+        case cmd {
             BrCmd::BEQ: take = op1_data === op2_data;
             BrCmd::BNE: take = !(op1_data === op2_data);
-            BrCmd::BLT: take = if (is_signed) {
-                            op1_s <: op2_s
-                        } else {
-                            op1_data <: op2_data
-                        };
-            BrCmd::BGE: take = if (is_signed) {
-                            !(op1_s <: op2_s)
-                        } else {
-                            !(op1_data <: op2_data)
-                        };
-            default: take = 0;
+            BrCmd::BLT: take = blt;
+            BrCmd::BGE: take = !blt;
+            default   : take = 0;
         }
     }
 }

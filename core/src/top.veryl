@@ -1,61 +1,44 @@
+include (inline, "svconfig.sv");
 include (inline, "memory.sv");
 
 module top (
-    clk_in: input  logic   ,
-    rst_in: input  logic   ,
-    led   : output logic<6>,
-    key   : input  logic<4>,
+    clk: input  logic   ,
+    rst: input  logic   ,
+    led: output logic<6>,
 ) {
     import eei::*;
 
-    local LED_RESET  : logic<6> = 6'b000000;
-    local LED_RUN    : logic<6> = 6'b111111;
-    local LED_SUCCESS: logic<6> = 6'b111110;
-    local LED_FAIL   : logic<6> = 6'b111101;
-
-    enum LEDState: logic<2> {
+    // テストの状態を表すenumの定義
+    enum TestState: logic<2> {
         Reset,
-        Run,
+        Running,
         Success,
         Fail,
     }
+    // LEDの点灯パターン
+    local LED_RESET  : logic<6> = 6'b000000;
+    local LED_RUNNING: logic<6> = 6'b111110;
+    local LED_SUCCESS: logic<6> = 6'b111101;
+    local LED_FAIL   : logic<6> = 6'b111011;
 
-    var led_state: LEDState;
+    // テストの状態管理用のレジスタ
+    var test_state: TestState;
 
-    // クロックを生成
-    var clk: logic;
-    var rst: logic;
-
-    if (SYNTHESIS_GOWIN) :synth_if {
-        inst gowin_pll: $sv::Gowin_PLL (
-            clkout0: clk   ,
-            clkin  : clk_in,
-        );
-        always_comb {
-            rst = key[3] & led_state != 1;
-        }
-    } else {
-        always_comb {
-            clk = clk_in;
-            rst = rst_in;
-        }
-    }
-
-    // LED
+    // テスト状態に応じてLEDの点灯を変更する
     always_ff (clk, rst) {
         if_reset {
             led = LED_RESET;
         } else {
-            led = case led_state {
-                LEDState::Run    : LED_RUN,
-                LEDState::Success: LED_SUCCESS,
-                LEDState::Fail   : LED_FAIL,
-                default          : LED_RESET,
+            led = case test_state {
+                TestState::Running: LED_RUNNING,
+                TestState::Success: LED_SUCCESS,
+                TestState::Fail   : LED_FAIL,
+                default           : LED_RESET,
             };
         }
     }
 
-    // memory
+    // メモリ用の信号定義
     var mem_valid : logic    ;
     var mem_ready : logic    ;
     var mem_wen   : logic    ;
@@ -65,41 +48,57 @@ module top (
     var mem_rvalid: logic    ;
     var mem_rdata : UInt64   ;
 
-    local DataAddrWidth: u32 = 16;
+    local DataWidth     : u32 = 64; // メモリのデータの幅
+    local DataAddrWidth : u32 = 16; // メモリのアドレスの幅
+    local DataAddrOffset: u32 = $clog2(DataWidth / 8); // アドレスのオフセット
 
+    // メモリのインスタンス化
     inst datamemory: $sv::memory #(
-        DATA_WIDTH: 64           ,
-        ADDR_WIDTH: DataAddrWidth,
+        DATA_WIDTH: DataWidth                         ,
+        ADDR_WIDTH: DataAddrWidth                     ,
+        FILE_PATH : $sv::svconfig::MEMORY_INITIAL_FILE,
     ) (
-        clk                                      ,
-        rst                                      ,
-        ready : mem_ready                        ,
-        valid : mem_valid                        ,
-        wen   : mem_wen                          ,
-        addr  : mem_addr[DataAddrWidth + 3 - 1:3],
-        wdata : mem_wdata                        ,
-        wmask : mem_wmask                        ,
-        rvalid: mem_rvalid                       ,
-        rdata : mem_rdata                        ,
+        clk                                                                ,
+        rst                                                                ,
+        ready : mem_ready                                                  ,
+        valid : mem_valid                                                  ,
+        wen   : mem_wen                                                    ,
+        addr  : mem_addr[DataAddrWidth + DataAddrOffset - 1:DataAddrOffset],
+        wdata : mem_wdata                                                  ,
+        wmask : mem_wmask                                                  ,
+        rvalid: mem_rvalid                                                 ,
+        rdata : mem_rdata                                                  ,
     );
 
+    // メモリとcoreのinterface
     inst ibus_if: membus_if;
     inst dbus_if: membus_if;
 
-    var last_req_is_i: logic;
+    // 命令フェッチとload/store命令の調停
+    var memarb_last_is_i: logic;
+    always_ff (clk, rst) {
+        if_reset {
+            memarb_last_is_i = 0;
+        } else {
+            if mem_ready {
+                // load/storeを優先する
+                memarb_last_is_i = !dbus_if.valid;
+            }
+        }
+    }
 
+    // メモリとinterfaceの接続
     always_comb {
-        ibus_if.ready = mem_ready & !dbus_if.valid;
-        dbus_if.ready = mem_ready;
-
-        ibus_if.resp_valid = last_req_is_i & mem_rvalid;
+        ibus_if.ready      = mem_ready & !dbus_if.valid; // load/storeを優先する
+        ibus_if.resp_valid = memarb_last_is_i & mem_rvalid;
         ibus_if.resp_rdata = mem_rdata;
 
-        dbus_if.resp_valid = !last_req_is_i & mem_rvalid;
+        dbus_if.ready      = mem_ready;
+        dbus_if.resp_valid = !memarb_last_is_i & mem_rvalid;
         dbus_if.resp_rdata = mem_rdata;
 
         mem_valid = ibus_if.valid | dbus_if.valid;
-        if (dbus_if.valid) {
+        if dbus_if.valid {
             mem_wen   = dbus_if.wen;
             mem_addr  = dbus_if.addr;
             mem_wdata = dbus_if.wdata;
@@ -112,40 +111,33 @@ module top (
         }
     }
 
-    // memory arbiter
     always_ff (clk, rst) {
         if_reset {
-            last_req_is_i = 0;
+            test_state = TestState::Reset;
         } else {
-            if (mem_ready) {
-                last_req_is_i = !dbus_if.valid;
-            }
-        }
-    }
-
-    // riscv-tests
-    always_ff (clk, rst) {
-        if_reset {
-            led_state = LEDState::Reset;
-        } else {
-            if (dbus_if.valid & dbus_if.wen & dbus_if.addr == eei::RISCVTESTS_EXIT_ADDR) {
+            // riscv-tests tohostでの書き込みを検知する
+            if dbus_if.valid & dbus_if.wen & dbus_if.addr == eei::RISCVTESTS_EXIT_ADDR {
                 $display("wdata: %h", dbus_if.wdata);
-                if (dbus_if.wdata == eei::RISCVTESTS_WDATA_SUCCESS) {
-                    $display ("riscv-tests: Success!");
-                    led_state = LEDState::Success;
+                // 成功したかどうかを出力する
+                if dbus_if.wdata == eei::RISCVTESTS_WDATA_SUCCESS {
+                    $display  ("riscv-tests: Success!");
+                    test_state = TestState::Success;
                 } else {
-                    $error   ("riscv-tests: Fail");
-                    led_state = LEDState::Fail;
+                    $error    ("riscv-tests: Fail");
+                    test_state = TestState::Fail;
                 }
+                // テスト終了
                 $finish();
             } else {
-                if (led_state != LEDState::Success && led_state != LEDState::Fail) {
-                    led_state = LEDState::Run;
+                // 成功も失敗もしていない場合は、状態を実行中に設定する
+                if test_state != TestState::Success && test_state != TestState::Fail {
+                    test_state = TestState::Running;
                 }
             }
         }
     }
 
+    // coreのインスタンス化
     inst c: core (
         clk      ,
         rst      ,

@@ -13,6 +13,7 @@ package corectrl {
         JALR,
         COPY1,
     }
+
     enum BrCmd: logic<3> {
         X,
         BEQ,
@@ -22,12 +23,14 @@ package corectrl {
         JLI,
         JLR,
     }
+
     enum Op1Sel: logic<2> {
         X,
         RS1,
         PC,
         IMZ,
     }
+
     enum Op2Sel: logic<3> {
         X,
         RS2,
@@ -37,23 +40,27 @@ package corectrl {
         IMU,
         IMZ,
     }
+
     enum MemCmd: logic<2> {
         X,
         S,
         L,
     }
+
     enum Size: logic<2> {
         B = 0,
         H = 1,
         W = 2,
         D = 3,
     }
+
     enum WbSel: logic<2> {
         ALU,
         MEM,
         PC,
         CSR,
     }
+
     enum CsrCmd: logic<3> {
         X,
         W,
@@ -64,6 +71,7 @@ package corectrl {
         SRET,
         MRET,
     }
+
     struct InstCtrl {
         is_legal : logic ,
         alu_cmd  : AluCmd,

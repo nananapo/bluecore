@@ -30,7 +30,7 @@ module csrunit (
     var rdata: UIntX;
     var wdata: UIntX;
     always_comb {
-        rdata = case (csr_addr) {
+        rdata = case csr_addr {
             CsrAddr::MTVEC : mtvec,
             CsrAddr::MEPC  : mepc,
             CsrAddr::MCAUSE: mcause,
@@ -39,7 +39,7 @@ module csrunit (
             CsrAddr::SCAUSE: scause,
             default        : 0,
         };
-        wdata = case (cmd) {
+        wdata = case cmd {
             CsrCmd::W: op1_data,
             CsrCmd::S: rdata | op1_data,
             CsrCmd::C: rdata & ~op1_data,
@@ -50,7 +50,7 @@ module csrunit (
     let cmd_is_write: logic = cmd == CsrCmd::W | cmd == CsrCmd::S | cmd == CsrCmd::C;
 
     let raise_expt: logic = cmd == CsrCmd::ECALL;
-    let cause_expt: UIntX = if (cmd == CsrCmd::ECALL) {
+    let cause_expt: UIntX = if cmd == CsrCmd::ECALL {
         CsrCause::ENVIRONMENT_CALL_FROM_U_MODE + {1'b0 repeat XLEN - $bits(mode), mode}
     } else {
         0
@@ -77,45 +77,43 @@ module csrunit (
             stvec        = 0;
             last_is_trap = 0;
             trap_vector  = 0;
-        } else {
-            if (valid) {
-                if (is_new) {
-                    if (raise_expt) {
+        } else if valid {
+            if is_new {
+                if raise_expt {
+                    last_is_trap = 1;
+                    if trap_to_M {
+                        mode        = CsrMode::M;
+                        mcause      = cause_expt;
+                        mepc        = pc;
+                        trap_vector = mtvec;
+                    } else {
+                        mode        = CsrMode::S;
+                        scause      = cause_expt;
+                        sepc        = pc;
+                        trap_vector = stvec;
+                    }
+                } else {
+                    if cmd == CsrCmd::MRET {
                         last_is_trap = 1;
-                        if (trap_to_M) {
-                            mode        = CsrMode::M;
-                            mcause      = cause_expt;
-                            mepc        = pc;
-                            trap_vector = mtvec;
-                        } else {
-                            mode        = CsrMode::S;
-                            scause      = cause_expt;
-                            sepc        = pc;
-                            trap_vector = stvec;
+                        mode         = CsrMode::S;
+                        trap_vector  = mepc;
+                    } else if cmd == CsrCmd::SRET {
+                        last_is_trap = 1;
+                        mode         = CsrMode::U;
+                        trap_vector  = sepc;
+                    } else if cmd_is_write {
+                        last_is_trap = 0;
+                        case csr_addr {
+                            CsrAddr::MTVEC : mtvec  = wdata;
+                            CsrAddr::MEPC  : mepc   = {wdata[XLEN - 1:2], 2'b00};
+                            CsrAddr::MCAUSE: mcause = wdata;
+                            CsrAddr::STVEC : stvec  = wdata;
+                            CsrAddr::SEPC  : sepc   = {wdata[XLEN - 1:2], 2'b00};
+                            CsrAddr::SCAUSE: scause = wdata;
+                            default        : {}
                         }
                     } else {
-                        if (cmd == CsrCmd::MRET) {
-                            last_is_trap = 1;
-                            mode         = CsrMode::S;
-                            trap_vector  = mepc;
-                        } else if (cmd == CsrCmd::SRET) {
-                            last_is_trap = 1;
-                            mode         = CsrMode::U;
-                            trap_vector  = sepc;
-                        } else if (cmd_is_write) {
-                            last_is_trap = 0;
-                            case csr_addr {
-                                CsrAddr::MTVEC : mtvec  = wdata;
-                                CsrAddr::MEPC  : mepc   = {wdata[XLEN - 1:2], 2'b00};
-                                CsrAddr::MCAUSE: mcause = wdata;
-                                CsrAddr::STVEC : stvec  = wdata;
-                                CsrAddr::SEPC  : sepc   = {wdata[XLEN - 1:2], 2'b00};
-                                CsrAddr::SCAUSE: scause = wdata;
-                                default        : {}
-                            }
-                        } else {
-                            last_is_trap = 0;
-                        }
+                        last_is_trap = 0;
                     }
                 }
             }

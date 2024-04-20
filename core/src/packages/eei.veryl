@@ -9,8 +9,6 @@ package eei {
 
     local XLEN_X: logic<XLEN> = {1'b0 repeat XLEN};
 
-    local SYNTHESIS_GOWIN: logic = 0;
-
     local RISCVTESTS_EXIT_ADDR    : Addr   = ('h1000) as Addr;
     local RISCVTESTS_WDATA_SUCCESS: UInt64 = 1;
 }

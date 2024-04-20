@@ -1,4 +1,4 @@
-fileName = "src/decoder.sv"
+fileName = "src/inst_decode.sv"
 
 S = None
 with open(fileName, mode="r") as f:
