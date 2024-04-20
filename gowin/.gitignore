@@ -1,3 +1,4 @@
 impl/gwsynthesis/
 impl/temp/
 impl/pnr/
+*.gprj.user
