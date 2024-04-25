@@ -1,0 +1,55 @@
+import eei::*;
+
+module reg_forward #(
+    param ADDR_WIDTH: u32 = 5,
+) (
+    valid   : input logic            ,
+    addr    : input logic<ADDR_WIDTH>,
+    reg_data: input UIntX            ,
+
+    ex_valid : input logic            ,
+    ex_can_fw: input logic            ,
+    ex_addr  : input logic<ADDR_WIDTH>,
+    ex_data  : input UIntX            ,
+
+    mem_valid : input logic            ,
+    mem_can_fw: input logic            ,
+    mem_addr  : input logic<ADDR_WIDTH>,
+    mem_data  : input UIntX            ,
+
+    wb_valid : input logic            ,
+    wb_can_fw: input logic            ,
+    wb_addr  : input logic<ADDR_WIDTH>,
+    wb_data  : input UIntX            ,
+
+    data_hazard: output logic,
+    result     : output UIntX,
+) {
+
+    let ex_hazard : logic = ex_valid & ex_addr == addr;
+    let mem_hazard: logic = mem_valid & mem_addr == addr;
+    let wb_hazard : logic = wb_valid & wb_addr == addr;
+
+    always_comb {
+        data_hazard = valid & addr != 0 & (if ex_hazard {
+            !ex_can_fw
+        } else if mem_hazard {
+            !mem_can_fw
+        } else if wb_hazard {
+            !wb_can_fw
+        } else {
+            0
+        });
+        result = if addr == 0 {
+            0
+        } else if ex_hazard {
+            ex_data
+        } else if mem_hazard {
+            mem_data
+        } else if wb_hazard {
+            wb_data
+        } else {
+            reg_data
+        };
+    }
+}

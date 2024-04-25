@@ -4,19 +4,23 @@ import corectrl::*;
 module alubr (
     cmd      : input  BrCmd,
     is_signed: input  logic,
-    op1_data : input  UIntX,
-    op2_data : input  UIntX,
+    op1      : input  UIntX,
+    op2      : input  UIntX,
     take     : output logic,
 ) {
+
+    let beq: logic = op1 == op2;
+
     let blt: logic = if is_signed {
-        $signed(op1_data) <: $signed(op2_data)
+        $signed(op1) <: $signed(op2)
     } else {
-        op1_data <: op2_data
+        op1 <: op2
     };
+
     always_comb {
         case cmd {
-            BrCmd::BEQ: take = op1_data === op2_data;
-            BrCmd::BNE: take = !(op1_data === op2_data);
+            BrCmd::BEQ: take = beq;
+            BrCmd::BNE: take = !beq;
             BrCmd::BLT: take = blt;
             BrCmd::BGE: take = !blt;
             default   : take = 0;

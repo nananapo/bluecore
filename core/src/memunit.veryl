@@ -22,31 +22,39 @@ module memunit (
 
     var state: State;
 
-    always_comb {
-        if valid & ctrl.mem_cmd != MemCmd::X {
-            dbus_if.valid = state == State::Init & is_new | state == State::WaitReady;
-        } else {
-            dbus_if.valid = 0;
-        }
-        dbus_if.wen   = ctrl.mem_cmd == MemCmd::S;
-        dbus_if.addr  = addr;
-        dbus_if.wdata = {1'b0 repeat $bits(dbus_if.wdata) - XLEN, rs2} << {addr[2:0], 3'b000};
+    var req_mem_wen  : logic    ;
+    var req_mem_addr : Addr     ;
+    var req_mem_wdata: UInt64   ;
+    var req_mem_wmask: logic <8>;
+
+    always_ff (clk) {
+        req_mem_wen   = ctrl.mem_cmd == MemCmd::S;
+        req_mem_addr  = addr;
+        req_mem_wdata = {1'b0 repeat $bits(dbus_if.wdata) - XLEN, rs2} << {addr[2:0], 3'b000};
         case ctrl.mem_size {
-            Size::B: dbus_if.wmask = 8'b1 << addr[2:0];
+            Size::B: req_mem_wmask = 8'b1 << addr[2:0];
             Size::H: case addr[2:0] {
-                         6      : dbus_if.wmask = 8'b11000000;
-                4      : dbus_if.wmask = 8'b00110000;
-                2      : dbus_if.wmask = 8'b00001100;
-                0      : dbus_if.wmask = 8'b00000011;
-                default: dbus_if.wmask = 8'b0;
+                         6      : req_mem_wmask = 8'b11000000;
+                4      : req_mem_wmask = 8'b00110000;
+                2      : req_mem_wmask = 8'b00001100;
+                0      : req_mem_wmask = 8'b00000011;
+                default: req_mem_wmask = 8'b0;
             }
             Size::W: case addr[2:0] {
-                         4      : dbus_if.wmask = 8'b11110000;
-                0      : dbus_if.wmask = 8'b00001111;
-                default: dbus_if.wmask = 8'b0;
+                         4      : req_mem_wmask = 8'b11110000;
+                0      : req_mem_wmask = 8'b00001111;
+                default: req_mem_wmask = 8'b0;
             }
-            default: dbus_if.wmask = 8'b11111111;
+            default: req_mem_wmask = 8'b11111111;
         }
+    }
+
+    always_comb {
+        dbus_if.valid = state === State::WaitReady;
+        dbus_if.addr  = req_mem_addr;
+        dbus_if.wen   = req_mem_wen;
+        dbus_if.wdata = req_mem_wdata;
+        dbus_if.wmask = req_mem_wmask;
     }
 
     var mem_rdata_64: UInt64;
@@ -125,24 +133,23 @@ module memunit (
             state = State::Init;
         } else {
             if valid {
-                if state == State::Init {
-                    if is_new {
-                        if ctrl.mem_cmd != MemCmd::X {
-                            state = if dbus_if.ready {
-                                State::WaitValid
-                            } else {
-                                State::WaitReady
-                            };
-                        }
-                    }
-                } else if state == State::WaitReady {
-                    if dbus_if.ready {
-                        state = State::WaitValid;
-                    }
-                } else if state == State::WaitValid {
-                    if dbus_if.resp_valid {
-                        state = State::Init;
-                    }
+                case state {
+                    State::Init: {
+                                     if is_new & ctrl.mem_cmd != MemCmd::X {
+                                         state = State::WaitReady;
+                                     }
+                                 }
+                    State::WaitReady: {
+                                          if dbus_if.ready {
+                                              state = State::WaitValid;
+                                          }
+                                      }
+                    State::WaitValid: {
+                                          if dbus_if.resp_valid {
+                                              state = State::Init;
+                                          }
+                                      }
+                    default: {}
                 }
             }
         }

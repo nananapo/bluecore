@@ -4,8 +4,6 @@ module top_gowin (
     led   : output logic<6>,
     key   : input  logic<4>,
 ) {
-    import eei::*;
-
     var clk: logic;
     var rst: logic;
 
@@ -18,8 +16,8 @@ module top_gowin (
 
     // topモジュールをインスタンス化
     inst t: top (
-        clk  ,
-        rst  ,
-        led  ,
+        clk: clk_in,
+        rst: rst_in,
+        led        ,
     );
 }

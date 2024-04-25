@@ -4,29 +4,28 @@ import corectrl::*;
 module alu (
     cmd      : input  AluCmd,
     is_signed: input  logic ,
-    op1_data : input  UIntX ,
-    op2_data : input  UIntX ,
+    op1      : input  UIntX ,
+    op2      : input  UIntX ,
     result   : output UIntX ,
 ) {
 
     always_comb {
         case cmd {
-            AluCmd::ADD: result = op1_data + op2_data;
-            AluCmd::SUB: result = op1_data - op2_data;
-            AluCmd::AND: result = op1_data & op2_data;
-            AluCmd::OR : result = op1_data | op2_data;
-            AluCmd::XOR: result = op1_data ^ op2_data;
-            AluCmd::SLL: result = op1_data << op2_data[4:0];
-            AluCmd::SRL: result = op1_data >> op2_data[4:0];
-            AluCmd::SRA: result = $signed(op1_data) >>> $signed(op2_data[4:0]);
+            AluCmd::ADD: result = op1 + op2;
+            AluCmd::SUB: result = op1 - op2;
+            AluCmd::AND: result = op1 & op2;
+            AluCmd::OR : result = op1 | op2;
+            AluCmd::XOR: result = op1 ^ op2;
+            AluCmd::SLL: result = op1 << op2[4:0];
+            AluCmd::SRL: result = op1 >> op2[4:0];
+            AluCmd::SRA: result = $signed(op1) >>> $signed(op2[4:0]);
             AluCmd::SLT: result = if is_signed {
-                             {1'b0 repeat XLEN - 1, $signed(op1_data) <: $signed(op2_data)} // SLT
-                                      } else {
-                             {1'b0 repeat XLEN - 1, op1_data <: op2_data} // SLTU
-                                      };
-            AluCmd::JALR : result = (op1_data + op2_data) & (~1);
-            AluCmd::COPY1: result = op1_data;
-            default      : result = XLEN_X;
+                             {1'b0 repeat XLEN - 1, $signed(op1) <: $signed(op2)}
+                         } else {
+                             {1'b0 repeat XLEN - 1, op1 <: op2}
+                         };
+            AluCmd::COPY1: result = op1;
+            default      : result = 'x;
         }
     }
 }

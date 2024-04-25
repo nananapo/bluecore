@@ -1,5 +1,5 @@
 include (inline, "svconfig.sv");
-include (inline, "memory.sv");
+include (inline, "common/memory.sv");
 
 module top (
     clk: input  logic   ,
@@ -49,7 +49,7 @@ module top (
     var mem_rdata : UInt64   ;
 
     local DataWidth     : u32 = 64; // メモリのデータの幅
-    local DataAddrWidth : u32 = 16; // メモリのアドレスの幅
+    local DataAddrWidth : u32 = 12; // メモリのアドレスの幅
     local DataAddrOffset: u32 = $clog2(DataWidth / 8); // アドレスのオフセット
 
     // メモリのインスタンス化

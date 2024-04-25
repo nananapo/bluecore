@@ -1,0 +1,30 @@
+import eei::*;
+
+/// レジスタファイル
+module regfile (
+    clk  : input  logic      ,
+    raddr: input  logic<2, 5>,
+    rdata: output UIntX<2>   ,
+    wen  : input  logic      ,
+    waddr: input  logic<5>   ,
+    wdata: input  UIntX      ,
+) {
+    // レジスタデータ
+    var data: UIntX [32];
+
+    // レジスタ読み込み
+    for i in 0..2 :readport_block {
+        assign rdata[i] = if raddr[i] == 0 {
+            0
+        } else {
+            data[raddr[i]]
+        };
+    }
+
+    // レジスタ書き込み
+    always_ff (clk) {
+        if wen & waddr != 0 {
+            data[waddr] = wdata;
+        }
+    }
+}

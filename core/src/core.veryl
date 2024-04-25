@@ -10,333 +10,236 @@ module core (
     // clock count
     var clock_count: u64;
 
-    // stage var
-    struct stageinfo {
-        addr   : Addr    ,
-        instbit: Inst    ,
-        ctrl   : InstCtrl,
+    struct wb_context {
+        valid: logic   ,
+        addr : logic<5>,
+        data : UIntX   ,
     }
 
-    struct if_idq_type {
-        addr   : Addr,
-        instbit: Inst,
+    struct idq_type {
+        addr    : Addr,
+        instbits: Inst,
     }
 
-    struct id_dsq_type {
-        info: stageinfo,
+    struct dwq_type {
+        addr    : Addr    ,
+        instbits: Inst    ,
+        ctrl    : InstCtrl,
     }
 
-    struct register_context {
-        rs1_addr: logic<5>,
-        rs2_addr: logic<5>,
-        rd_addr : logic<5>,
+    struct exq_type {
+        addr    : Addr      ,
+        instbits: Inst      ,
+        ctrl    : InstCtrl  ,
+        wbctx   : wb_context,
+        op1     : UIntX     ,
+        op2     : UIntX     ,
+        rs2     : UIntX     ,
     }
 
-    struct forwarding_context {
-        valid: logic,
-        data : UIntX,
+    struct memq_type {
+        addr     : Addr      ,
+        instbits : Inst      ,
+        ctrl     : InstCtrl  ,
+        wbctx    : wb_context,
+        alu_out  : UIntX     ,
+        br_taken : logic     ,
+        br_target: Addr      ,
+        pc_next  : Addr      ,
+        pc_inc   : Addr      ,
+        rs2      : UIntX     ,
     }
 
-    struct ds_exeq_type {
-        info  : stageinfo         ,
-        op1   : UIntX             ,
-        op2   : UIntX             ,
-        rs2   : UIntX             ,
-        regctx: register_context  ,
-        fwctx : forwarding_context,
-    }
-    struct exe_memq_type {
-        info     : stageinfo         ,
-        rs2      : UIntX             ,
-        regctx   : register_context  ,
-        alu_out  : UIntX             ,
-        br_taken : logic             ,
-        br_target: Addr              ,
-        nextpc   : Addr              ,
-        fwctx    : forwarding_context,
-    }
-    struct mem_wbq_type {
-        info   : stageinfo         ,
-        regctx : register_context  ,
-        alu_out: UIntX             ,
-        mem_out: UIntX             ,
-        csr_out: UIntX             ,
-        fwctx  : forwarding_context,
+    struct wbq_type {
+        addr    : Addr      ,
+        instbits: Inst      ,
+        ctrl    : InstCtrl  ,
+        wbctx   : wb_context,
     }
 
-    var if_idq_wready_next: logic      ;
-    var if_idq_wvalid     : logic      ;
-    var if_idq_wdata      : if_idq_type;
-    var if_idq_rready     : logic      ;
-    var if_idq_rvalid     : logic      ;
-    var if_idq_rdata      : if_idq_type;
+    var idq_wready_next: logic   ;
+    var idq_wvalid     : logic   ;
+    var idq_wdata      : idq_type;
+    var idq_rready     : logic   ;
+    var idq_rvalid     : logic   ;
+    var idq_rdata      : idq_type;
 
-    var id_dsq_wready: logic      ;
-    var id_dsq_wvalid: logic      ;
-    var id_dsq_wdata : id_dsq_type;
-    var id_dsq_rready: logic      ;
-    var id_dsq_rvalid: logic      ;
-    var id_dsq_rdata : id_dsq_type;
+    var dwq_wready: logic   ;
+    var dwq_wvalid: logic   ;
+    var dwq_wdata : dwq_type;
+    var dwq_rready: logic   ;
+    var dwq_rvalid: logic   ;
+    var dwq_rdata : dwq_type;
 
-    var ds_exeq_wready: logic       ;
-    var ds_exeq_wvalid: logic       ;
-    var ds_exeq_wdata : ds_exeq_type;
-    var ds_exeq_rready: logic       ;
-    var ds_exeq_rvalid: logic       ;
-    var ds_exeq_rdata : ds_exeq_type;
+    var exq_wready: logic   ;
+    var exq_wvalid: logic   ;
+    var exq_wdata : exq_type;
+    var exq_rready: logic   ;
+    var exq_rvalid: logic   ;
+    var exq_rdata : exq_type;
 
-    var exe_memq_wready: logic        ;
-    var exe_memq_wvalid: logic        ;
-    var exe_memq_wdata : exe_memq_type;
-    var exe_memq_rready: logic        ;
-    var exe_memq_rvalid: logic        ;
-    var exe_memq_rdata : exe_memq_type;
+    var memq_wready: logic    ;
+    var memq_wvalid: logic    ;
+    var memq_wdata : memq_type;
+    var memq_rready: logic    ;
+    var memq_rvalid: logic    ;
+    var memq_rdata : memq_type;
 
-    var mem_wbq_wready: logic       ;
-    var mem_wbq_wvalid: logic       ;
-    var mem_wbq_wdata : mem_wbq_type;
-    var mem_wbq_rready: logic       ;
-    var mem_wbq_rvalid: logic       ;
-    var mem_wbq_rdata : mem_wbq_type;
+    var wbq_wready: logic   ;
+    var wbq_wvalid: logic   ;
+    var wbq_wdata : wbq_type;
+    var wbq_rready: logic   ;
+    var wbq_rvalid: logic   ;
+    var wbq_rdata : wbq_type;
 
-    var mem_next_pc_expected: Addr ;
-    var mem_is_branch_hazard: logic;
+    let dw_rs1_addr: logic<5> = dwq_rdata.instbits[19:15];
+    let dw_rs2_addr: logic<5> = dwq_rdata.instbits[24:20];
+    let dw_rd_addr : logic<5> = dwq_rdata.instbits[11:7];
+    var dw_imm_i   : UIntX   ;
+    var dw_imm_s   : UIntX   ;
+    var dw_imm_j   : UIntX   ;
+    var dw_imm_u   : UIntX   ;
+    var dw_imm_z   : UIntX   ;
 
-    let reset_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
+    var ex_imm_b: UIntX;
 
-    // program counter
+    // IF stage
     var if_pc          : Addr ;
     var if_is_requested: logic;
     var if_requested_pc: Addr ;
 
-    // fetch
     always_comb {
-        ibus_if.valid = if_idq_wready_next & (!if_is_requested | ibus_if.resp_valid);
+        ibus_if.valid = idq_wready_next & (!if_is_requested | ibus_if.resp_valid);
         ibus_if.addr  = if_pc;
         ibus_if.wen   = 0;
         ibus_if.wdata = 'x;
         ibus_if.wmask = 0;
     }
 
-    // fetched inst
-    let if_fetch_inst: Inst = if if_requested_pc[2] == 0 {
+    let if_inst_fetched: Inst = if if_requested_pc[2] == 0 {
         ibus_if.resp_rdata[31:0]
     } else {
         ibus_if.resp_rdata[63:32]
     };
 
-    // if -> id queue
+    // IF stage -> ID stage
     always_comb {
-        if_idq_wvalid        = if_is_requested & ibus_if.resp_valid;
-        if_idq_wdata.addr    = if_requested_pc;
-        if_idq_wdata.instbit = if_fetch_inst;
-        if_idq_rready        = id_dsq_wready;
+        idq_wvalid         = if_is_requested & ibus_if.resp_valid;
+        idq_wdata.addr     = if_requested_pc;
+        idq_wdata.instbits = if_inst_fetched;
+        idq_rready         = dwq_wready;
     }
 
-    // decode stage
-    var id_info: stageinfo;
+    // ID stage -> DW stage
     always_comb {
-        id_info.addr    = if_idq_rdata.addr;
-        id_info.instbit = if_idq_rdata.instbit;
+        dwq_wvalid         = idq_rvalid;
+        dwq_wdata.addr     = idq_rdata.addr;
+        dwq_wdata.instbits = idq_rdata.instbits;
+        dwq_rready         = !dwq_wvalid | exq_wready & exq_wvalid;
     }
 
-    // id -> ds queue
-    always_comb {
-        id_dsq_wvalid     = if_idq_rvalid;
-        id_dsq_wdata.info = id_info;
-        id_dsq_rready     = !id_dsq_wvalid | ds_exeq_wready & ds_exeq_wvalid;
-    }
+    var dw_op1: UIntX;
+    var dw_op2: UIntX;
+    var dw_rs1: UIntX;
+    var dw_rs2: UIntX;
 
-    // register
-    var regfile: UIntX<32>;
-
-    // ds stage
-    let ds_info: stageinfo = id_dsq_rdata.info;
-    var ds_op1 : UIntX    ;
-    var ds_op2 : UIntX    ;
-    var ds_rs1 : UIntX    ;
-    var ds_rs2 : UIntX    ;
-
-    // const value
-    let ds_rs1_addr: logic<5> = ds_info.instbit[19:15];
-    let ds_rs2_addr: logic<5> = ds_info.instbit[24:20];
-    let ds_rd_addr : logic<5> = ds_info.instbit[11:7];
-    var ds_imm_i   : UIntX   ;
-    var ds_imm_s   : UIntX   ;
-    var ds_imm_j   : UIntX   ;
-    var ds_imm_u   : UIntX   ;
-    var ds_imm_z   : UIntX   ;
-
-    let ds_dh_ds_rs1: logic = ds_rs1_addr != 0;
-    let ds_dh_ds_rs2: logic = ds_rs2_addr != 0;
-
-    let ds_dh_exe_rs1: logic = ds_dh_ds_rs1 & ds_exeq_rvalid & exe_info.ctrl.rf_wen & exe_regctx.rd_addr == ds_rs1_addr;
-    let ds_dh_mem_rs1: logic = ds_dh_ds_rs1 & exe_memq_rvalid & mem_info.ctrl.rf_wen & mem_regctx.rd_addr == ds_rs1_addr;
-    let ds_dh_wb_rs1 : logic = ds_dh_ds_rs1 & mem_wbq_rvalid & wb_info.ctrl.rf_wen & wb_regctx.rd_addr == ds_rs1_addr;
-
-    let ds_dh_exe_rs2: logic = ds_dh_ds_rs2 & ds_exeq_rvalid & exe_info.ctrl.rf_wen & exe_regctx.rd_addr == ds_rs2_addr;
-    let ds_dh_mem_rs2: logic = ds_dh_ds_rs2 & exe_memq_rvalid & mem_info.ctrl.rf_wen & mem_regctx.rd_addr == ds_rs2_addr;
-    let ds_dh_wb_rs2 : logic = ds_dh_ds_rs2 & mem_wbq_rvalid & wb_info.ctrl.rf_wen & wb_regctx.rd_addr == ds_rs2_addr;
-
-    let ds_dh_rs1: logic = ds_info.ctrl.op1_sel == Op1Sel::RS1 & ds_dh_ds_rs1 & (if ds_dh_exe_rs1 {
-        !exe_fwctx.valid
-    } else if ds_dh_mem_rs1 {
-        !mem_fwctx.valid
-    } else if ds_dh_wb_rs1 {
-        !wb_fwctx.valid
-    } else {
-        0
-    });
-    let ds_dh_rs2: logic = ds_info.ctrl.use_rs2 & ds_dh_ds_rs2 & (if ds_dh_exe_rs2 {
-        !exe_fwctx.valid
-    } else if ds_dh_mem_rs2 {
-        !mem_fwctx.valid
-    } else if ds_dh_wb_rs2 {
-        !wb_fwctx.valid
-    } else {
-        0
-    });
-
-    let ds_stall: logic = ds_dh_rs1 | ds_dh_rs2; // datahazard
+    var regfile_rdata: UIntX<2>;
 
     always_comb {
-        ds_rs1 = if ds_dh_exe_rs1 {
-            exe_fwctx.data
-        } else if ds_dh_mem_rs1 {
-            mem_fwctx.data
-        } else if ds_dh_wb_rs1 {
-            wb_fwctx.data
-        } else {
-            regfile[ds_rs1_addr]
-        };
-        ds_rs2 = if ds_dh_exe_rs2 {
-            exe_fwctx.data
-        } else if ds_dh_mem_rs2 {
-            mem_fwctx.data
-        } else if ds_dh_wb_rs2 {
-            wb_fwctx.data
-        } else {
-            regfile[ds_rs2_addr]
-        };
-        case ds_info.ctrl.op1_sel {
-            Op1Sel::RS1: ds_op1 = ds_rs1;
-            Op1Sel::PC : ds_op1 = ds_info.addr;
-            Op1Sel::IMZ: ds_op1 = ds_imm_z;
-            default    : ds_op1 = XLEN_X;
+        case dwq_rdata.ctrl.op1_sel {
+            Op1Sel::RS1: dw_op1 = dw_rs1;
+            Op1Sel::PC : dw_op1 = dwq_rdata.addr;
+            Op1Sel::IMZ: dw_op1 = dw_imm_z;
+            default    : dw_op1 = 'x;
         }
-        case ds_info.ctrl.op2_sel {
-            Op2Sel::RS2: ds_op2 = ds_rs2;
-            Op2Sel::IMI: ds_op2 = ds_imm_i;
-            Op2Sel::IMS: ds_op2 = ds_imm_s;
-            Op2Sel::IMJ: ds_op2 = ds_imm_j;
-            Op2Sel::IMU: ds_op2 = ds_imm_u;
-            Op2Sel::IMZ: ds_op2 = ds_imm_z;
-            default    : ds_op2 = XLEN_X;
+        case dwq_rdata.ctrl.op2_sel {
+            Op2Sel::RS2: dw_op2 = dw_rs2;
+            Op2Sel::IMI: dw_op2 = dw_imm_i;
+            Op2Sel::IMS: dw_op2 = dw_imm_s;
+            Op2Sel::IMJ: dw_op2 = dw_imm_j;
+            Op2Sel::IMU: dw_op2 = dw_imm_u;
+            default    : dw_op2 = 'x;
         }
     }
 
-    // ds -> exe queue
+    // DW stage -> EX stage
     always_comb {
-        ds_exeq_wvalid                = id_dsq_rvalid & !ds_stall;
-        ds_exeq_wdata.info            = ds_info;
-        ds_exeq_wdata.op1             = ds_op1;
-        ds_exeq_wdata.op2             = ds_op2;
-        ds_exeq_wdata.rs2             = ds_rs2;
-        ds_exeq_wdata.regctx.rs1_addr = if ds_info.ctrl.op1_sel == Op1Sel::RS1 {
-            ds_rs1_addr
+        exq_wvalid            = dwq_rvalid & !dw_stall;
+        exq_wdata.addr        = dwq_rdata.addr;
+        exq_wdata.instbits    = dwq_rdata.instbits;
+        exq_wdata.ctrl        = dwq_rdata.ctrl;
+        exq_wdata.op1         = dw_op1;
+        exq_wdata.op2         = dw_op2;
+        exq_wdata.rs2         = dw_rs2;
+        exq_wdata.wbctx.valid = dwq_rdata.ctrl.wb_sel == WbSel::PC;
+        exq_wdata.wbctx.addr  = if dwq_rdata.ctrl.rf_wen {
+            dw_rd_addr
         } else {
             0
         };
-        ds_exeq_wdata.regctx.rs2_addr = if ds_info.ctrl.use_rs2 {
-            ds_rs2_addr
-        } else {
-            0
-        };
-        ds_exeq_wdata.regctx.rd_addr = if ds_info.ctrl.rf_wen {
-            ds_rd_addr
-        } else {
-            0
-        };
-        ds_exeq_wdata.fwctx.valid = ds_info.ctrl.wb_sel == WbSel::PC;
-        ds_exeq_wdata.fwctx.data  = ds_info.addr + 4;
-        ds_exeq_rready            = !ds_exeq_rvalid | exe_memq_wready & exe_memq_wvalid;
+        exq_wdata.wbctx.data = dwq_rdata.addr + 4;
+        exq_rready           = !exq_rvalid | memq_wready & memq_wvalid;
     }
 
-    // exe stage
-    let exe_info    : stageinfo          = ds_exeq_rdata.info;
-    var exe_alu_out : UIntX             ;
-    var exe_br_taken: logic             ;
-    let exe_op1     : UIntX              = ds_exeq_rdata.op1;
-    let exe_op2     : UIntX              = ds_exeq_rdata.op2;
-    let exe_rs2     : UIntX              = ds_exeq_rdata.rs2;
-    let exe_regctx  : register_context   = ds_exeq_rdata.regctx;
-    let exe_fwctx   : forwarding_context = ds_exeq_rdata.fwctx;
-    var exe_imm_b   : UIntX             ;
+    var ex_alu_out : UIntX;
+    var ex_br_taken: logic;
 
-    let exe_stall: logic = !id_dsq_rvalid; // wait ds is valid
-
-    // exe -> mem queue
+    // ex -> mem queue
     always_comb {
-        exe_memq_wvalid          = ds_exeq_rvalid & !exe_stall;
-        exe_memq_wdata.info      = exe_info;
-        exe_memq_wdata.rs2       = exe_rs2;
-        exe_memq_wdata.regctx    = exe_regctx;
-        exe_memq_wdata.alu_out   = exe_alu_out;
-        exe_memq_wdata.br_taken  = exe_br_taken | exe_info.ctrl.br_cmd == BrCmd::JLI | exe_info.ctrl.br_cmd == BrCmd::JLR;
-        exe_memq_wdata.br_target = case exe_info.ctrl.br_cmd {
-            BrCmd::JLI: exe_alu_out,
-            BrCmd::JLR: exe_alu_out,
-            default   : exe_info.addr + exe_imm_b // branch
-            ,
+        memq_wvalid          = exq_rvalid & !ex_stall;
+        memq_wdata.addr      = exq_rdata.addr;
+        memq_wdata.instbits  = exq_rdata.instbits;
+        memq_wdata.ctrl      = exq_rdata.ctrl;
+        memq_wdata.rs2       = exq_rdata.rs2;
+        memq_wdata.alu_out   = ex_alu_out;
+        memq_wdata.br_taken  = ex_br_taken | exq_rdata.ctrl.br_cmd == BrCmd::JLI | exq_rdata.ctrl.br_cmd == BrCmd::JLR;
+        memq_wdata.br_target = case exq_rdata.ctrl.br_cmd {
+            BrCmd::JLI, BrCmd::JLR: ex_alu_out,
+            default: exq_rdata.addr + ex_imm_b,
         } & (~1);
-        exe_memq_wdata.nextpc      = ds_info.addr;
-        exe_memq_wdata.fwctx.valid = exe_fwctx.valid | exe_info.ctrl.wb_sel == WbSel::ALU;
-        exe_memq_wdata.fwctx.data  = if exe_fwctx.valid {
-            exe_fwctx.data
+        memq_wdata.pc_inc      = exq_rdata.addr + 4;
+        memq_wdata.pc_next     = dwq_rdata.addr;
+        memq_wdata.wbctx.valid = exq_rdata.wbctx.valid | exq_rdata.ctrl.wb_sel == WbSel::ALU;
+        memq_wdata.wbctx.addr  = exq_rdata.wbctx.addr;
+        memq_wdata.wbctx.data  = if exq_rdata.wbctx.valid {
+            exq_rdata.wbctx.data
         } else {
-            exe_alu_out
+            ex_alu_out
         };
     }
 
     // mem stage
-    let mem_valid         : logic              = exe_memq_rvalid;
-    var mem_is_new        : logic             ;
-    var mem_memunit_stall : logic             ;
-    let mem_info          : stageinfo          = exe_memq_rdata.info;
-    let mem_regctx        : register_context   = exe_memq_rdata.regctx;
-    let mem_fwctx         : forwarding_context = exe_memq_rdata.fwctx;
-    let mem_alu_out       : UIntX              = exe_memq_rdata.alu_out;
-    let mem_br_taken      : logic              = exe_memq_rdata.br_taken;
-    let mem_br_target     : Addr               = exe_memq_rdata.br_target;
-    let mem_rs2           : UIntX              = exe_memq_rdata.rs2;
-    var mem_mem_rdata     : UIntX             ;
-    let mem_next_pc_actual: Addr               = exe_memq_rdata.nextpc;
+    var mem_is_new       : logic;
+    var mem_memunit_stall: logic;
+    var mem_mem_rdata    : UIntX;
+
+    var mem_next_pc_expected: Addr ;
+    var mem_is_branch_hazard: logic;
 
     var mem_csr_rdata      : UIntX;
     var mem_csrunit_stall  : logic;
     var mem_csr_is_trap    : logic;
     var mem_csr_trap_vector: Addr ;
 
-    assign mem_next_pc_expected = if mem_info.ctrl.br_cmd == BrCmd::X | !mem_br_taken {
-        mem_info.addr + 4
+    assign mem_next_pc_expected = if memq_rdata.ctrl.br_cmd == BrCmd::X | !memq_rdata.br_taken {
+        memq_rdata.pc_inc
     } else {
-        mem_br_target
+        memq_rdata.br_target
     };
 
-    assign mem_is_branch_hazard = mem_valid & mem_next_pc_expected != mem_next_pc_actual;
+    assign mem_is_branch_hazard = memq_rvalid & mem_next_pc_expected != memq_rdata.pc_next;
 
     always_comb {
-        exe_memq_rready           = !mem_memunit_stall & !mem_csrunit_stall & mem_wbq_wready;
-        mem_wbq_wvalid            = mem_valid & !mem_memunit_stall & !mem_csrunit_stall;
-        mem_wbq_wdata.info        = mem_info;
-        mem_wbq_wdata.regctx      = mem_regctx;
-        mem_wbq_wdata.alu_out     = mem_alu_out;
-        mem_wbq_wdata.mem_out     = mem_mem_rdata;
-        mem_wbq_wdata.csr_out     = mem_csr_rdata;
-        mem_wbq_wdata.fwctx.valid = 1;
-        mem_wbq_wdata.fwctx.data  = if mem_fwctx.valid {
-            mem_fwctx.data
-        } else if mem_info.ctrl.wb_sel == WbSel::MEM {
+        memq_rready           = !mem_memunit_stall & !mem_csrunit_stall & 1;
+        wbq_wvalid            = memq_rvalid & !mem_memunit_stall & !mem_csrunit_stall;
+        wbq_wdata.addr        = memq_rdata.addr;
+        wbq_wdata.instbits    = memq_rdata.instbits;
+        wbq_wdata.ctrl        = memq_rdata.ctrl;
+        wbq_wdata.wbctx.valid = 1;
+        wbq_wdata.wbctx.addr  = memq_rdata.wbctx.addr;
+        wbq_wdata.wbctx.data  = if memq_rdata.wbctx.valid {
+            memq_rdata.wbctx.data
+        } else if memq_rdata.ctrl.wb_sel == WbSel::MEM {
             mem_mem_rdata
         } else {
             mem_csr_rdata
@@ -344,31 +247,27 @@ module core (
     }
 
     // wb stage
-    let wb_valid  : logic              = mem_wbq_rvalid;
-    let wb_info   : stageinfo          = mem_wbq_rdata.info;
-    let wb_regctx : register_context   = mem_wbq_rdata.regctx;
-    let wb_fwctx  : forwarding_context = mem_wbq_rdata.fwctx;
-    let wb_wb_data: UIntX              = wb_fwctx.data;
+    assign wbq_rready = 1;
 
-    always_comb {
-        mem_wbq_rready = 1;
-    }
+    var dw_dh_rs1: logic;
+    var dw_dh_rs2: logic;
+
+    let dw_stall             : logic = dw_dh_rs1 | dw_dh_rs2; // datahazard
+    let ex_stall             : logic = !dwq_rvalid; // wait dw is valid
+    let reset_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
 
     always_ff (clk, rst) {
         if_reset {
             $display       ("reset!");
+            clock_count     = 0;
             if_pc           = 0;
             if_is_requested = 0;
             if_requested_pc = 0;
-            clock_count     = 0;
-            regfile[0]      = 0;
-            regfile[31:1]   = 'x;
             mem_is_new      = 0;
         } else {
             $display   ("------------------ clock %0d", clock_count);
             clock_count = clock_count + 1;
-            // fetch stage
-            $display("Fetch Stage ---");
+            $display   ("IF Stage ---");
             if reset_before_memstage {
                 if_is_requested = 0;
                 if_pc           = if mem_csr_is_trap {
@@ -379,241 +278,274 @@ module core (
                     0
                 };
             } else {
-                if if_is_requested {
-                    if ibus_if.resp_valid {
-                        $display("  fetched: %h:%h", if_requested_pc, if_fetch_inst);
-                        if ibus_if.ready & if_idq_wready_next {
-                            $display       ("  fetch req: %h", if_pc);
-                            if_pc           = if_pc + 4;
-                            if_is_requested = 1;
-                            if_requested_pc = if_pc;
-                        } else {
-                            if_is_requested = 0;
-                        }
-                    }
+                if if_is_requested & ibus_if.resp_valid {
+                    $display("  fetched: %h:%h", if_requested_pc, if_inst_fetched);
+                }
+                if ibus_if.ready & ibus_if.valid {
+                    if_pc           = if_pc + 4;
+                    if_is_requested = 1;
+                    if_requested_pc = if_pc;
+                    $display       ("  fetch req: %h", ibus_if.addr);
                 } else {
-                    if ibus_if.ready & if_idq_wready_next {
-                        $display       ("  fetch req: %h", if_pc);
-                        if_pc           = if_pc + 4;
-                        if_is_requested = 1;
-                        if_requested_pc = if_pc;
-                    } else {
-                        if_is_requested = 0;
-                    }
+                    if_is_requested = 0;
                 }
             }
-
-
-            // decode stage
-            $display("Decode Stage ---");
-            if if_idq_rvalid {
-                $display("  %h:%h", if_idq_rdata.addr, if_idq_rdata.instbit);
-                $display("  is_legal  : %2d", id_info.ctrl.is_legal);
-                $display("  alu_cmd   : %2d", id_info.ctrl.alu_cmd);
-                $display("  br_cmd    : %2d", id_info.ctrl.br_cmd);
-                $display("  is_signed : %2d", id_info.ctrl.is_signed);
-                $display("  op1_sel   : %2d", id_info.ctrl.op1_sel);
-                $display("  op2_sel   : %2d", id_info.ctrl.op2_sel);
-                $display("  use_rs2   : %2d", id_info.ctrl.use_rs2);
-                $display("  mem_cmd   : %2d", id_info.ctrl.mem_cmd);
-                $display("  mem_size  : %2d", id_info.ctrl.mem_size);
-                $display("  csr_cmd   : %2d", id_info.ctrl.csr_cmd);
-                $display("  rf_wen    : %2d", id_info.ctrl.rf_wen);
-                $display("  wb_sel    : %2d", id_info.ctrl.wb_sel);
+            $display("ID Stage ---");
+            if idq_rvalid {
+                $display("  %h:%h", idq_rdata.addr, idq_rdata.instbits);
+                $display("  is_legal  : %2d", dwq_wdata.ctrl.is_legal);
+                $display("  alu_cmd   : %2d", dwq_wdata.ctrl.alu_cmd);
+                $display("  br_cmd    : %2d", dwq_wdata.ctrl.br_cmd);
+                $display("  is_signed : %2d", dwq_wdata.ctrl.is_signed);
+                $display("  op1_sel   : %2d", dwq_wdata.ctrl.op1_sel);
+                $display("  op2_sel   : %2d", dwq_wdata.ctrl.op2_sel);
+                $display("  use_rs2   : %2d", dwq_wdata.ctrl.use_rs2);
+                $display("  mem_cmd   : %2d", dwq_wdata.ctrl.mem_cmd);
+                $display("  mem_size  : %2d", dwq_wdata.ctrl.mem_size);
+                $display("  csr_cmd   : %2d", dwq_wdata.ctrl.csr_cmd);
+                $display("  rf_wen    : %2d", dwq_wdata.ctrl.rf_wen);
+                $display("  wb_sel    : %2d", dwq_wdata.ctrl.wb_sel);
             }
-
-            // ds stage
-            $display("Data Stage ---");
-            if id_dsq_rvalid {
-                $display("  %h:%h", ds_info.addr, ds_info.instbit);
-                $display("  stall     : %d", ds_stall);
-                $display("  op1       : %h", ds_op1);
-                $display("  op2       : %h", ds_op2);
-                $display("  rs2       : %h", ds_rs2);
+            $display("DW Stage ---");
+            if dwq_rvalid {
+                $display("  %h:%h", dwq_rdata.addr, dwq_rdata.instbits);
+                $display("  stall     : %d", dw_stall);
+                $display("  op1       : %2d:%h", dw_rs1_addr, dw_op1);
+                $display("  op2       : %2d:%h", dw_rs2_addr, dw_op2);
+                $display("  rs2       : %h", dw_rs2);
             }
-
-            // exe stage
-            $display("Exe Stage ---");
-            if ds_exeq_rvalid {
-                $display("  %h:%h", exe_info.addr, exe_info.instbit);
-                $display("  stall     : %d", !exe_memq_wvalid | !exe_memq_wready);
-                $display("  alu_cmd   : %2d", exe_info.ctrl.alu_cmd);
-                $display("  op1       : %h", exe_op1);
-                $display("  op2       : %h", exe_op2);
-                $display("  alu_out   : %h", exe_alu_out);
+            $display("EX Stage ---");
+            if exq_rvalid {
+                $display("  %h:%h", exq_rdata.addr, exq_rdata.instbits);
+                $display("  stall     : %d", !memq_wvalid | !memq_wready);
+                $display("  alu_cmd   : %2d", exq_rdata.ctrl.alu_cmd);
+                $display("  op1       : %h", exq_rdata.op1);
+                $display("  op2       : %h", exq_rdata.op2);
+                $display("  alu_out   : %h", ex_alu_out);
+                $display("  br_take   : %h", ex_br_taken);
             }
-            // mem stage
-            $display("Mem Stage ---");
-            if mem_valid {
-                mem_is_new = exe_memq_rready;
-                $display  ("  %h:%h", mem_info.addr, mem_info.instbit);
-                $display  ("  mu_stall     : %d", mem_memunit_stall);
-                $display  ("  mem_cmd      : %d", mem_info.ctrl.mem_cmd);
+            $display("MEM Stage ---");
+            if memq_rvalid {
+                mem_is_new = memq_rready;
+                $display  ("  %h:%h", memq_rdata.addr, memq_rdata.instbits);
+                $display  ("  mem_stall     : %d", mem_memunit_stall);
+                $display  ("  mem_cmd      : %d", memq_rdata.ctrl.mem_cmd);
                 $display  ("  mem_out      : %h", mem_mem_rdata);
-                $display  ("  cu_stall     : %d", mem_csrunit_stall);
-                $display  ("  csr_cmd      : %d", mem_info.ctrl.csr_cmd);
+                $display  ("  csr_stall     : %d", mem_csrunit_stall);
+                $display  ("  csr_cmd      : %d", memq_rdata.ctrl.csr_cmd);
                 if mem_csr_is_trap {
                     $display("  csr hazard: %h", mem_csr_trap_vector);
                 } else if mem_is_branch_hazard {
-                    $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, mem_next_pc_actual);
+                    $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, memq_rdata.pc_next);
                 }
             } else {
                 mem_is_new = 1;
             }
-
-            $display("Wb Stage---");
-            if wb_valid {
-                $display("  %h:%h", wb_info.addr, wb_info.instbit);
-                if wb_info.ctrl.rf_wen & wb_regctx.rd_addr != 0 {
-                    $display                  ("  writebacked [%d] <= %h", wb_regctx.rd_addr, wb_wb_data);
-                    regfile[wb_regctx.rd_addr] = wb_wb_data;
+            $display("WB Stage---");
+            if wbq_rvalid {
+                $display("  %h:%h", wbq_rdata.addr, wbq_rdata.instbits);
+                if wbq_rdata.ctrl.rf_wen & wbq_rdata.wbctx.addr != 0 {
+                    $display("  writebacked [%d] <= %h", wbq_rdata.wbctx.addr, wbq_rdata.wbctx.data);
                 }
             }
         }
     }
 
-    inst decode_unit: inst_decode (
-        instbit: if_idq_rdata.instbit,
-        ctrl   : id_info.ctrl        ,
+    inst id_unit: inst_decode (
+        instbits: idq_rdata.instbits,
+        ctrl    : dwq_wdata.ctrl    ,
     );
 
-    inst exe_alu: alu (
-        cmd      : exe_info.ctrl.alu_cmd  ,
-        is_signed: exe_info.ctrl.is_signed,
-        op1_data : exe_op1                ,
-        op2_data : exe_op2                ,
-        result   : exe_alu_out            ,
+    inst dw_immdec: imm_decode (
+        data : dwq_rdata.instbits,
+        imm_i: dw_imm_i          ,
+        imm_s: dw_imm_s          ,
+        imm_b: _                 ,
+        imm_j: dw_imm_j          ,
+        imm_u: dw_imm_u          ,
+        imm_z: dw_imm_z          ,
     );
 
-    inst exe_alubr: alubr (
-        cmd      : exe_info.ctrl.br_cmd   ,
-        is_signed: exe_info.ctrl.is_signed,
-        op1_data : exe_op1                ,
-        op2_data : exe_op2                ,
-        take     : exe_br_taken           ,
+    inst regfile_inst: regfile (
+        clk                                      ,
+        raddr: {dw_rs2_addr, dw_rs1_addr}         ,
+        rdata: regfile_rdata                     ,
+        wen  : wbq_rvalid & wbq_rdata.ctrl.rf_wen,
+        waddr: wbq_rdata.wbctx.addr              ,
+        wdata: wbq_rdata.wbctx.data              ,
     );
 
-    inst ds_immdec: imm_decode (
-        data : ds_info.instbit,
-        imm_i: ds_imm_i       ,
-        imm_s: ds_imm_s       ,
-        imm_b: _              ,
-        imm_j: ds_imm_j       ,
-        imm_u: ds_imm_u       ,
-        imm_z: ds_imm_z       ,
+    inst rs1_forward_unit: reg_forward (
+        valid   : dwq_rvalid & dwq_rdata.ctrl.op1_sel == Op1Sel::RS1,
+        addr    : dw_rs1_addr                                       ,
+        reg_data: regfile_rdata[0]                                  ,
+
+        ex_valid : exq_rvalid & exq_rdata.ctrl.rf_wen,
+        ex_can_fw: exq_rdata.wbctx.valid             ,
+        ex_addr  : exq_rdata.wbctx.addr              ,
+        ex_data  : exq_rdata.wbctx.data              ,
+
+        mem_valid : memq_rvalid & memq_rdata.ctrl.rf_wen,
+        mem_can_fw: memq_rdata.wbctx.valid              ,
+        mem_addr  : memq_rdata.wbctx.addr               ,
+        mem_data  : memq_rdata.wbctx.data               ,
+
+        wb_valid : wbq_rvalid & wbq_rdata.ctrl.rf_wen,
+        wb_can_fw: wbq_rdata.wbctx.valid             ,
+        wb_addr  : wbq_rdata.wbctx.addr              ,
+        wb_data  : wbq_rdata.wbctx.data              ,
+
+        data_hazard: dw_dh_rs1,
+        result     : dw_rs1   ,
     );
 
-    inst exe_immdec: imm_decode (
-        data : exe_info.instbit,
-        imm_i: _               ,
-        imm_s: _               ,
-        imm_b: exe_imm_b       ,
-        imm_j: _               ,
-        imm_u: _               ,
-        imm_z: _               ,
+    inst rs2_forward_unit: reg_forward (
+        valid   : dwq_rvalid & dwq_rdata.ctrl.use_rs2,
+        addr    : dw_rs2_addr                        ,
+        reg_data: regfile_rdata[1]                   ,
+
+        ex_valid : exq_rvalid & exq_rdata.ctrl.rf_wen,
+        ex_can_fw: exq_rdata.wbctx.valid             ,
+        ex_addr  : exq_rdata.wbctx.addr              ,
+        ex_data  : exq_rdata.wbctx.data              ,
+
+        mem_valid : memq_rvalid & memq_rdata.ctrl.rf_wen,
+        mem_can_fw: memq_rdata.wbctx.valid              ,
+        mem_addr  : memq_rdata.wbctx.addr               ,
+        mem_data  : memq_rdata.wbctx.data               ,
+
+        wb_valid : wbq_rvalid & wbq_rdata.ctrl.rf_wen,
+        wb_can_fw: wbq_rdata.wbctx.valid             ,
+        wb_addr  : wbq_rdata.wbctx.addr              ,
+        wb_data  : wbq_rdata.wbctx.data              ,
+
+        data_hazard: dw_dh_rs2,
+        result     : dw_rs2   ,
+    );
+
+    inst ex_immdec: imm_decode (
+        data : exq_rdata.instbits,
+        imm_i: _                 ,
+        imm_s: _                 ,
+        imm_b: ex_imm_b          ,
+        imm_j: _                 ,
+        imm_u: _                 ,
+        imm_z: _                 ,
+    );
+
+    inst ex_alu: alu (
+        cmd      : exq_rdata.ctrl.alu_cmd  ,
+        is_signed: exq_rdata.ctrl.is_signed,
+        op1      : exq_rdata.op1           ,
+        op2      : exq_rdata.op2           ,
+        result   : ex_alu_out              ,
+    );
+
+    inst ex_alubr: alubr (
+        cmd      : exq_rdata.ctrl.br_cmd   ,
+        is_signed: exq_rdata.ctrl.is_signed,
+        op1      : exq_rdata.op1           ,
+        op2      : exq_rdata.op2           ,
+        take     : ex_br_taken             ,
     );
 
     inst mem_memunit: memunit (
-        clk                        ,
-        rst                        ,
-        dbus_if                    ,
-        valid   : mem_valid        ,
-        is_new  : mem_is_new       ,
-        ctrl    : mem_info.ctrl    ,
-        rs2     : mem_rs2          ,
-        addr    : mem_alu_out      ,
-        is_stall: mem_memunit_stall,
-        mem_out : mem_mem_rdata    ,
+        clk                         ,
+        rst                         ,
+        dbus_if                     ,
+        valid   : memq_rvalid       ,
+        is_new  : mem_is_new        ,
+        ctrl    : memq_rdata.ctrl   ,
+        rs2     : memq_rdata.rs2    ,
+        addr    : memq_rdata.alu_out,
+        is_stall: mem_memunit_stall ,
+        mem_out : mem_mem_rdata     ,
     );
 
     inst mem_csrunit: csrunit (
+        clk                                    ,
+        rst                                    ,
+        valid      : memq_rvalid               ,
+        is_new     : mem_is_new                ,
+        pc         : memq_rdata.addr           ,
+        cmd        : memq_rdata.ctrl.csr_cmd   ,
+        csr_addr   : memq_rdata.instbits[31:20],
+        op1_data   : memq_rdata.alu_out        ,
+        csr_rdata  : mem_csr_rdata             ,
+        is_stall   : mem_csrunit_stall         ,
+        is_trap    : mem_csr_is_trap           ,
+        trap_vector: mem_csr_trap_vector       ,
+    );
+
+    inst fifo_if_id: fifo #(
+        Width   : 3       ,
+        DataType: idq_type,
+    ) (
         clk                                 ,
-        rst                                 ,
-        valid      : mem_valid              ,
-        is_new     : mem_is_new             ,
-        pc         : mem_info.addr          ,
-        cmd        : mem_info.ctrl.csr_cmd  ,
-        csr_addr   : mem_info.instbit[31:20],
-        op1_data   : mem_alu_out            ,
-        csr_rdata  : mem_csr_rdata          ,
-        is_stall   : mem_csrunit_stall      ,
-        is_trap    : mem_csr_is_trap        ,
-        trap_vector: mem_csr_trap_vector    ,
+        rst   : rst & !reset_before_memstage,
+        wready: _                           ,
+        wvalid: idq_wvalid                  ,
+        wdata : idq_wdata                   ,
+        rready: idq_rready                  ,
+        rvalid: idq_rvalid                  ,
+        rdata : idq_rdata                   ,
     );
 
-    inst fifo_fetch_decode: fifo #(
-        Width   : 3          ,
-        DataType: if_idq_type,
-    ) (
-        clk                           ,
-        rst                           ,
-        rst_pos: reset_before_memstage,
-        wready : _                    ,
-        wvalid : if_idq_wvalid        ,
-        wdata  : if_idq_wdata         ,
-        rready : if_idq_rready        ,
-        rvalid : if_idq_rvalid        ,
-        rdata  : if_idq_rdata         ,
-    );
-    assign if_idq_wready_next = fifo_fetch_decode.wready_next;
+    assign idq_wready_next = fifo_if_id.wready_next;
 
-    inst fifo_decode_ds: fifo #(
-        Width   : 0          ,
-        DataType: id_dsq_type,
+    inst fifo_id_dw: fifo #(
+        Width   : 0       ,
+        DataType: dwq_type,
     ) (
-        clk                           ,
-        rst                           ,
-        rst_pos: reset_before_memstage,
-        wready : id_dsq_wready        ,
-        wvalid : id_dsq_wvalid        ,
-        wdata  : id_dsq_wdata         ,
-        rready : id_dsq_rready        ,
-        rvalid : id_dsq_rvalid        ,
-        rdata  : id_dsq_rdata         ,
+        clk                                 ,
+        rst   : rst & !reset_before_memstage,
+        wready: dwq_wready                  ,
+        wvalid: dwq_wvalid                  ,
+        wdata : dwq_wdata                   ,
+        rready: dwq_rready                  ,
+        rvalid: dwq_rvalid                  ,
+        rdata : dwq_rdata                   ,
     );
 
-    inst fifo_ds_exe: fifo #(
-        Width   : 0           ,
-        DataType: ds_exeq_type,
+    inst fifo_dw_ex: fifo #(
+        Width   : 0       ,
+        DataType: exq_type,
     ) (
-        clk                           ,
-        rst                           ,
-        rst_pos: reset_before_memstage,
-        wready : ds_exeq_wready       ,
-        wvalid : ds_exeq_wvalid       ,
-        wdata  : ds_exeq_wdata        ,
-        rready : ds_exeq_rready       ,
-        rvalid : ds_exeq_rvalid       ,
-        rdata  : ds_exeq_rdata        ,
+        clk                                 ,
+        rst   : rst & !reset_before_memstage,
+        wready: exq_wready                  ,
+        wvalid: exq_wvalid                  ,
+        wdata : exq_wdata                   ,
+        rready: exq_rready                  ,
+        rvalid: exq_rvalid                  ,
+        rdata : exq_rdata                   ,
     );
 
-    inst fifo_exe_mem: fifo #(
-        Width   : 0            ,
-        DataType: exe_memq_type,
+    inst fifo_ex_mem: fifo #(
+        Width   : 0        ,
+        DataType: memq_type,
     ) (
-        clk                                              ,
-        rst                                              ,
-        rst_pos: 0                                       ,
-        wready : exe_memq_wready                         ,
-        wvalid : exe_memq_wvalid & !reset_before_memstage,
-        wdata  : exe_memq_wdata                          ,
-        rready : exe_memq_rready                         ,
-        rvalid : exe_memq_rvalid                         ,
-        rdata  : exe_memq_rdata                          ,
+        clk                                         ,
+        rst                                         ,
+        wready: memq_wready                         ,
+        wvalid: memq_wvalid & !reset_before_memstage,
+        wdata : memq_wdata                          ,
+        rready: memq_rready                         ,
+        rvalid: memq_rvalid                         ,
+        rdata : memq_rdata                          ,
     );
 
     inst fifo_mem_wb: fifo #(
-        Width   : 0           ,
-        DataType: mem_wbq_type,
+        Width   : 0       ,
+        DataType: wbq_type,
     ) (
-        clk                    ,
-        rst                    ,
-        rst_pos: 0             ,
-        wready : mem_wbq_wready,
-        wvalid : mem_wbq_wvalid,
-        wdata  : mem_wbq_wdata ,
-        rready : mem_wbq_rready,
-        rvalid : mem_wbq_rvalid,
-        rdata  : mem_wbq_rdata ,
+        clk               ,
+        rst               ,
+        wready: wbq_wready,
+        wvalid: wbq_wvalid,
+        wdata : wbq_wdata ,
+        rready: wbq_rready,
+        rvalid: wbq_rvalid,
+        rdata : wbq_rdata ,
     );
 }

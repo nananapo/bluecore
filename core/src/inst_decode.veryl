@@ -2,8 +2,8 @@ import corectrl::*;
 import eei::*;
 
 module inst_decode (
-    instbit: input  Inst    ,
-    ctrl   : output InstCtrl,
+    instbits: input  Inst    ,
+    ctrl    : output InstCtrl,
 ) {
 
     type Alu = AluCmd;
@@ -14,207 +14,167 @@ module inst_decode (
     type Csr = CsrCmd;
     type Wb  = WbSel ;
 
-    local Z_13: logic<13> = 0;
+    // ドントケアを定数で用意
+    local X_3 : logic<3>  = 3'bz;
+    local X_5 : logic<5>  = 5'bz;
+    local X_7 : logic<7>  = 7'bz;
+    local X_X : logic<10> = 10'bz;
+    local X_13: logic<13> = 0;
 
-    local X_2: logic<2>  = 2'bz;
-    local X_3: logic<3>  = 3'bz;
-    local X_5: logic<5>  = 5'bz;
-    local X_7: logic<7>  = 7'bz;
-    local X_X: logic<10> = 10'bz;
+    // opcode
+    local OP_OP_IMM  : logic<7> = 7'b0010011;
+    local OP_LUI     : logic<7> = 7'b0110111;
+    local OP_AUIPC   : logic<7> = 7'b0010111;
+    local OP_OP      : logic<7> = 7'b0110011;
+    local OP_JAL     : logic<7> = 7'b1101111;
+    local OP_JALR    : logic<7> = 7'b1100111;
+    local OP_BRANCH  : logic<7> = 7'b1100011;
+    local OP_LOAD    : logic<7> = 7'b0000011;
+    local OP_STORE   : logic<7> = 7'b0100011;
+    local OP_MISC_MEM: logic<7> = 7'b0001111;
+    local OP_SYSTEM  : logic<7> = 7'b1110011;
 
-    local T: logic = 1;
-    local F: logic = 0;
+    // 命令フォーマット
+    local LUI   : eei::Inst = {X_7, X_X, X_3, X_5, OP_LUI};
+    local AUIPC : eei::Inst = {X_7, X_X, X_3, X_5, OP_AUIPC};
+    local JAL   : eei::Inst = {X_7, X_X, X_3, X_5, OP_JAL};
+    local JALR  : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_JALR};
+    local BEQ   : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_BRANCH};
+    local BNE   : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_BRANCH};
+    local BLT   : eei::Inst = {X_7, X_X, 3'b100, X_5, OP_BRANCH};
+    local BGE   : eei::Inst = {X_7, X_X, 3'b101, X_5, OP_BRANCH};
+    local BLTU  : eei::Inst = {X_7, X_X, 3'b110, X_5, OP_BRANCH};
+    local BGEU  : eei::Inst = {X_7, X_X, 3'b111, X_5, OP_BRANCH};
+    local LB    : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_LOAD};
+    local LH    : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_LOAD};
+    local LW    : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_LOAD};
+    local LBU   : eei::Inst = {X_7, X_X, 3'b100, X_5, OP_LOAD};
+    local LHU   : eei::Inst = {X_7, X_X, 3'b101, X_5, OP_LOAD};
+    local SB    : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_STORE};
+    local SH    : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_STORE};
+    local SW    : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_STORE};
+    local ADDI  : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_OP_IMM};
+    local SLTI  : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_OP_IMM};
+    local SLTIU : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_OP_IMM};
+    local XORI  : eei::Inst = {X_7, X_X, 3'b100, X_5, OP_OP_IMM};
+    local ORI   : eei::Inst = {X_7, X_X, 3'b110, X_5, OP_OP_IMM};
+    local ANDI  : eei::Inst = {X_7, X_X, 3'b111, X_5, OP_OP_IMM};
+    local SLLI  : eei::Inst = {7'b0000000, X_X, 3'b001, X_5, OP_OP_IMM};
+    local SRLI  : eei::Inst = {7'b0000000, X_X, 3'b101, X_5, OP_OP_IMM};
+    local SRAI  : eei::Inst = {7'b0100000, X_X, 3'b101, X_5, OP_OP_IMM};
+    local ADD   : eei::Inst = {7'b0000000, X_X, 3'b000, X_5, OP_OP};
+    local SUB   : eei::Inst = {7'b0100000, X_X, 3'b000, X_5, OP_OP};
+    local SLL   : eei::Inst = {7'b0000000, X_X, 3'b001, X_5, OP_OP};
+    local SLT   : eei::Inst = {7'b0000000, X_X, 3'b010, X_5, OP_OP};
+    local SLTU  : eei::Inst = {7'b0000000, X_X, 3'b011, X_5, OP_OP};
+    local XOR   : eei::Inst = {7'b0000000, X_X, 3'b100, X_5, OP_OP};
+    local SRL   : eei::Inst = {7'b0000000, X_X, 3'b101, X_5, OP_OP};
+    local SRA   : eei::Inst = {7'b0100000, X_X, 3'b101, X_5, OP_OP};
+    local OR    : eei::Inst = {7'b0000000, X_X, 3'b110, X_5, OP_OP};
+    local AND   : eei::Inst = {7'b0000000, X_X, 3'b111, X_5, OP_OP};
+    local FENCE : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_MISC_MEM};
+    local ECALL : eei::Inst = {7'b0, 5'b0, X_13, OP_SYSTEM};
+    local EBREAK: eei::Inst = {7'b0, 5'b1, X_13, OP_SYSTEM};
+    // RV64I Base Instruction Set (in addition to RV32I)
+    local LWU: eei::Inst = {X_7, X_X, 3'b110, X_5, OP_LOAD};
+    local LD : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_LOAD};
+    local SD : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_STORE};
+    // RV32/RV64 Zifencei Standard Extension
+    local FENCE_I: eei::Inst = {X_7, X_X, 3'b001, X_5, OP_MISC_MEM};
+    // RV32/RV64 Zicsr Standard Extension
+    local CSRRW : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_SYSTEM};
+    local CSRRS : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_SYSTEM};
+    local CSRRC : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_SYSTEM};
+    local CSRRWI: eei::Inst = {X_7, X_X, 3'b101, X_5, OP_SYSTEM};
+    local CSRRSI: eei::Inst = {X_7, X_X, 3'b110, X_5, OP_SYSTEM};
+    local CSRRCI: eei::Inst = {X_7, X_X, 3'b111, X_5, OP_SYSTEM};
+    // Trap-Return Instructions
+    local SRET : eei::Inst = {25'b0001000_00010_00000_000_00000, OP_SYSTEM};
+    local MRET : eei::Inst = {25'b0011000_00010_00000_000_00000, OP_SYSTEM};
+    local MNRET: eei::Inst = {25'b0111000_00010_00000_000_00000, OP_SYSTEM};
 
-    local LOAD_OP      : logic<7> = 7'b0000011;
-    local STORE_OP     : logic<7> = 7'b0100011;
-    local SIGNED_F3_3  : logic    = 1'b0;
-    local UNSIGNED_F3_3: logic    = 1'b1;
-    local SIZE_B_F3_2  : logic<2> = 2'b00;
-    local SIZE_H_F3_2  : logic<2> = 2'b01;
-    local SIZE_W_F3_2  : logic<2> = 2'b10;
-    local SIZE_D_F3_2  : logic<2> = 2'b11;
-    local MISC_MEM_OP  : logic<7> = 7'b0001111;
-    local FENCE_F3     : logic<3> = 3'b000;
-    local FENCEI_F3    : logic<3> = 3'b001; // Zifencei
+    // 制御信号で使う値
+    local T     : logic = 1;
+    local F     : logic = 0;
+    local Size_X: Size  = Size::B;
+    local Wb_X  : Wb    = Wb::ALU;
 
-    local ALUR_OP: logic<7> = 7'b0110011;
-    local ADD_F7 : logic<7> = 7'b0000000;
-    local SUB_F7 : logic<7> = 7'b0100000;
-    local AND_F7 : logic<7> = 7'b0000000;
-    local OR_F7  : logic<7> = 7'b0000000;
-    local XOR_F7 : logic<7> = 7'b0000000;
-    local SLL_F7 : logic<7> = 7'b0000000;
-    local SRL_F7 : logic<7> = 7'b0000000;
-    local SRA_F7 : logic<7> = 7'b0100000;
-    local SLT_F7 : logic<7> = 7'b0000000;
-    local SLTU_F7: logic<7> = 7'b0000000;
-    local AND_F3 : logic<3> = 3'b111;
-    local ADD_F3 : logic<3> = 3'b000;
-    local SUB_F3 : logic<3> = 3'b000;
-    local OR_F3  : logic<3> = 3'b110;
-    local XOR_F3 : logic<3> = 3'b100;
-    local SLL_F3 : logic<3> = 3'b001;
-    local SRL_F3 : logic<3> = 3'b101;
-    local SRA_F3 : logic<3> = 3'b101;
-    local SLT_F3 : logic<3> = 3'b010;
-    local SLTU_F3: logic<3> = 3'b011;
-
-    local ALUI_OP : logic<7> = 7'b0010011;
-    local SLLI_F7 : logic<7> = 7'b0000000;
-    local SRLI_F7 : logic<7> = 7'b0000000;
-    local SRAI_F7 : logic<7> = 7'b0100000;
-    local ADDI_F3 : logic<3> = 3'b000;
-    local ANDI_F3 : logic<3> = 3'b111;
-    local ORI_F3  : logic<3> = 3'b110;
-    local XORI_F3 : logic<3> = 3'b100;
-    local SLLI_F3 : logic<3> = 3'b001;
-    local SRLI_F3 : logic<3> = 3'b101;
-    local SRAI_F3 : logic<3> = 3'b101;
-    local SLTI_F3 : logic<3> = 3'b010;
-    local SLTIU_F3: logic<3> = 3'b011;
-
-    local BR_OP  : logic<7> = 7'b1100011;
-    local BEQ_F3 : logic<3> = 3'b000;
-    local BNE_F3 : logic<3> = 3'b001;
-    local BLT_F3 : logic<3> = 3'b100;
-    local BGE_F3 : logic<3> = 3'b101;
-    local BLTU_F3: logic<3> = 3'b110;
-    local BGEU_F3: logic<3> = 3'b111;
-
-    local SYSTEM_OP: logic<7> = 7'b1110011;
-
-    local CSRRW_F3 : logic<3> = 3'b001;
-    local CSRRWI_F3: logic<3> = 3'b101;
-    local CSRRS_F3 : logic<3> = 3'b010;
-    local CSRRSI_F3: logic<3> = 3'b110;
-    local CSRRC_F3 : logic<3> = 3'b011;
-    local CSRRCI_F3: logic<3> = 3'b111;
-
-    local JAL_OP  : logic<7> = 7'b1101111;
-    local JALR_F3 : logic<3> = 3'b000;
-    local JALR_OP : logic<7> = 7'b1100111;
-    local LUI_OP  : logic<7> = 7'b0110111;
-    local AUIPC_OP: logic<7> = 7'b0010111;
-
-    local ECALL : eei::Inst = {7'b0, 5'b0, Z_13, SYSTEM_OP};
-    local EBREAK: eei::Inst = {7'b0, 5'b1, Z_13, SYSTEM_OP};
-
-    local SRET: eei::Inst = {25'b0001000_00010_00000_000_00000, SYSTEM_OP};
-    local MRET: eei::Inst = {25'b0011000_00010_00000_000_00000, SYSTEM_OP};
-
-    local NOP_Y: corectrl::InstCtrl = {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::W, Csr::X, F, Wb::ALU};
-    local NOP_N: corectrl::InstCtrl = {F, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::W, Csr::X, F, Wb::ALU};
+    // nop用のcontrol
+    local NOP_LEGAL  : corectrl::InstCtrl = {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::X, F, Wb_X};
+    local NOP_ILLEGAL: corectrl::InstCtrl = {F, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::X, F, Wb_X};
 
     function decode (
         bits: input eei::Inst         ,
     ) -> corectrl::InstCtrl {
+        // RV32I Base Instruction Set
         case bits {
-            {X_7, X_X, X_3, X_5, LUI_OP}: //LUI
-             return {T, Alu::ADD, Br::X, T, Op1::X, Op2::IMU, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, X_3, X_5, AUIPC_OP}: // AUIPC
-             return {T, Alu::ADD, Br::X, T, Op1::PC, Op2::IMU, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, X_3, X_5, JAL_OP}: // JAL
-             return {T, Alu::ADD, Br::JLI, T, Op1::PC, Op2::IMJ, F, Mem::X, Size::D, Csr::X, T, Wb::PC};
-            {X_7, X_X, JALR_F3, X_5, JALR_OP}: // JALR
-             return {T, Alu::JALR, Br::JLR, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::PC};
-            {X_7, X_X, BEQ_F3, X_5, BR_OP}: // BEQ
-             return {T, Alu::X, Br::BEQ, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU};
-            {X_7, X_X, BNE_F3, X_5, BR_OP}: // BNE
-             return {T, Alu::X, Br::BNE, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU};
-            {X_7, X_X, BLT_F3, X_5, BR_OP}: // BLT
-             return {T, Alu::X, Br::BLT, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU};
-            {X_7, X_X, BGE_F3, X_5, BR_OP}: // BGE
-             return {T, Alu::X, Br::BGE, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU};
-            {X_7, X_X, BLTU_F3, X_5, BR_OP}: // BLTU
-             return {T, Alu::X, Br::BLT, F, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU};
-            {X_7, X_X, BGEU_F3, X_5, BR_OP}: // BGEU
-             return {T, Alu::X, Br::BGE, F, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, F, Wb::ALU};
-            {X_7, X_X, SIGNED_F3_3, SIZE_B_F3_2, X_5, LOAD_OP}: // LB
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::B, Csr::X, T, Wb::MEM};
-            {X_7, X_X, SIGNED_F3_3, SIZE_H_F3_2, X_5, LOAD_OP}: // LH
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::H, Csr::X, T, Wb::MEM};
-            {X_7, X_X, SIGNED_F3_3, SIZE_W_F3_2, X_5, LOAD_OP}: // LW
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::W, Csr::X, T, Wb::MEM};
-            {X_7, X_X, UNSIGNED_F3_3, SIZE_B_F3_2, X_5, LOAD_OP}: // LBU
-             return {T, Alu::ADD, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::L, Size::B, Csr::X, T, Wb::MEM};
-            {X_7, X_X, UNSIGNED_F3_3, SIZE_H_F3_2, X_5, LOAD_OP}: // LHU
-             return {T, Alu::ADD, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::L, Size::H, Csr::X, T, Wb::MEM};
-            {X_7, X_X, SIGNED_F3_3, SIZE_B_F3_2, X_5, STORE_OP}: // SB
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::B, Csr::X, F, Wb::ALU};
-            {X_7, X_X, SIGNED_F3_3, SIZE_H_F3_2, X_5, STORE_OP}: // SH
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::H, Csr::X, F, Wb::ALU};
-            {X_7, X_X, SIGNED_F3_3, SIZE_W_F3_2, X_5, STORE_OP}: // SW
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::W, Csr::X, F, Wb::ALU};
-            {X_7, X_X, ADDI_F3, X_5, ALUI_OP}: // ADDI
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, SLTI_F3, X_5, ALUI_OP}: // SLTI
-             return {T, Alu::SLT, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, SLTIU_F3, X_5, ALUI_OP}: // SLTIU
-             return {T, Alu::SLT, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, XORI_F3, X_5, ALUI_OP}: // XORI
-             return {T, Alu::XOR, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, ORI_F3, X_5, ALUI_OP}: // ORI
-             return {T, Alu::OR, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, ANDI_F3, X_5, ALUI_OP}: // ANDI
-             return {T, Alu::AND, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SLLI_F7, X_X, SLLI_F3, X_5, ALUI_OP}: // SLLI
-             return {T, Alu::SLL, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SRLI_F7, X_X, SRLI_F3, X_5, ALUI_OP}: // SRLI
-             return {T, Alu::SRL, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SRAI_F7, X_X, SRAI_F3, X_5, ALUI_OP}: // SRAI
-             return {T, Alu::SRA, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {ADD_F7, X_X, ADD_F3, X_5, ALUR_OP}: // ADD
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SUB_F7, X_X, SUB_F3, X_5, ALUR_OP}: // SUB
-             return {T, Alu::SUB, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SLL_F7, X_X, SLL_F3, X_5, ALUR_OP}: // SLL
-             return {T, Alu::SLL, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SLT_F7, X_X, SLT_F3, X_5, ALUR_OP}: // SLT
-             return {T, Alu::SLT, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SLTU_F7, X_X, SLTU_F3, X_5, ALUR_OP}: // SLTU
-             return {T, Alu::SLT, Br::X, F, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {XOR_F7, X_X, XOR_F3, X_5, ALUR_OP}: // XOR
-             return {T, Alu::XOR, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SRL_F7, X_X, SRL_F3, X_5, ALUR_OP}: // SRL
-             return {T, Alu::SRL, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {SRA_F7, X_X, SRA_F3, X_5, ALUR_OP}: // SRA
-             return {T, Alu::SRA, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {OR_F7, X_X, OR_F3, X_5, ALUR_OP}: // OR
-             return {T, Alu::OR, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {AND_F7, X_X, AND_F3, X_5, ALUR_OP}: // AND
-             return {T, Alu::AND, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size::D, Csr::X, T, Wb::ALU};
-            {X_7, X_X, FENCE_F3, X_5, MISC_MEM_OP}: // fence
-             return NOP_Y;
-             // TODO fence.tso
-             // TODO PAUSE
-             ECALL: // ECALL
-             return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::D, Csr::ECALL, F, Wb::ALU};
-            EBREAK: // EBREAK
-             return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size::D, Csr::EBREAK, F, Wb::ALU};
-             // RV64I Base Instruction Set (in addition to RV32I)
-             {X_7, X_X, UNSIGNED_F3_3, SIZE_W_F3_2, X_5, LOAD_OP}: // LWU
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::W, Csr::X, T, Wb::MEM};
-            {X_7, X_X, SIGNED_F3_3, SIZE_D_F3_2, X_5, LOAD_OP}: // LD
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::W, Csr::X, T, Wb::MEM};
-            {X_7, X_X, SIGNED_F3_3, SIZE_D_F3_2, X_5, STORE_OP}: // SD
-             return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::W, Csr::X, F, Wb::ALU};
-             // RV32/RV64 Zifencei Standard Extension
-             {X_7, X_X, FENCEI_F3, X_5, MISC_MEM_OP}: // fence.i
-             return NOP_Y;
-            // RV32/RV64 Zicsr Standard Extension
-            {X_7, X_X, CSRRW_F3, X_5, SYSTEM_OP}: // CSRRW
-             return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size::D, Csr::W, T, Wb::CSR};
-            {X_7, X_X, CSRRS_F3, X_5, SYSTEM_OP}: // CSRRS
-             return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size::D, Csr::S, T, Wb::CSR};
-            {X_7, X_X, CSRRC_F3, X_5, SYSTEM_OP}: // CSRRC
-             return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size::D, Csr::C, T, Wb::CSR};
-            {X_7, X_X, CSRRWI_F3, X_5, SYSTEM_OP}: // CSRRWI
-             return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size::D, Csr::W, T, Wb::CSR};
-            {X_7, X_X, CSRRSI_F3, X_5, SYSTEM_OP}: // CSRRSI
-             return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size::D, Csr::S, T, Wb::CSR};
-            {X_7, X_X, CSRRCI_F3, X_5, SYSTEM_OP}: // CSRRCI
-             return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size::D, Csr::C, T, Wb::CSR};
+            LUI   : return {T, Alu::ADD, Br::X, T, Op1::X, Op2::IMU, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            AUIPC : return {T, Alu::ADD, Br::X, T, Op1::PC, Op2::IMU, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            JAL   : return {T, Alu::ADD, Br::JLI, T, Op1::PC, Op2::IMJ, F, Mem::X, Size_X, Csr::X, T, Wb::PC};
+            JALR  : return {T, Alu::ADD, Br::JLR, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::PC};
+            BEQ   : return {T, Alu::X, Br::BEQ, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
+            BNE   : return {T, Alu::X, Br::BNE, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
+            BLT   : return {T, Alu::X, Br::BLT, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
+            BGE   : return {T, Alu::X, Br::BGE, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
+            BLTU  : return {T, Alu::X, Br::BLT, F, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
+            BGEU  : return {T, Alu::X, Br::BGE, F, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
+            LB    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::B, Csr::X, T, Wb::MEM};
+            LH    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::H, Csr::X, T, Wb::MEM};
+            LW    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::W, Csr::X, T, Wb::MEM};
+            LBU   : return {T, Alu::ADD, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::L, Size::B, Csr::X, T, Wb::MEM};
+            LHU   : return {T, Alu::ADD, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::L, Size::H, Csr::X, T, Wb::MEM};
+            SB    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::B, Csr::X, F, Wb_X};
+            SH    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::H, Csr::X, F, Wb_X};
+            SW    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::W, Csr::X, F, Wb_X};
+            ADDI  : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SLTI  : return {T, Alu::SLT, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SLTIU : return {T, Alu::SLT, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            XORI  : return {T, Alu::XOR, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            ORI   : return {T, Alu::OR, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            ANDI  : return {T, Alu::AND, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SLLI  : return {T, Alu::SLL, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SRLI  : return {T, Alu::SRL, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SRAI  : return {T, Alu::SRA, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            ADD   : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SUB   : return {T, Alu::SUB, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SLL   : return {T, Alu::SLL, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SLT   : return {T, Alu::SLT, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SLTU  : return {T, Alu::SLT, Br::X, F, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            XOR   : return {T, Alu::XOR, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SRL   : return {T, Alu::SRL, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            SRA   : return {T, Alu::SRA, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            OR    : return {T, Alu::OR, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            AND   : return {T, Alu::AND, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
+            FENCE : return NOP_LEGAL;
+            ECALL : return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::ECALL, F, Wb_X};
+            EBREAK: return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::EBREAK, F, Wb_X};
         }
+        // RV32/RV64 Zifencei Standard Extension
+        case bits {
+            FENCE_I: return NOP_LEGAL;
+        }
+        // RV64I Base Instruction Set
+        case bits {
+            LWU: return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::W, Csr::X, T, Wb::MEM};
+            LD : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::D, Csr::X, T, Wb::MEM};
+            SD : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::D, Csr::X, F, Wb_X};
+        }
+        // RV32/RV64 Zicsr Standard Extension
+        case bits {
+            CSRRW : return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size_X, Csr::W, T, Wb::CSR};
+            CSRRS : return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size_X, Csr::S, T, Wb::CSR};
+            CSRRC : return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size_X, Csr::C, T, Wb::CSR};
+            CSRRWI: return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size_X, Csr::W, T, Wb::CSR};
+            CSRRSI: return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size_X, Csr::S, T, Wb::CSR};
+            CSRRCI: return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size_X, Csr::C, T, Wb::CSR};
+        }
+        // Trap-Return Instructions
+        case bits {
+            SRET : return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::SRET, F, Wb_X};
+            MRET : return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::MRET, F, Wb_X};
+            MNRET: return NOP_LEGAL;
+        }
+        return NOP_ILLEGAL;
     }
-    assign ctrl = decode(instbit);
+    assign ctrl = decode(instbits);
 }

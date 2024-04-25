@@ -30,7 +30,7 @@ RV32I is selected as default. You can change ISA by change config.
 https://github.com/nananapo/bluecore/blob/353b16a1e0ecae902610ceb883ae1298682f97ca/core/src/PackageConf.veryl#L1-L2
 
 ### synthesize
-```gowin/``` directory is GOWIN FPGA Designer project.  
+```synth/gowin/``` directory is GOWIN FPGA Designer project.  
 You can synthesize bluecore on TangMega 138K Pro Dock (GW5AST).
 
 Change ```SYNTHESIS_GOWIN=0``` to ```1``` in ```core/src/PackageConf.veryl``` and run ```make build``` before open projects.

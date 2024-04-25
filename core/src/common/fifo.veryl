@@ -1,0 +1,78 @@
+module fifo #(
+    param DataType: type = logic,
+    param Width   : u32  = 0    ,
+) (
+    clk   : input  logic   ,
+    rst   : input  logic   ,
+    wready: output logic   ,
+    wvalid: input  logic   ,
+    wdata : input  DataType,
+    rready: input  logic   ,
+    rvalid: output logic   ,
+    rdata : output DataType,
+) {
+    var wready_next: logic;
+
+    if Width == 0 :widthIfBlock {
+        var dvalid: logic   ;
+        var data  : DataType;
+
+        assign rvalid      = dvalid;
+        assign rdata       = data;
+        assign wready      = !dvalid | rready;
+        assign wready_next = 0;
+
+        always_ff (clk) {
+            if !rst {
+                dvalid = 0;
+                data   = 0;
+            } else {
+                if dvalid {
+                    if rready & wvalid {
+                        data = wdata;
+                    } else if rready {
+                        dvalid = 0;
+                    }
+                } else {
+                    if wvalid {
+                        dvalid = 1;
+                        data   = wdata;
+                    }
+                }
+            }
+        }
+    } else {
+        type Addr = logic<Width>;
+
+        var head: Addr;
+        var tail: Addr;
+
+        local DataLen: u32 = 2 ** Width;
+
+        var dataList: DataType<DataLen>;
+
+        assign rvalid = head != tail;
+        assign rdata  = dataList[head];
+
+        let head_1     : Addr = head - 1;
+        let head_2     : Addr = head - 2;
+        assign wready      = head_1 != tail;
+        assign wready_next = head_1 != tail & head_2 != tail;
+
+        always_ff (clk) {
+            if !rst {
+                head     = 0;
+                tail     = 0;
+                dataList = 'x;
+            } else {
+                if rready & rvalid {
+                    head = head + 1;
+                }
+                if wready & wvalid {
+                    dataList[tail] = wdata;
+                    tail           = tail + 1;
+                }
+            }
+        }
+    }
+}

@@ -1,3 +1,5 @@
+import eei::*;
+
 package corectrl {
     enum AluCmd: logic<4> {
         X,
@@ -10,7 +12,6 @@ package corectrl {
         SRL,
         SRA,
         SLT,
-        JALR,
         COPY1,
     }
 
@@ -38,7 +39,6 @@ package corectrl {
         IMS,
         IMJ,
         IMU,
-        IMZ,
     }
 
     enum MemCmd: logic<2> {
