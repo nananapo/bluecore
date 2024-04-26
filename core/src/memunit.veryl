@@ -20,6 +20,9 @@ module memunit (
         WaitValid,
     }
 
+    let is_memcmd: logic = inst_is_memory_op(ctrl);
+    let is_store : logic = !ctrl.is_load;
+
     var state: State;
 
     var req_mem_wen  : logic    ;
@@ -28,19 +31,19 @@ module memunit (
     var req_mem_wmask: logic <8>;
 
     always_ff (clk) {
-        req_mem_wen   = ctrl.mem_cmd == MemCmd::S;
+        req_mem_wen   = is_store;
         req_mem_addr  = addr;
         req_mem_wdata = {1'b0 repeat $bits(dbus_if.wdata) - XLEN, rs2} << {addr[2:0], 3'b000};
-        case ctrl.mem_size {
-            Size::B: req_mem_wmask = 8'b1 << addr[2:0];
-            Size::H: case addr[2:0] {
+        case ctrl.funct3[1:0] {
+            2'b00  : req_mem_wmask = 8'b1 << addr[2:0];
+            2'b01  : case addr[2:0] {
                          6      : req_mem_wmask = 8'b11000000;
                 4      : req_mem_wmask = 8'b00110000;
                 2      : req_mem_wmask = 8'b00001100;
                 0      : req_mem_wmask = 8'b00000011;
                 default: req_mem_wmask = 8'b0;
             }
-            Size::W: case addr[2:0] {
+            2'b10  : case addr[2:0] {
                          4      : req_mem_wmask = 8'b11110000;
                 0      : req_mem_wmask = 8'b00001111;
                 default: req_mem_wmask = 8'b0;
@@ -61,67 +64,58 @@ module memunit (
     local MEM_WIDTH   : u32    = 64;
 
     always_comb {
-        is_stall = valid & ctrl.mem_cmd != MemCmd::X & case state {
+        is_stall = valid & is_memcmd & case state {
             State::Init     : is_new,
             State::WaitReady: 1,
             State::WaitValid: !dbus_if.resp_valid,
             default         : 0,
         };
-        case ctrl.mem_size {
-            Size::B: if ctrl.is_signed {
-                         case addr[2:0] {
-                             0      : mem_rdata_64 = {dbus_if.resp_rdata[7] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[7:0]};
-                    1      : mem_rdata_64 = {dbus_if.resp_rdata[15] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[15:8]};
-                    2      : mem_rdata_64 = {dbus_if.resp_rdata[23] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[23:16]};
-                    3      : mem_rdata_64 = {dbus_if.resp_rdata[31] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[31:24]};
-                    4      : mem_rdata_64 = {dbus_if.resp_rdata[39] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[39:32]};
-                    5      : mem_rdata_64 = {dbus_if.resp_rdata[47] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[47:40]};
-                    6      : mem_rdata_64 = {dbus_if.resp_rdata[55] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[55:48]};
-                    7      : mem_rdata_64 = {dbus_if.resp_rdata[63] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[63:56]};
-                    default: mem_rdata_64 = 0;
-                }
-            } else {
-                case addr[2:0] {
-                    0      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[7:0]};
-                    1      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[15:8]};
-                    2      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[23:16]};
-                    3      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[31:24]};
-                    4      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[39:32]};
-                    5      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[47:40]};
-                    6      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[55:48]};
-                    7      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[63:56]};
-                    default: mem_rdata_64 = 0;
-                }
+        case ctrl.funct3 {
+            3'b000 : case addr[2:0] {
+                         0      : mem_rdata_64 = {dbus_if.resp_rdata[7] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[7:0]};
+                1      : mem_rdata_64 = {dbus_if.resp_rdata[15] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[15:8]};
+                2      : mem_rdata_64 = {dbus_if.resp_rdata[23] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[23:16]};
+                3      : mem_rdata_64 = {dbus_if.resp_rdata[31] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[31:24]};
+                4      : mem_rdata_64 = {dbus_if.resp_rdata[39] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[39:32]};
+                5      : mem_rdata_64 = {dbus_if.resp_rdata[47] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[47:40]};
+                6      : mem_rdata_64 = {dbus_if.resp_rdata[55] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[55:48]};
+                7      : mem_rdata_64 = {dbus_if.resp_rdata[63] repeat MEM_WIDTH - 8, dbus_if.resp_rdata[63:56]};
+                default: mem_rdata_64 = 0;
             }
-            Size::H: if ctrl.is_signed {
-                         case addr[2:0] {
-                             0      : mem_rdata_64 = {dbus_if.resp_rdata[15] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[15:0]};
-                    2      : mem_rdata_64 = {dbus_if.resp_rdata[31] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[31:16]};
-                    4      : mem_rdata_64 = {dbus_if.resp_rdata[47] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[47:32]};
-                    6      : mem_rdata_64 = {dbus_if.resp_rdata[63] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[63:48]};
-                    default: mem_rdata_64 = 0;
-                }
-            } else {
-                case addr[2:0] {
-                    0      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[15:0]};
-                    2      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[31:16]};
-                    4      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[47:32]};
-                    6      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[63:48]};
-                    default: mem_rdata_64 = 0;
-                }
+            3'b100 : case addr[2:0] {
+                         0      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[7:0]};
+                1      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[15:8]};
+                2      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[23:16]};
+                3      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[31:24]};
+                4      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[39:32]};
+                5      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[47:40]};
+                6      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[55:48]};
+                7      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 8, dbus_if.resp_rdata[63:56]};
+                default: mem_rdata_64 = 0;
             }
-            Size::W: if ctrl.is_signed {
-                         case addr[2:0] {
-                             0      : mem_rdata_64 = {dbus_if.resp_rdata[31] repeat MEM_WIDTH - 32, dbus_if.resp_rdata[31:0]};
-                    4      : mem_rdata_64 = {dbus_if.resp_rdata[63] repeat MEM_WIDTH - 32, dbus_if.resp_rdata[63:32]};
-                    default: mem_rdata_64 = 0;
-                }
-            } else {
-                case addr[2:0] {
-                    0      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 32, dbus_if.resp_rdata[31:0]};
-                    4      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 32, dbus_if.resp_rdata[63:32]};
-                    default: mem_rdata_64 = 0;
-                }
+            3'b001 : case addr[2:0] {
+                         0      : mem_rdata_64 = {dbus_if.resp_rdata[15] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[15:0]};
+                2      : mem_rdata_64 = {dbus_if.resp_rdata[31] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[31:16]};
+                4      : mem_rdata_64 = {dbus_if.resp_rdata[47] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[47:32]};
+                6      : mem_rdata_64 = {dbus_if.resp_rdata[63] repeat MEM_WIDTH - 16, dbus_if.resp_rdata[63:48]};
+                default: mem_rdata_64 = 0;
+            }
+            3'b101 : case addr[2:0] {
+                         0      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[15:0]};
+                2      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[31:16]};
+                4      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[47:32]};
+                6      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 16, dbus_if.resp_rdata[63:48]};
+                default: mem_rdata_64 = 0;
+            }
+            3'b010 : case addr[2:0] {
+                         0      : mem_rdata_64 = {dbus_if.resp_rdata[31] repeat MEM_WIDTH - 32, dbus_if.resp_rdata[31:0]};
+                4      : mem_rdata_64 = {dbus_if.resp_rdata[63] repeat MEM_WIDTH - 32, dbus_if.resp_rdata[63:32]};
+                default: mem_rdata_64 = 0;
+            }
+            3'b110 : case addr[2:0] {
+                         0      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 32, dbus_if.resp_rdata[31:0]};
+                4      : mem_rdata_64 = {1'b0 repeat MEM_WIDTH - 32, dbus_if.resp_rdata[63:32]};
+                default: mem_rdata_64 = 0;
             }
             default: mem_rdata_64 = dbus_if.resp_rdata;
         }
@@ -135,8 +129,9 @@ module memunit (
             if valid {
                 case state {
                     State::Init: {
-                                     if is_new & ctrl.mem_cmd != MemCmd::X {
-                                         state = State::WaitReady;
+                                     if is_new & is_memcmd {
+                                         state    = State::WaitReady;
+                                         $display("is_memcmd: %h:%d -> %h", addr, is_store, rs2);
                                      }
                                  }
                     State::WaitReady: {

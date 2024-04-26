@@ -2,30 +2,44 @@ import eei::*;
 import corectrl::*;
 
 module alu (
-    cmd      : input  AluCmd,
-    is_signed: input  logic ,
-    op1      : input  UIntX ,
-    op2      : input  UIntX ,
-    result   : output UIntX ,
+    ctrl  : input  InstCtrl,
+    op1   : input  UIntX   ,
+    op2   : input  UIntX   ,
+    result: output UIntX   ,
 ) {
 
+    let s_op1: SIntX = op1;
+    let s_op2: SIntX = op2;
+
+    let add: UIntX = op1 + op2;
+    let sub: UIntX = op1 - op2;
+
+    let srl: UIntX = op1 >> op2[4:0];
+    let sra: SIntX = s_op1 >>> s_op2[4:0];
+
     always_comb {
-        case cmd {
-            AluCmd::ADD: result = op1 + op2;
-            AluCmd::SUB: result = op1 - op2;
-            AluCmd::AND: result = op1 & op2;
-            AluCmd::OR : result = op1 | op2;
-            AluCmd::XOR: result = op1 ^ op2;
-            AluCmd::SLL: result = op1 << op2[4:0];
-            AluCmd::SRL: result = op1 >> op2[4:0];
-            AluCmd::SRA: result = $signed(op1) >>> $signed(op2[4:0]);
-            AluCmd::SLT: result = if is_signed {
-                             {1'b0 repeat XLEN - 1, $signed(op1) <: $signed(op2)}
-                         } else {
-                             {1'b0 repeat XLEN - 1, op1 <: op2}
-                         };
-            AluCmd::COPY1: result = op1;
-            default      : result = 'x;
+        if ctrl.is_aluop {
+            case ctrl.funct3 {
+                3'b000: result = if ctrl.insttype == InstType::I | ctrl.funct7 == 0 {
+                            add
+                        } else {
+                            sub
+                        };
+                3'b001: result = op1 << op2[4:0];
+                3'b010: result = {1'b0 repeat XLEN - 1, $signed(op1) <: $signed(op2)};
+                3'b011: result = {1'b0 repeat XLEN - 1, op1 <: op2};
+                3'b100: result = op1 ^ op2;
+                3'b101: result = if ctrl.funct7 == 0 {
+                            srl
+                        } else {
+                            sra
+                        };
+                3'b110 : result = op1 | op2;
+                3'b111 : result = op1 & op2;
+                default: result = 'x;
+            }
+        } else {
+            result = add;
         }
     }
 }

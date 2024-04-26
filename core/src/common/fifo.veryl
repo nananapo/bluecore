@@ -55,7 +55,7 @@ module fifo #(
         assign rdata  = dataList[head];
 
         let head_1     : Addr = head - 1;
-        let head_2     : Addr = head - 2;
+        let head_2     : Addr = head_1 - 1;
         assign wready      = head_1 != tail;
         assign wready_next = head_1 != tail & head_2 != tail;
 

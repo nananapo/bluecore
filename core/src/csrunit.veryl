@@ -3,18 +3,19 @@ import eei::*;
 import corectrl::*;
 
 module csrunit (
-    clk        : input  logic ,
-    rst        : input  logic ,
-    valid      : input  logic ,
-    is_new     : input  logic ,
-    pc         : input  Addr  ,
-    cmd        : input  CsrCmd,
-    csr_addr   : input  UInt12,
-    op1_data   : input  UIntX ,
-    csr_rdata  : output UIntX ,
-    is_stall   : output logic ,
-    is_trap    : output logic ,
-    trap_vector: output Addr  ,
+    clk        : input  logic      ,
+    rst        : input  logic      ,
+    valid      : input  logic      ,
+    is_new     : input  logic      ,
+    is_stall   : output logic      ,
+    is_trap    : output logic      ,
+    csr_rdata  : output UIntX      ,
+    trap_vector: output Addr       ,
+    pc         : input  Addr       ,
+    ctrl       : input  InstCtrl   ,
+    rd_addr    : input  logic   <5>,
+    csr_addr   : input  UInt12     ,
+    rs1        : input  UIntX      ,
 ) {
     var mode: CsrMode;
 
@@ -39,18 +40,20 @@ module csrunit (
             CsrAddr::SCAUSE: scause,
             default        : 0,
         };
-        wdata = case cmd {
-            CsrCmd::W: op1_data,
-            CsrCmd::S: rdata | op1_data,
-            CsrCmd::C: rdata & ~op1_data,
-            default  : 0,
+        wdata = case ctrl.funct3[1:0] {
+            2'b01  : rs1,
+            2'b10  : rdata | rs1,
+            2'b11  : rdata & ~rs1,
+            default: 0,
         };
     }
 
-    let cmd_is_write: logic = cmd == CsrCmd::W | cmd == CsrCmd::S | cmd == CsrCmd::C;
+    let cmd_is_write: logic = ctrl.is_system & ctrl.funct3[1:0] != 0; // W or S or C
+    let cmd_is_ecall: logic = ctrl.is_system & csr_addr == 0 & rs1[4:0] == 0 & ctrl.funct3 == 0 & rd_addr == 0;
+    let cmd_is_mret : logic = ctrl.is_system & csr_addr == 12'b0011000_00010 & rs1[4:0] == 0 & ctrl.funct3 == 0 & rd_addr == 0;
 
-    let raise_expt: logic = cmd == CsrCmd::ECALL;
-    let cause_expt: UIntX = if cmd == CsrCmd::ECALL {
+    let raise_expt: logic = cmd_is_ecall;
+    let cause_expt: UIntX = if cmd_is_ecall {
         CsrCause::ENVIRONMENT_CALL_FROM_U_MODE + {1'b0 repeat XLEN - $bits(mode), mode}
     } else {
         0
@@ -63,7 +66,7 @@ module csrunit (
     always_comb {
         csr_rdata = rdata;
         is_trap   = valid & !is_new & last_is_trap;
-        is_stall  = valid & is_new & (raise_expt | cmd == CsrCmd::MRET | cmd == CsrCmd::SRET);
+        is_stall  = valid & is_new & (raise_expt | cmd_is_mret);
     }
 
     always_ff (clk, rst) {
@@ -93,14 +96,10 @@ module csrunit (
                         trap_vector = stvec;
                     }
                 } else {
-                    if cmd == CsrCmd::MRET {
+                    if cmd_is_mret {
                         last_is_trap = 1;
                         mode         = CsrMode::S;
                         trap_vector  = mepc;
-                    } else if cmd == CsrCmd::SRET {
-                        last_is_trap = 1;
-                        mode         = CsrMode::U;
-                        trap_vector  = sepc;
                     } else if cmd_is_write {
                         last_is_trap = 0;
                         case csr_addr {

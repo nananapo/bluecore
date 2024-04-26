@@ -2,7 +2,6 @@ VERYL = veryl
 
 build:
 	$(VERYL) build
-	python3 replace.py
 fmt:
 	$(VERYL) fmt
 check:

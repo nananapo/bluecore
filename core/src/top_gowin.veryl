@@ -16,8 +16,8 @@ module top_gowin (
 
     // topモジュールをインスタンス化
     inst t: top (
-        clk: clk_in,
-        rst: rst_in,
-        led        ,
+        clk: clk,
+        rst: rst,
+        led     ,
     );
 }

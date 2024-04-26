@@ -1,89 +1,76 @@
 import eei::*;
 
 package corectrl {
-    enum AluCmd: logic<4> {
-        X,
-        ADD,
-        SUB,
-        AND,
-        OR,
-        XOR,
-        SLL,
-        SRL,
-        SRA,
-        SLT,
-        COPY1,
-    }
 
-    enum BrCmd: logic<3> {
-        X,
-        BEQ,
-        BNE,
-        BLT,
-        BGE,
-        JLI,
-        JLR,
-    }
-
-    enum Op1Sel: logic<2> {
-        X,
-        RS1,
-        PC,
-        IMZ,
-    }
-
-    enum Op2Sel: logic<3> {
-        X,
-        RS2,
-        IMI,
-        IMS,
-        IMJ,
-        IMU,
-    }
-
-    enum MemCmd: logic<2> {
-        X,
-        S,
-        L,
-    }
-
-    enum Size: logic<2> {
-        B = 0,
-        H = 1,
-        W = 2,
-        D = 3,
-    }
-
-    enum WbSel: logic<2> {
-        ALU,
-        MEM,
-        PC,
-        CSR,
-    }
-
-    enum CsrCmd: logic<3> {
-        X,
-        W,
-        S,
-        C,
-        ECALL,
-        EBREAK,
-        SRET,
-        MRET,
+    enum InstType: logic<6> {
+        X = 6'b000000,
+        R = 6'b000001,
+        I = 6'b000010,
+        S = 6'b000100,
+        B = 6'b001000,
+        U = 6'b010000,
+        J = 6'b100000,
     }
 
     struct InstCtrl {
-        is_legal : logic ,
-        alu_cmd  : AluCmd,
-        br_cmd   : BrCmd ,
-        is_signed: logic ,
-        op1_sel  : Op1Sel,
-        op2_sel  : Op2Sel,
-        use_rs2  : logic ,
-        mem_cmd  : MemCmd,
-        mem_size : Size  ,
-        csr_cmd  : CsrCmd,
-        rf_wen   : logic ,
-        wb_sel   : WbSel ,
+        is_legal : logic      ,
+        insttype : InstType   ,
+        rf_wen   : logic      ,
+        is_lui   : logic      ,
+        is_aluop : logic      ,
+        is_jump  : logic      ,
+        is_load  : logic      ,
+        is_system: logic      ,
+        is_fence : logic      ,
+        funct3   : logic   <3>,
+        funct7   : logic   <7>,
+    }
+
+    function inst_is_auipc (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.insttype == InstType::U & !ctrl.is_lui;
+    }
+
+    function inst_is_lui (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.insttype == InstType::U & ctrl.is_lui;
+    }
+
+    function inst_is_branch (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.insttype == InstType::B;
+    }
+
+    function inst_is_jump (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.is_jump;
+    }
+
+    function inst_is_memory_op (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.insttype == InstType::S | ctrl.is_load;
+    }
+
+    function inst_is_csr_op (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.is_system;
+    }
+
+    function inst_use_rs1 (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.insttype != InstType::U & ctrl.insttype != InstType::J;
+    }
+
+    function inst_use_rs2 (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.insttype != InstType::U & ctrl.insttype != InstType::J & ctrl.insttype != InstType::I;
     }
 }

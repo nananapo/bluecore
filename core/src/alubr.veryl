@@ -2,28 +2,26 @@ import eei::*;
 import corectrl::*;
 
 module alubr (
-    cmd      : input  BrCmd,
-    is_signed: input  logic,
-    op1      : input  UIntX,
-    op2      : input  UIntX,
-    take     : output logic,
+    funct3: input  logic<3>,
+    op1   : input  UIntX   ,
+    op2   : input  UIntX   ,
+    take  : output logic   ,
 ) {
 
     let beq: logic = op1 == op2;
 
-    let blt: logic = if is_signed {
-        $signed(op1) <: $signed(op2)
-    } else {
-        op1 <: op2
-    };
+    let blt : logic = $signed(op1) <: $signed(op2);
+    let bltu: logic = op1 <: op2;
 
     always_comb {
-        case cmd {
-            BrCmd::BEQ: take = beq;
-            BrCmd::BNE: take = !beq;
-            BrCmd::BLT: take = blt;
-            BrCmd::BGE: take = !blt;
-            default   : take = 0;
+        case funct3 {
+            3'b000 : take = beq;
+            3'b001 : take = !beq;
+            3'b100 : take = blt;
+            3'b101 : take = !blt;
+            3'b110 : take = bltu;
+            3'b111 : take = !bltu;
+            default: take = 0;
         }
     }
 }

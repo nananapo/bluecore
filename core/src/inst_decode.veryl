@@ -2,26 +2,11 @@ import corectrl::*;
 import eei::*;
 
 module inst_decode (
-    instbits: input  Inst    ,
-    ctrl    : output InstCtrl,
+    bits: input  Inst    ,
+    ctrl: output InstCtrl,
+    imm : output UIntX   ,
 ) {
-
-    type Alu = AluCmd;
-    type Br  = BrCmd ;
-    type Op1 = Op1Sel;
-    type Op2 = Op2Sel;
-    type Mem = MemCmd;
-    type Csr = CsrCmd;
-    type Wb  = WbSel ;
-
-    // ドントケアを定数で用意
-    local X_3 : logic<3>  = 3'bz;
-    local X_5 : logic<5>  = 5'bz;
-    local X_7 : logic<7>  = 7'bz;
-    local X_X : logic<10> = 10'bz;
-    local X_13: logic<13> = 0;
-
-    // opcode
+    // opcodes
     local OP_OP_IMM  : logic<7> = 7'b0010011;
     local OP_LUI     : logic<7> = 7'b0110111;
     local OP_AUIPC   : logic<7> = 7'b0010111;
@@ -34,147 +19,82 @@ module inst_decode (
     local OP_MISC_MEM: logic<7> = 7'b0001111;
     local OP_SYSTEM  : logic<7> = 7'b1110011;
 
-    // 命令フォーマット
-    local LUI   : eei::Inst = {X_7, X_X, X_3, X_5, OP_LUI};
-    local AUIPC : eei::Inst = {X_7, X_X, X_3, X_5, OP_AUIPC};
-    local JAL   : eei::Inst = {X_7, X_X, X_3, X_5, OP_JAL};
-    local JALR  : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_JALR};
-    local BEQ   : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_BRANCH};
-    local BNE   : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_BRANCH};
-    local BLT   : eei::Inst = {X_7, X_X, 3'b100, X_5, OP_BRANCH};
-    local BGE   : eei::Inst = {X_7, X_X, 3'b101, X_5, OP_BRANCH};
-    local BLTU  : eei::Inst = {X_7, X_X, 3'b110, X_5, OP_BRANCH};
-    local BGEU  : eei::Inst = {X_7, X_X, 3'b111, X_5, OP_BRANCH};
-    local LB    : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_LOAD};
-    local LH    : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_LOAD};
-    local LW    : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_LOAD};
-    local LBU   : eei::Inst = {X_7, X_X, 3'b100, X_5, OP_LOAD};
-    local LHU   : eei::Inst = {X_7, X_X, 3'b101, X_5, OP_LOAD};
-    local SB    : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_STORE};
-    local SH    : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_STORE};
-    local SW    : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_STORE};
-    local ADDI  : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_OP_IMM};
-    local SLTI  : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_OP_IMM};
-    local SLTIU : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_OP_IMM};
-    local XORI  : eei::Inst = {X_7, X_X, 3'b100, X_5, OP_OP_IMM};
-    local ORI   : eei::Inst = {X_7, X_X, 3'b110, X_5, OP_OP_IMM};
-    local ANDI  : eei::Inst = {X_7, X_X, 3'b111, X_5, OP_OP_IMM};
-    local SLLI  : eei::Inst = {7'b0000000, X_X, 3'b001, X_5, OP_OP_IMM};
-    local SRLI  : eei::Inst = {7'b0000000, X_X, 3'b101, X_5, OP_OP_IMM};
-    local SRAI  : eei::Inst = {7'b0100000, X_X, 3'b101, X_5, OP_OP_IMM};
-    local ADD   : eei::Inst = {7'b0000000, X_X, 3'b000, X_5, OP_OP};
-    local SUB   : eei::Inst = {7'b0100000, X_X, 3'b000, X_5, OP_OP};
-    local SLL   : eei::Inst = {7'b0000000, X_X, 3'b001, X_5, OP_OP};
-    local SLT   : eei::Inst = {7'b0000000, X_X, 3'b010, X_5, OP_OP};
-    local SLTU  : eei::Inst = {7'b0000000, X_X, 3'b011, X_5, OP_OP};
-    local XOR   : eei::Inst = {7'b0000000, X_X, 3'b100, X_5, OP_OP};
-    local SRL   : eei::Inst = {7'b0000000, X_X, 3'b101, X_5, OP_OP};
-    local SRA   : eei::Inst = {7'b0100000, X_X, 3'b101, X_5, OP_OP};
-    local OR    : eei::Inst = {7'b0000000, X_X, 3'b110, X_5, OP_OP};
-    local AND   : eei::Inst = {7'b0000000, X_X, 3'b111, X_5, OP_OP};
-    local FENCE : eei::Inst = {X_7, X_X, 3'b000, X_5, OP_MISC_MEM};
-    local ECALL : eei::Inst = {7'b0, 5'b0, X_13, OP_SYSTEM};
-    local EBREAK: eei::Inst = {7'b0, 5'b1, X_13, OP_SYSTEM};
-    // RV64I Base Instruction Set (in addition to RV32I)
-    local LWU: eei::Inst = {X_7, X_X, 3'b110, X_5, OP_LOAD};
-    local LD : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_LOAD};
-    local SD : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_STORE};
-    // RV32/RV64 Zifencei Standard Extension
-    local FENCE_I: eei::Inst = {X_7, X_X, 3'b001, X_5, OP_MISC_MEM};
-    // RV32/RV64 Zicsr Standard Extension
-    local CSRRW : eei::Inst = {X_7, X_X, 3'b001, X_5, OP_SYSTEM};
-    local CSRRS : eei::Inst = {X_7, X_X, 3'b010, X_5, OP_SYSTEM};
-    local CSRRC : eei::Inst = {X_7, X_X, 3'b011, X_5, OP_SYSTEM};
-    local CSRRWI: eei::Inst = {X_7, X_X, 3'b101, X_5, OP_SYSTEM};
-    local CSRRSI: eei::Inst = {X_7, X_X, 3'b110, X_5, OP_SYSTEM};
-    local CSRRCI: eei::Inst = {X_7, X_X, 3'b111, X_5, OP_SYSTEM};
-    // Trap-Return Instructions
-    local SRET : eei::Inst = {25'b0001000_00010_00000_000_00000, OP_SYSTEM};
-    local MRET : eei::Inst = {25'b0011000_00010_00000_000_00000, OP_SYSTEM};
-    local MNRET: eei::Inst = {25'b0111000_00010_00000_000_00000, OP_SYSTEM};
+    local T: logic = 1'b1;
+    local F: logic = 1'b0;
 
-    // 制御信号で使う値
-    local T     : logic = 1;
-    local F     : logic = 0;
-    local Size_X: Size  = Size::B;
-    local Wb_X  : Wb    = Wb::ALU;
+    let op: logic<7> = bits[6:0];
+    let f7: logic<7> = bits[31:25];
+    let f3: logic<3> = bits[14:12];
 
-    // nop用のcontrol
-    local NOP_LEGAL  : corectrl::InstCtrl = {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::X, F, Wb_X};
-    local NOP_ILLEGAL: corectrl::InstCtrl = {F, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::X, F, Wb_X};
+    // immediate values
+    let imm_i_g: logic<12> = bits[31:20];
+    let imm_s_g: logic<12> = {bits[31:25], bits[11:7]};
+    let imm_b_g: logic<12> = {bits[31], bits[7], bits[30:25], bits[11:8]};
+    let imm_j_g: logic<20> = {bits[31], bits[19:12], bits[20], bits[30:21]};
+    let imm_u_g: logic<20> = bits[31:12];
+    let imm_z_g: logic<17> = bits[31:15]; // {csr , uimm}
 
-    function decode (
-        bits: input eei::Inst         ,
-    ) -> corectrl::InstCtrl {
-        // RV32I Base Instruction Set
-        case bits {
-            LUI   : return {T, Alu::ADD, Br::X, T, Op1::X, Op2::IMU, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            AUIPC : return {T, Alu::ADD, Br::X, T, Op1::PC, Op2::IMU, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            JAL   : return {T, Alu::ADD, Br::JLI, T, Op1::PC, Op2::IMJ, F, Mem::X, Size_X, Csr::X, T, Wb::PC};
-            JALR  : return {T, Alu::ADD, Br::JLR, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::PC};
-            BEQ   : return {T, Alu::X, Br::BEQ, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
-            BNE   : return {T, Alu::X, Br::BNE, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
-            BLT   : return {T, Alu::X, Br::BLT, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
-            BGE   : return {T, Alu::X, Br::BGE, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
-            BLTU  : return {T, Alu::X, Br::BLT, F, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
-            BGEU  : return {T, Alu::X, Br::BGE, F, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, F, Wb_X};
-            LB    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::B, Csr::X, T, Wb::MEM};
-            LH    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::H, Csr::X, T, Wb::MEM};
-            LW    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::W, Csr::X, T, Wb::MEM};
-            LBU   : return {T, Alu::ADD, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::L, Size::B, Csr::X, T, Wb::MEM};
-            LHU   : return {T, Alu::ADD, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::L, Size::H, Csr::X, T, Wb::MEM};
-            SB    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::B, Csr::X, F, Wb_X};
-            SH    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::H, Csr::X, F, Wb_X};
-            SW    : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::W, Csr::X, F, Wb_X};
-            ADDI  : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SLTI  : return {T, Alu::SLT, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SLTIU : return {T, Alu::SLT, Br::X, F, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            XORI  : return {T, Alu::XOR, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            ORI   : return {T, Alu::OR, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            ANDI  : return {T, Alu::AND, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SLLI  : return {T, Alu::SLL, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SRLI  : return {T, Alu::SRL, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SRAI  : return {T, Alu::SRA, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            ADD   : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SUB   : return {T, Alu::SUB, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SLL   : return {T, Alu::SLL, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SLT   : return {T, Alu::SLT, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SLTU  : return {T, Alu::SLT, Br::X, F, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            XOR   : return {T, Alu::XOR, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SRL   : return {T, Alu::SRL, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            SRA   : return {T, Alu::SRA, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            OR    : return {T, Alu::OR, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            AND   : return {T, Alu::AND, Br::X, T, Op1::RS1, Op2::RS2, T, Mem::X, Size_X, Csr::X, T, Wb::ALU};
-            FENCE : return NOP_LEGAL;
-            ECALL : return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::ECALL, F, Wb_X};
-            EBREAK: return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::EBREAK, F, Wb_X};
+    let imm_i: UIntX = {imm_i_g[msb] repeat XLEN - $bits(imm_i_g), imm_i_g};
+    let imm_s: UIntX = {imm_s_g[msb] repeat XLEN - $bits(imm_s_g), imm_s_g};
+    let imm_b: UIntX = {imm_b_g[msb] repeat XLEN - $bits(imm_b_g) - 1, imm_b_g, 1'b0};
+    let imm_j: UIntX = {imm_j_g[msb] repeat XLEN - $bits(imm_j_g) - 1, imm_j_g, 1'b0};
+    let imm_u: UIntX = {imm_u_g[msb] repeat XLEN - $bits(imm_u_g) - 12, imm_u_g, 12'b0};
+    let imm_z: UIntX = {1'b0 repeat XLEN - $bits(imm_z_g), imm_z_g};
+
+    always_comb {
+        case op {
+            OP_LUI: {
+                        imm  = imm_u;
+                        ctrl = {T, InstType::U, T, T, F, F, F, F, F, f3, f7};
+                    }
+            OP_AUIPC: {
+                          imm  = imm_u;
+                          ctrl = {T, InstType::U, T, F, F, F, F, F, F, f3, f7};
+                      }
+            OP_JAL: {
+                        imm  = imm_j;
+                        ctrl = {T, InstType::J, T, F, F, T, F, F, F, f3, f7};
+                    }
+            OP_JALR: {
+                         imm  = imm_i;
+                         ctrl = {T, InstType::I, T, F, F, T, F, F, F, f3, f7};
+                     }
+            OP_BRANCH: {
+                           imm  = imm_b;
+                           ctrl = {f3 != 3'b010 & f3 != 3'b011, InstType::B, F, F, F, F, F, F, F, f3, f7};
+                       }
+            OP_LOAD: {
+                         imm  = imm_i;
+                         ctrl = {f3 != 3'b011 & f3 != 3'b110 | f3 != 3'b111, InstType::I, T, F, F, F, T, F, F, f3, f7};
+                     }
+            OP_STORE: {
+                          imm  = imm_s;
+                          ctrl = {f3 == 3'b000 | f3 == 3'b001 | f3 == 3'b010, InstType::S, F, F, F, F, F, F, F, f3, f7};
+                      }
+            OP_OP: {
+                       imm  = 'x;
+                       ctrl = {f7 == 0 | f7 == 7'b0100000 & (f3 == 3'b001 || f3 == 3'b101), InstType::R, T, F, T, F, F, F, F, f3, f7};
+                   }
+            OP_OP_IMM: {
+                           imm  = imm_i;
+                           ctrl = {case f3 {
+                               3'b001 : f7 == 0,
+                               3'b101 : f7 == 0 | f7 == 7'b0100000,
+                               default: 1'b1,
+                           }, InstType::I, T, F, T, F, F, F, F, f3, f7};
+                       }
+            OP_MISC_MEM: {
+                             imm  = imm_i;
+                             ctrl = {f3 == 3'b000, InstType::I, F, F, F, F, F, F, T, f3, f7};
+                         }
+            OP_SYSTEM: {
+                           imm  = imm_z;
+                           ctrl = {T, InstType::I, T, F, F, F, F, T, F, f3, f7};
+                       }
+            default: {
+                         imm  = 'x;
+                         ctrl = {F, InstType::X, F, F, F, F, F, F, F, f3, f7};
+                     }
         }
-        // RV32/RV64 Zifencei Standard Extension
-        case bits {
-            FENCE_I: return NOP_LEGAL;
-        }
-        // RV64I Base Instruction Set
-        case bits {
-            LWU: return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::W, Csr::X, T, Wb::MEM};
-            LD : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMI, F, Mem::L, Size::D, Csr::X, T, Wb::MEM};
-            SD : return {T, Alu::ADD, Br::X, T, Op1::RS1, Op2::IMS, T, Mem::S, Size::D, Csr::X, F, Wb_X};
-        }
-        // RV32/RV64 Zicsr Standard Extension
-        case bits {
-            CSRRW : return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size_X, Csr::W, T, Wb::CSR};
-            CSRRS : return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size_X, Csr::S, T, Wb::CSR};
-            CSRRC : return {T, Alu::COPY1, Br::X, T, Op1::RS1, Op2::X, F, Mem::X, Size_X, Csr::C, T, Wb::CSR};
-            CSRRWI: return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size_X, Csr::W, T, Wb::CSR};
-            CSRRSI: return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size_X, Csr::S, T, Wb::CSR};
-            CSRRCI: return {T, Alu::COPY1, Br::X, T, Op1::IMZ, Op2::X, F, Mem::X, Size_X, Csr::C, T, Wb::CSR};
-        }
-        // Trap-Return Instructions
-        case bits {
-            SRET : return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::SRET, F, Wb_X};
-            MRET : return {T, Alu::X, Br::X, T, Op1::X, Op2::X, F, Mem::X, Size_X, Csr::MRET, F, Wb_X};
-            MNRET: return NOP_LEGAL;
-        }
-        return NOP_ILLEGAL;
     }
-    assign ctrl = decode(instbits);
 }
