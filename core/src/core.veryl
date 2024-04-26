@@ -33,16 +33,13 @@ module core (
     }
 
     struct memq_type {
-        addr     : Addr      ,
-        instbits : Inst      ,
-        ctrl     : InstCtrl  ,
-        alu_out  : UIntX     ,
-        br_taken : logic     ,
-        br_target: Addr      ,
-        pc_next  : Addr      ,
-        op       : UIntX     ,
-        imm      : UIntX     ,
-        wbctx    : wb_context,
+        addr    : Addr      ,
+        instbits: Inst      ,
+        ctrl    : InstCtrl  ,
+        alu_out : UIntX     ,
+        op      : UIntX     ,
+        imm     : UIntX     ,
+        wbctx   : wb_context,
     }
 
     struct wbq_type {
@@ -177,29 +174,36 @@ module core (
     var ex_alu_out : UIntX;
     var ex_br_taken: logic;
 
-    let ex_stall: logic = !idq_rvalid; // IDステージがvalidになるのを待つ
+    // IDステージがvalidになるのを待つ
+    let ex_stall: logic = !idq_rvalid;
+
+    let ex_next_pc_expected: Addr = if inst_is_branch(exq_rdata.ctrl) & ex_br_taken {
+        exq_rdata.addr + exq_rdata.imm
+    } else if inst_is_jump(exq_rdata.ctrl) {
+        ex_alu_out
+    } else {
+        exq_rdata.addr + 4
+    } & ~1;
+
+    let ex_branch_hazard: logic = exq_rvalid & idq_rvalid & ex_next_pc_expected != idq_rdata.addr;
 
     // EXステージ -> MEMステージ
     always_comb {
-        memq_wvalid          = exq_rvalid & !ex_stall;
-        memq_rready          = wbq_wvalid & wbq_wready;
-        memq_wdata.addr      = exq_rdata.addr;
-        memq_wdata.instbits  = exq_rdata.instbits;
-        memq_wdata.ctrl      = exq_rdata.ctrl;
-        memq_wdata.alu_out   = ex_alu_out;
-        memq_wdata.br_taken  = inst_is_branch(exq_rdata.ctrl) & ex_br_taken | exq_rdata.ctrl.is_jump;
-        memq_wdata.br_target = if inst_is_branch(exq_rdata.ctrl) {
-            exq_rdata.addr + exq_rdata.imm
-        } else {
-            ex_alu_out
-        } & ~1;
-        memq_wdata.pc_next = idq_rdata.addr;
-        memq_wdata.op      = if exq_rdata.ctrl.is_system {
+        memq_wvalid         = exq_rvalid & !ex_stall;
+        memq_rready         = wbq_wvalid & wbq_wready;
+        memq_wdata.addr     = exq_rdata.addr;
+        memq_wdata.instbits = exq_rdata.instbits;
+        memq_wdata.ctrl     = exq_rdata.ctrl;
+        memq_wdata.alu_out  = ex_alu_out;
+        memq_wdata.imm      = exq_rdata.imm;
+        // MEMステージで、
+        // * CSRモジュールはOP1を使う
+        // * メモリモジュールはRS2を使う
+        memq_wdata.op = if exq_rdata.ctrl.is_system {
             exq_rdata.op1
         } else {
             exq_rdata.rs2
         };
-        memq_wdata.imm = exq_rdata.imm;
         // メモリ命令, CSR命令以外は、EXEステージでライトバックする値が確定する
         memq_wdata.wbctx.valid = exq_rdata.wbctx.valid | !(inst_is_memory_op(exq_rdata.ctrl) | inst_is_csr_op(exq_rdata.ctrl));
         memq_wdata.wbctx.addr  = exq_rdata.wbctx.addr;
@@ -210,27 +214,17 @@ module core (
         };
     }
 
-    // memステージ
-    var mem_is_new       : logic;
-    var mem_memunit_stall: logic;
-    var mem_mem_rdata    : UIntX;
+    // MEMステージ
+    var mem_is_new: logic;
 
-    var mem_next_pc_expected: Addr ;
-    var mem_is_branch_hazard: logic;
-
-    var mem_csr_rdata      : UIntX;
+    var mem_memunit_stall  : logic;
     var mem_csrunit_stall  : logic;
+    var mem_mem_rdata      : UIntX;
+    var mem_csr_rdata      : UIntX;
     var mem_csr_is_trap    : logic;
     var mem_csr_trap_vector: Addr ;
 
-    assign mem_next_pc_expected = if !memq_rdata.br_taken {
-        memq_rdata.addr + 4
-    } else {
-        memq_rdata.br_target
-    };
-
-    assign mem_is_branch_hazard = memq_rvalid & mem_next_pc_expected != memq_rdata.pc_next;
-
+    // MEMステージ -> WBステージ
     always_comb {
         wbq_wvalid         = memq_rvalid & !mem_memunit_stall & !mem_csrunit_stall;
         wbq_rready         = 1;
@@ -249,7 +243,8 @@ module core (
         };
     }
 
-    let reset_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
+    let reset_before_memstage: logic = mem_csr_is_trap;
+    let reset_before_exestage: logic = reset_before_memstage | ex_branch_hazard;
 
     var clock_count: i64;
 
@@ -267,12 +262,12 @@ module core (
             clock_count = clock_count + 1;
 
             $display("IF ---");
-            if reset_before_memstage {
+            if reset_before_exestage {
                 if_is_requested = 0;
                 if_pc           = if mem_csr_is_trap {
                     mem_csr_trap_vector
-                } else if mem_is_branch_hazard {
-                    mem_next_pc_expected
+                } else if ex_branch_hazard {
+                    ex_next_pc_expected
                 } else {
                     0
                 };
@@ -318,6 +313,9 @@ module core (
                 $display("  op2       : %h", exq_rdata.op2);
                 $display("  alu_out   : %h", ex_alu_out);
                 $display("  br_take   : %h", ex_br_taken);
+                if ex_branch_hazard {
+                    $display("  branch hazard: expected:%h actual:%h", ex_next_pc_expected, idq_rdata.addr);
+                }
             }
             $display("MEM ---");
             if memq_rvalid {
@@ -332,8 +330,6 @@ module core (
                 $display  ("  csr_out      : %h", mem_csr_rdata);
                 if mem_csr_is_trap {
                     $display("  csr hazard: %h", mem_csr_trap_vector);
-                } else if mem_is_branch_hazard {
-                    $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, memq_rdata.pc_next);
                 }
             } else {
                 mem_is_new = 1;
@@ -455,7 +451,7 @@ module core (
         DataType: idq_type,
     ) (
         clk                                 ,
-        rst   : rst & !reset_before_memstage,
+        rst   : rst & !reset_before_exestage,
         wready: _                           ,
         wvalid: idq_wvalid                  ,
         wdata : idq_wdata                   ,
@@ -470,14 +466,14 @@ module core (
         Width   : 0       ,
         DataType: exq_type,
     ) (
-        clk                                 ,
-        rst   : rst & !reset_before_memstage,
-        wready: exq_wready                  ,
-        wvalid: exq_wvalid                  ,
-        wdata : exq_wdata                   ,
-        rready: exq_rready                  ,
-        rvalid: exq_rvalid                  ,
-        rdata : exq_rdata                   ,
+        clk                                        ,
+        rst   : rst & !reset_before_memstage       ,
+        wready: exq_wready                         ,
+        wvalid: exq_wvalid & !reset_before_exestage,
+        wdata : exq_wdata                          ,
+        rready: exq_rready                         ,
+        rvalid: exq_rvalid                         ,
+        rdata : exq_rdata                          ,
     );
 
     inst fifo_ex_mem: fifo #(
