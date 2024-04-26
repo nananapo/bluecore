@@ -7,6 +7,9 @@ module core (
     import eei::*;
     import corectrl::*;
 
+    // レジスタ
+    var registers: UIntX<32>;
+
     struct wb_context {
         valid: logic   ,
         addr : logic<5>,
@@ -18,21 +21,14 @@ module core (
         instbits: Inst,
     }
 
-    struct dwq_type {
-        addr    : Addr    ,
-        instbits: Inst    ,
-        ctrl    : InstCtrl,
-        imm     : UIntX   ,
-    }
-
     struct exq_type {
         addr    : Addr      ,
         instbits: Inst      ,
         ctrl    : InstCtrl  ,
+        imm     : UIntX     ,
         op1     : UIntX     ,
         op2     : UIntX     ,
         rs2     : UIntX     ,
-        imm     : UIntX     ,
         wbctx   : wb_context,
     }
 
@@ -44,7 +40,6 @@ module core (
         br_taken : logic     ,
         br_target: Addr      ,
         pc_next  : Addr      ,
-        pc_inc   : Addr      ,
         op       : UIntX     ,
         imm      : UIntX     ,
         wbctx    : wb_context,
@@ -63,13 +58,6 @@ module core (
     var idq_rready     : logic   ;
     var idq_rvalid     : logic   ;
     var idq_rdata      : idq_type;
-
-    var dwq_wready: logic   ;
-    var dwq_wvalid: logic   ;
-    var dwq_wdata : dwq_type;
-    var dwq_rready: logic   ;
-    var dwq_rvalid: logic   ;
-    var dwq_rdata : dwq_type;
 
     var exq_wready: logic   ;
     var exq_wvalid: logic   ;
@@ -92,105 +80,109 @@ module core (
     var wbq_rvalid: logic   ;
     var wbq_rdata : wbq_type;
 
-    // IF stage
-    var if_pc          : Addr ;
-    var if_is_requested: logic;
-    var if_requested_pc: Addr ;
 
+
+    // IFステージ
+    var if_pc          : Addr ; // PC
+    var if_is_requested: logic; // フェッチ中かどうか
+    var if_requested_pc: Addr ; // フェッチ中のPC
+
+    // フェッチ命令
     always_comb {
         ibus_if.valid = idq_wready_next & (!if_is_requested | ibus_if.resp_valid);
         ibus_if.addr  = if_pc;
         ibus_if.wen   = 0;
-        ibus_if.wdata = 'x;
+        ibus_if.wdata = 'x; // 命令フェッチは書き込まない
         ibus_if.wmask = 0;
     }
 
+    // フェッチされた命令
     let if_inst_fetched: Inst = if if_requested_pc[2] == 0 {
         ibus_if.resp_rdata[31:0]
     } else {
         ibus_if.resp_rdata[63:32]
     };
 
+    // IFステージ -> IDステージ
     always_comb {
-        // IF stage -> ID stage
         idq_wvalid         = if_is_requested & ibus_if.resp_valid;
+        idq_rready         = exq_wvalid & exq_wready;
         idq_wdata.addr     = if_requested_pc;
         idq_wdata.instbits = if_inst_fetched;
-        idq_rready         = dwq_wready;
-        // ID stage -> DW stage
-        dwq_wvalid         = idq_rvalid;
-        dwq_wdata.addr     = idq_rdata.addr;
-        dwq_wdata.instbits = idq_rdata.instbits;
-        dwq_rready         = exq_wready & exq_wvalid;
     }
 
-    // DW stage
-    let dw_rs1_addr: logic<5> = dwq_rdata.instbits[19:15];
-    let dw_rs2_addr: logic<5> = dwq_rdata.instbits[24:20];
-    let dw_rd_addr : logic<5> = dwq_rdata.instbits[11:7];
+    // IDステージ
 
-    var registers: UIntX<32>;
+    // 使用するレジスタのアドレス
+    let id_rd_addr : logic<5> = idq_rdata.instbits[11:7];
+    let id_rs1_addr: logic<5> = idq_rdata.instbits[19:15];
+    let id_rs2_addr: logic<5> = idq_rdata.instbits[24:20];
 
-    var dw_op1: UIntX;
-    var dw_op2: UIntX;
-    var dw_rs1: UIntX;
-    var dw_rs2: UIntX;
+    var id_ctrl: InstCtrl;
+    var id_imm : UIntX   ;
+    var id_rs1 : UIntX   ;
+    var id_rs2 : UIntX   ;
 
-    var dw_dh_rs1: logic;
-    var dw_dh_rs2: logic;
-
-    let dw_stall: logic = dw_dh_rs1 | dw_dh_rs2;
+    var id_op1: UIntX;
+    var id_op2: UIntX;
 
     always_comb {
-        case dwq_rdata.ctrl.insttype {
+        case id_ctrl.insttype {
             InstType::R, InstType::B: {
-                                          dw_op1 = dw_rs1;
-                                          dw_op2 = dw_rs2;
+                                          id_op1 = id_rs1;
+                                          id_op2 = id_rs2;
                                       }
             InstType::I, InstType::S: {
-                                          dw_op1 = dw_rs1;
-                                          dw_op2 = dwq_rdata.imm;
+                                          id_op1 = id_rs1;
+                                          id_op2 = id_imm;
                                       }
             InstType::U, InstType::J: {
-                                          dw_op1 = dwq_rdata.addr;
-                                          dw_op2 = dwq_rdata.imm;
+                                          id_op1 = idq_rdata.addr;
+                                          id_op2 = id_imm;
                                       }
             default: {
-                         dw_op1 = 'x;
-                         dw_op2 = 'x;
+                         id_op1 = 'x;
+                         id_op2 = 'x;
                      }
         }
     }
 
-    // DW stage -> EX stage
+    // データ依存性があるときはストールする
+    var id_dh_rs1: logic;
+    var id_dh_rs2: logic;
+    let id_stall : logic = id_dh_rs1 | id_dh_rs2;
+
+    // IDステージ -> EXステージ
     always_comb {
-        exq_wvalid            = dwq_rvalid & !dw_stall;
-        exq_wdata.addr        = dwq_rdata.addr;
-        exq_wdata.instbits    = dwq_rdata.instbits;
-        exq_wdata.ctrl        = dwq_rdata.ctrl;
-        exq_wdata.op1         = dw_op1;
-        exq_wdata.op2         = dw_op2;
-        exq_wdata.rs2         = dw_rs2;
-        exq_wdata.imm         = dwq_rdata.imm;
-        exq_wdata.wbctx.valid = inst_is_lui(dwq_rdata.ctrl) | inst_is_branch(dwq_rdata.ctrl) | inst_is_jump(dwq_rdata.ctrl);
-        exq_wdata.wbctx.addr  = dw_rd_addr;
-        exq_wdata.wbctx.data  = if inst_is_lui(dwq_rdata.ctrl) {
-            dwq_rdata.imm
+        exq_wvalid         = idq_rvalid & !id_stall;
+        exq_rready         = memq_wvalid & memq_wready;
+        exq_wdata.addr     = idq_rdata.addr;
+        exq_wdata.instbits = idq_rdata.instbits;
+        exq_wdata.ctrl     = id_ctrl;
+        exq_wdata.imm      = id_imm;
+        exq_wdata.op1      = id_op1;
+        exq_wdata.op2      = id_op2;
+        exq_wdata.rs2      = id_rs2;
+        // LUI, BRANCH, JUMPは、IDステージでライトバックする値が確定する
+        exq_wdata.wbctx.valid = inst_is_lui(id_ctrl) | inst_is_branch(id_ctrl) | inst_is_jump(id_ctrl);
+        exq_wdata.wbctx.addr  = id_rd_addr;
+        exq_wdata.wbctx.data  = if inst_is_lui(id_ctrl) {
+            id_imm
         } else {
-            dwq_rdata.addr + 4
+            idq_rdata.addr + 4
         };
-        exq_rready = memq_wready & memq_wvalid;
     }
 
-    // EX stage
+    // EXステージ
     var ex_alu_out : UIntX;
     var ex_br_taken: logic;
 
-    let ex_stall: logic = !dwq_rvalid; // wait dw is valid
+    let ex_stall: logic = !idq_rvalid; // IDステージがvalidになるのを待つ
 
-    // EX stage -> MEM stage
+    // EXステージ -> MEMステージ
     always_comb {
         memq_wvalid          = exq_rvalid & !ex_stall;
+        memq_rready          = wbq_wvalid & wbq_wready;
         memq_wdata.addr      = exq_rdata.addr;
         memq_wdata.instbits  = exq_rdata.instbits;
         memq_wdata.ctrl      = exq_rdata.ctrl;
@@ -201,14 +193,14 @@ module core (
         } else {
             ex_alu_out
         } & ~1;
-        memq_wdata.pc_next = dwq_rdata.addr;
-        memq_wdata.pc_inc  = exq_rdata.addr + 4;
+        memq_wdata.pc_next = idq_rdata.addr;
         memq_wdata.op      = if exq_rdata.ctrl.is_system {
             exq_rdata.op1
         } else {
             exq_rdata.rs2
         };
-        memq_wdata.imm         = exq_rdata.imm;
+        memq_wdata.imm = exq_rdata.imm;
+        // メモリ命令, CSR命令以外は、EXEステージでライトバックする値が確定する
         memq_wdata.wbctx.valid = exq_rdata.wbctx.valid | !(inst_is_memory_op(exq_rdata.ctrl) | inst_is_csr_op(exq_rdata.ctrl));
         memq_wdata.wbctx.addr  = exq_rdata.wbctx.addr;
         memq_wdata.wbctx.data  = if exq_rdata.wbctx.valid {
@@ -216,10 +208,9 @@ module core (
         } else {
             ex_alu_out
         };
-        memq_rready = wbq_wvalid & wbq_wready;
     }
 
-    // mem stage
+    // memステージ
     var mem_is_new       : logic;
     var mem_memunit_stall: logic;
     var mem_mem_rdata    : UIntX;
@@ -233,7 +224,7 @@ module core (
     var mem_csr_trap_vector: Addr ;
 
     assign mem_next_pc_expected = if !memq_rdata.br_taken {
-        memq_rdata.pc_inc
+        memq_rdata.addr + 4
     } else {
         memq_rdata.br_target
     };
@@ -241,10 +232,12 @@ module core (
     assign mem_is_branch_hazard = memq_rvalid & mem_next_pc_expected != memq_rdata.pc_next;
 
     always_comb {
-        wbq_wvalid            = memq_rvalid & !mem_memunit_stall & !mem_csrunit_stall;
-        wbq_wdata.addr        = memq_rdata.addr;
-        wbq_wdata.instbits    = memq_rdata.instbits;
-        wbq_wdata.ctrl        = memq_rdata.ctrl;
+        wbq_wvalid         = memq_rvalid & !mem_memunit_stall & !mem_csrunit_stall;
+        wbq_rready         = 1;
+        wbq_wdata.addr     = memq_rdata.addr;
+        wbq_wdata.instbits = memq_rdata.instbits;
+        wbq_wdata.ctrl     = memq_rdata.ctrl;
+        // メモリ命令とCSR命令のライトバックする値を確定する
         wbq_wdata.wbctx.valid = 1;
         wbq_wdata.wbctx.addr  = memq_rdata.wbctx.addr;
         wbq_wdata.wbctx.data  = if memq_rdata.wbctx.valid {
@@ -254,7 +247,6 @@ module core (
         } else {
             mem_csr_rdata
         };
-        wbq_rready = 1;
     }
 
     let reset_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
@@ -264,16 +256,17 @@ module core (
     always_ff (clk, rst) {
         if_reset {
             $display       ("reset!");
+            clock_count     = 0;
+            registers       = 'x;
             if_pc           = 0;
             if_is_requested = 0;
             if_requested_pc = 0;
             mem_is_new      = 0;
-            clock_count     = 0;
-            registers       = 'x;
         } else {
-            clock_count = clock_count + 1;
             $display   ("------------------ clock %0d", clock_count);
-            $display   ("IF Stage ---");
+            clock_count = clock_count + 1;
+
+            $display("IF ---");
             if reset_before_memstage {
                 if_is_requested = 0;
                 if_pc           = if mem_csr_is_trap {
@@ -296,30 +289,25 @@ module core (
                     if_is_requested = 0;
                 }
             }
-            $display("ID Stage ---");
+            $display("ID ---");
             if idq_rvalid {
                 $display("  %h:%h", idq_rdata.addr, idq_rdata.instbits);
-                $display("  is_legal  : %2d", dwq_wdata.ctrl.is_legal);
-                $display("  insttype  : %2d", dwq_wdata.ctrl.insttype);
-                $display("  rf_wen    : %2d", dwq_wdata.ctrl.rf_wen);
-                $display("  is_lui    : %2d", dwq_wdata.ctrl.is_lui);
-                $display("  is_aluop  : %2d", dwq_wdata.ctrl.is_aluop);
-                $display("  is_jump   : %2d", dwq_wdata.ctrl.is_jump);
-                $display("  is_load   : %2d", dwq_wdata.ctrl.is_load);
-                $display("  is_system : %2d", dwq_wdata.ctrl.is_system);
-                $display("  is_fence  : %2d", dwq_wdata.ctrl.is_fence);
-                $display("  funct3    : %b", dwq_wdata.ctrl.funct3);
-                $display("  funct7    : %b", dwq_wdata.ctrl.funct7);
+                $display("  stall     : %d", !exq_wvalid | !exq_wready);
+                $display("  is_legal  : %2d", id_ctrl.is_legal);
+                $display("  insttype  : %2d", id_ctrl.insttype);
+                $display("  rf_wen    : %2d", id_ctrl.rf_wen);
+                $display("  is_lui    : %2d", id_ctrl.is_lui);
+                $display("  is_aluop  : %2d", id_ctrl.is_aluop);
+                $display("  is_jump   : %2d", id_ctrl.is_jump);
+                $display("  is_load   : %2d", id_ctrl.is_load);
+                $display("  is_system : %2d", id_ctrl.is_system);
+                $display("  is_fence  : %2d", id_ctrl.is_fence);
+                $display("  funct3    : %b", id_ctrl.funct3);
+                $display("  funct7    : %b", id_ctrl.funct7);
+                $display("  op1       : %h", id_op1);
+                $display("  op2       : %h", id_op2);
             }
-            $display("DW Stage ---");
-            if dwq_rvalid {
-                $display("  %h:%h", dwq_rdata.addr, dwq_rdata.instbits);
-                $display("  stall     : %d", dw_stall);
-                $display("  op1       : %2d:%h", dw_rs1_addr, dw_op1);
-                $display("  op2       : %2d:%h", dw_rs2_addr, dw_op2);
-                $display("  rs2       : %h", dw_rs2);
-            }
-            $display("EX Stage ---");
+            $display("EX ---");
             if exq_rvalid {
                 $display("  %h:%h", exq_rdata.addr, exq_rdata.instbits);
                 $display("  stall     : %d", !memq_wvalid | !memq_wready);
@@ -331,7 +319,7 @@ module core (
                 $display("  alu_out   : %h", ex_alu_out);
                 $display("  br_take   : %h", ex_br_taken);
             }
-            $display("MEM Stage ---");
+            $display("MEM ---");
             if memq_rvalid {
                 mem_is_new = memq_rready;
                 $display  ("  %h:%h", memq_rdata.addr, memq_rdata.instbits);
@@ -350,12 +338,12 @@ module core (
             } else {
                 mem_is_new = 1;
             }
-            $display("WB Stage---");
+            $display("WB ---");
             if wbq_rvalid {
                 $display("  %h:%h", wbq_rdata.addr, wbq_rdata.instbits);
                 if wbq_rdata.ctrl.rf_wen {
                     registers[wbq_rdata.wbctx.addr] = wbq_rdata.wbctx.data;
-                    $display                       ("  writebacked [%d] <= %h", wbq_rdata.wbctx.addr, wbq_rdata.wbctx.data);
+                    $display                       ("  register[%d] <= %h", wbq_rdata.wbctx.addr, wbq_rdata.wbctx.data);
                 }
             }
         }
@@ -363,14 +351,14 @@ module core (
 
     inst id_unit: inst_decode (
         bits: idq_rdata.instbits,
-        ctrl: dwq_wdata.ctrl    ,
-        imm : dwq_wdata.imm     ,
+        ctrl: id_ctrl           ,
+        imm : id_imm            ,
     );
 
     inst rs1_forward_unit: reg_forward (
-        valid   : dwq_rvalid & inst_use_rs1(dwq_rdata.ctrl),
-        addr    : dw_rs1_addr                              ,
-        reg_data: registers[dw_rs1_addr]                   ,
+        valid   : inst_use_rs1(id_ctrl) ,
+        addr    : id_rs1_addr           ,
+        reg_data: registers[id_rs1_addr],
 
         ex_valid : exq_rvalid & exq_rdata.ctrl.rf_wen,
         ex_can_fw: exq_rdata.wbctx.valid             ,
@@ -387,14 +375,14 @@ module core (
         wb_addr  : wbq_rdata.wbctx.addr              ,
         wb_data  : wbq_rdata.wbctx.data              ,
 
-        data_hazard: dw_dh_rs1,
-        result     : dw_rs1   ,
+        data_hazard: id_dh_rs1,
+        result     : id_rs1   ,
     );
 
     inst rs2_forward_unit: reg_forward (
-        valid   : dwq_rvalid & inst_use_rs2(dwq_rdata.ctrl),
-        addr    : dw_rs2_addr                              ,
-        reg_data: registers[dw_rs2_addr]                   ,
+        valid   : inst_use_rs2(id_ctrl) ,
+        addr    : id_rs2_addr           ,
+        reg_data: registers[id_rs2_addr],
 
         ex_valid : exq_rvalid & exq_rdata.ctrl.rf_wen,
         ex_can_fw: exq_rdata.wbctx.valid             ,
@@ -411,8 +399,8 @@ module core (
         wb_addr  : wbq_rdata.wbctx.addr              ,
         wb_data  : wbq_rdata.wbctx.data              ,
 
-        data_hazard: dw_dh_rs2,
-        result     : dw_rs2   ,
+        data_hazard: id_dh_rs2,
+        result     : id_rs2   ,
     );
 
     inst ex_alu: alu (
@@ -478,21 +466,7 @@ module core (
 
     assign idq_wready_next = fifo_if_id.wready_next;
 
-    inst fifo_id_dw: fifo #(
-        Width   : 0       ,
-        DataType: dwq_type,
-    ) (
-        clk                                 ,
-        rst   : rst & !reset_before_memstage,
-        wready: dwq_wready                  ,
-        wvalid: dwq_wvalid                  ,
-        wdata : dwq_wdata                   ,
-        rready: dwq_rready                  ,
-        rvalid: dwq_rvalid                  ,
-        rdata : dwq_rdata                   ,
-    );
-
-    inst fifo_dw_ex: fifo #(
+    inst fifo_id_ex: fifo #(
         Width   : 0       ,
         DataType: exq_type,
     ) (
