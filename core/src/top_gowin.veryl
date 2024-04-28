@@ -4,8 +4,9 @@ module top_gowin (
     led   : output logic<6>,
     key   : input  logic<4>,
 ) {
-    var clk: logic;
-    var rst: logic;
+    var clk : logic    ;
+    var rst : logic    ;
+    var gpio: logic<32>;
 
     // クロックとリセット信号を生成する
     inst gowin_pll: $sv::Gowin_PLL (
@@ -14,10 +15,13 @@ module top_gowin (
     );
     assign rst = key[3];
 
+    // LEDの点灯をgpioの下位bitにする
+    assign led = gpio[5:0];
+
     // topモジュールをインスタンス化
     inst t: top (
-        clk: clk,
-        rst: rst,
-        led     ,
+        clk   ,
+        rst   ,
+        gpio  ,
     );
 }
