@@ -8,14 +8,11 @@ module alu (
     result: output UIntX   ,
 ) {
 
-    let s_op1: SIntX = op1;
-    let s_op2: SIntX = op2;
-
     let add: UIntX = op1 + op2;
     let sub: UIntX = op1 - op2;
 
     let srl: UIntX = op1 >> op2[4:0];
-    let sra: SIntX = s_op1 >>> s_op2[4:0];
+    let sra: SIntX = $signed(op1) >>> op2[4:0];
 
     always_comb {
         if ctrl.is_aluop {
