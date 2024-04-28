@@ -1,0 +1,5 @@
+include (inline, "../svconfig.sv");
+
+package config {
+    local MEMORY_INITIAL_FILE: string = $sv::svconfig::MEMORY_INITIAL_FILE;
+}

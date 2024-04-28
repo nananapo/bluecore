@@ -9,9 +9,11 @@ runs:
       shell: bash
       run: |
         git clone https://github.com/veryl-lang/veryl veryl
-        sudo apt-get install -y gawk
-        git -C veryl log | head -1 | cut -d" " -f 2 > .veryl_version
-      continue-on-error: true
+        git -C veryl show --format='%H' --no-patch > .veryl_version
+    - name: check version
+      shell: bash
+      run: |
+        cat .veryl_version
     - name: Cache
       id: veryl_cache
       uses: actions/cache@v2

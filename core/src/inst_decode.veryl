@@ -1,5 +1,5 @@
-import corectrl::*;
 import eei::*;
+import corectrl::*;
 
 module inst_decode (
     bits: input  Inst    ,

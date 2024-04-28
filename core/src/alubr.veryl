@@ -7,7 +7,6 @@ module alubr (
     op2   : input  UIntX   ,
     take  : output logic   ,
 ) {
-
     let beq : logic = op1 == op2;
     let blt : logic = $signed(op1) <: $signed(op2);
     let bltu: logic = op1 <: op2;

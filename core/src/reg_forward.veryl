@@ -25,7 +25,6 @@ module reg_forward #(
     data_hazard: output logic,
     result     : output UIntX,
 ) {
-
     let ex_hazard : logic = ex_valid & ex_addr == addr;
     let mem_hazard: logic = mem_valid & mem_addr == addr;
     let wb_hazard : logic = wb_valid & wb_addr == addr;
