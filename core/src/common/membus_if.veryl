@@ -11,7 +11,7 @@ interface membus_if {
     var resp_valid: logic     ;
     var resp_rdata: MemBusData;
 
-    modport master {
+    modport slave {
         ready: output,
         valid: input ,
         addr : input ,
@@ -20,7 +20,7 @@ interface membus_if {
         wmask: input ,
     }
 
-    modport slave {
+    modport master {
         ready     : input ,
         valid     : output,
         addr      : output,

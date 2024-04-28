@@ -2,8 +2,8 @@ module fifo #(
     param DataType: type = logic,
     param Width   : u32  = 0    ,
 ) (
-    clk   : input  logic   ,
-    rst   : input  logic   ,
+    clk   : input  clock   ,
+    rst   : input  reset   ,
     wready: output logic   ,
     wvalid: input  logic   ,
     wdata : input  DataType,
@@ -23,7 +23,7 @@ module fifo #(
         assign wready      = !dvalid | rready;
         assign wready_next = 0;
 
-        always_ff (clk) {
+        always_ff {
             if !rst {
                 dvalid = 0;
                 data   = 0;
@@ -58,11 +58,11 @@ module fifo #(
         assign wready      = head_1 != tail;
         assign wready_next = head_1 != tail & head_2 != tail;
 
-        always_ff (clk) {
+        always_ff {
             if !rst {
                 head = 0;
                 tail = 0;
-                data = 'x;
+                data = 0;
             } else {
                 if rready & rvalid {
                     head = head + 1;

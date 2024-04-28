@@ -1,12 +1,11 @@
-include (inline, "svconfig.sv");
-include (inline, "common/memory.sv");
+import cpu_config::*;
+import eei::*;
 
 module top (
-    clk : input  logic    ,
-    rst : input  logic    ,
+    clk : input  clock    ,
+    rst : input  reset    ,
     gpio: output logic<32>,
 ) {
-    import eei::*;
 
     // テストの状態を表すenumの定義
     enum TestState: logic<2> {
@@ -40,25 +39,30 @@ module top (
     var mem_rvalid: logic     ;
     var mem_rdata : MemBusData;
 
-    local DATA_ADDR_WIDTH : u32 = 14; // メモリのアドレスの幅
-    local DATA_ADDR_OFFSET: u32 = $clog2(MEMBUS_WIDTH / 8); // アドレスのオフセット
+    // メモリのアドレスの幅
+    local DATA_ADDR_WIDTH: u32 = 14;
+    // アドレスのオフセット
+    local DATA_ADDR_OFFSET: u32 = $clog2(MEMBUS_WIDTH / 8);
+
+    local DATA_ADDR_MSB: u32 = DATA_ADDR_WIDTH + DATA_ADDR_OFFSET - 1;
+    local DATA_ADDR_LSB: u32 = DATA_ADDR_OFFSET;
 
     // メモリのインスタンス化
-    inst datamemory: $sv::memory #(
-        DATA_WIDTH: MEMBUS_WIDTH                      ,
-        ADDR_WIDTH: DATA_ADDR_WIDTH                   ,
-        FILE_PATH : $sv::svconfig::MEMORY_INITIAL_FILE,
+    inst datamemory: memory #(
+        DATA_WIDTH: MEMBUS_WIDTH       ,
+        ADDR_WIDTH: DATA_ADDR_WIDTH    ,
+        FILE_PATH : MEMORY_INITIAL_FILE,
     ) (
-        clk                                                                      ,
-        rst                                                                      ,
-        ready : mem_ready                                                        ,
-        valid : mem_valid                                                        ,
-        wen   : mem_wen                                                          ,
-        addr  : mem_addr[DATA_ADDR_WIDTH + DATA_ADDR_OFFSET - 1:DATA_ADDR_OFFSET],
-        wdata : mem_wdata                                                        ,
-        wmask : mem_wmask                                                        ,
-        rvalid: mem_rvalid                                                       ,
-        rdata : mem_rdata                                                        ,
+        clk                                          ,
+        rst                                          ,
+        ready : mem_ready                            ,
+        valid : mem_valid                            ,
+        wen   : mem_wen                              ,
+        addr  : mem_addr[DATA_ADDR_MSB:DATA_ADDR_LSB],
+        wdata : mem_wdata                            ,
+        wmask : mem_wmask                            ,
+        rvalid: mem_rvalid                           ,
+        rdata : mem_rdata                            ,
     );
 
     // メモリとcoreのinterface
@@ -67,7 +71,7 @@ module top (
 
     // 命令フェッチとload/store命令の調停
     var memarb_last_is_i: logic;
-    always_ff (clk, rst) {
+    always_ff {
         if_reset {
             memarb_last_is_i = 0;
         } else {
@@ -80,7 +84,8 @@ module top (
 
     // メモリとinterfaceの接続
     always_comb {
-        ibus_if.ready      = mem_ready & !dbus_if.valid; // load/storeを優先する
+        // load/storeを優先する
+        ibus_if.ready      = mem_ready & !dbus_if.valid;
         ibus_if.resp_valid = memarb_last_is_i & mem_rvalid;
         ibus_if.resp_rdata = mem_rdata;
 
@@ -102,27 +107,28 @@ module top (
         }
     }
 
-    always_ff (clk, rst) {
-        if_reset {
-            test_state = TestState::Reset;
-        } else {
-            // riscv-tests tohostでの書き込みを検知する
-            if dbus_if.valid & dbus_if.wen & dbus_if.addr == RISCVTESTS_EXIT_ADDR {
-                $display("wdata: %h", dbus_if.wdata);
-                // 成功したかどうかを出力する
-                if dbus_if.wdata == RISCVTESTS_WDATA_SUCCESS {
-                    $display  ("riscv-tests: Success!");
-                    test_state = TestState::Success;
-                } else {
-                    $error    ("riscv-tests: Fail");
-                    test_state = TestState::Fail;
-                }
-                // テスト終了
-                $finish();
+    if ENV_TEST :test_check {
+        always_ff {
+            if_reset {
+                test_state = TestState::Reset;
             } else {
-                // 成功も失敗もしていない場合は、状態を実行中に設定する
-                if test_state != TestState::Success && test_state != TestState::Fail {
-                    test_state = TestState::Running;
+                // テストの結果を書き込むアドレスへの書き込みを検知
+                if dbus_if.valid & dbus_if.wen & dbus_if.addr == TEST_EXIT_ADDR {
+                    $display("wdata: %h", dbus_if.wdata);
+                    // 成功したかどうかを出力する
+                    if dbus_if.wdata == TEST_WDATA_SUCCESS {
+                        $display  ("test: Success");
+                        test_state = TestState::Success;
+                    } else {
+                        $error    ("test: Fail");
+                        test_state = TestState::Fail;
+                    }
+                    // テスト終了
+                    $finish();
+                } else {
+                    if test_state == TestState::Reset {
+                        test_state = TestState::Running;
+                    }
                 }
             }
         }

@@ -1,7 +1,6 @@
 import eei::*;
 
 package corectrl {
-
     enum InstType: logic<6> {
         X = 6'b000000,
         R = 6'b000001,
@@ -13,17 +12,17 @@ package corectrl {
     }
 
     struct InstCtrl {
-        is_legal : logic      ,
-        insttype : InstType   ,
-        rf_wen   : logic      ,
-        is_lui   : logic      ,
-        is_aluop : logic      ,
-        is_jump  : logic      ,
-        is_load  : logic      ,
-        is_system: logic      ,
-        is_fence : logic      ,
-        funct3   : logic   <3>,
-        funct7   : logic   <7>,
+        is_legal : logic      , // 命令が合法である
+        insttype : InstType   , // 命令のType
+        rf_wen   : logic      , // レジスタに書き込むかどうか
+        is_lui   : logic      , // LUI命令である
+        is_aluop : logic      , // ALUを利用する命令である
+        is_jump  : logic      , // ジャンプ命令である
+        is_load  : logic      , // ロード命令である
+        is_system: logic      , // CSR命令である
+        is_fence : logic      , // フェンス命令である
+        funct3   : logic   <3>, // 命令のfunct3フィールド
+        funct7   : logic   <7>, // 命令のfunct7フィールド
     }
 
     function inst_is_auipc (

@@ -1,0 +1,8 @@
+include (inline, "../svconfig.sv");
+
+package cpu_config {
+    local MEMORY_INITIAL_FILE: string     = $sv::svconfig::MEMORY_INITIAL_FILE;
+    local ENV_TEST           : bit        = $sv::svconfig::ENV_TEST;
+    local TEST_EXIT_ADDR     : logic <32> = $sv::svconfig::TEST_EXIT_ADDR;
+    local TEST_WDATA_SUCCESS : logic <32> = $sv::svconfig::TEST_WDATA_SUCCESS;
+}

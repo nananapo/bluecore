@@ -7,7 +7,6 @@ module alu (
     op2   : input  UIntX   ,
     result: output UIntX   ,
 ) {
-
     let add: UIntX = op1 + op2;
     let sub: UIntX = op1 - op2;
 

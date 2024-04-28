@@ -3,8 +3,8 @@ import eei::*;
 import corectrl::*;
 
 module csrunit (
-    clk        : input  logic       ,
-    rst        : input  logic       ,
+    clk        : input  clock       ,
+    rst        : input  reset       ,
     valid      : input  logic       ,
     rdata      : output UIntX       ,
     raise_trap : output logic       ,
@@ -60,7 +60,7 @@ module csrunit (
         }
     }
 
-    always_ff (clk, rst) {
+    always_ff {
         if_reset {
             mode   = CsrMode::M;
             mcause = 0;

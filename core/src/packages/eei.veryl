@@ -8,7 +8,4 @@ package eei {
     local MEMBUS_WIDTH: u32                     = 32;
     type MemBusData   = logic<MEMBUS_WIDTH>    ;
     type MemBusMask   = logic<MEMBUS_WIDTH / 8>;
-
-    local RISCVTESTS_EXIT_ADDR    : Addr       = 'h1000 as Addr;
-    local RISCVTESTS_WDATA_SUCCESS: MemBusData = 1;
 }

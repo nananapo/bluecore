@@ -9,7 +9,7 @@ Veryl version is latest on master branch.
 ### build
 
 ```sh
-$ git clone https://github.com/bluecore
+$ git clone https://github.com/nananapo/bluecore
 $ git submodule init
 $ git submodule update
 $ make build
@@ -19,10 +19,10 @@ $ make build
 - [x] rv32ui-p-*
 
 ```sh
-$ make verilator MEMFILE=test/riscv-tests-bin/rv32ui-p-add.bin.aligned CYCLE=0
+$ make verilator MEMFILE=test/riscv-tests-bin/rv32ui-p-add.bin.hex CYCLE=0
 ...
 wdata: 0000000000000001
-riscv-tests: Success!
+test: Success
 ```
 
 RV32I is selected as default. You can change ISA by change config.

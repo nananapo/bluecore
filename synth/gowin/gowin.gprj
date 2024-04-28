@@ -13,6 +13,7 @@
         <File path="../../core/src/csrunit.sv" type="file.verilog" enable="1"/>
         <File path="../../core/src/inst_decode.sv" type="file.verilog" enable="1"/>
         <File path="../../core/src/memunit.sv" type="file.verilog" enable="1"/>
+        <File path="../../core/src/packages/config.sv" type="file.verilog" enable="1"/>
         <File path="../../core/src/packages/corectrl.sv" type="file.verilog" enable="1"/>
         <File path="../../core/src/packages/csr.sv" type="file.verilog" enable="1"/>
         <File path="../../core/src/packages/eei.sv" type="file.verilog" enable="1"/>

@@ -2,10 +2,10 @@ import eei::*;
 import corectrl::*;
 
 module core (
-    clk    : input   logic           ,
-    rst    : input   logic           ,
-    ibus_if: modport membus_if::slave,
-    dbus_if: modport membus_if::slave,
+    clk    : input   clock            ,
+    rst    : input   reset            ,
+    ibus_if: modport membus_if::master,
+    dbus_if: modport membus_if::master,
 ) {
     // レジスタ
     var registers: UIntX<32>;
@@ -251,9 +251,9 @@ module core (
     // 分岐ハザードかトラップのとき、MEMステージより前のステージをフラッシュする
     let flush_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
 
-    always_ff (clk, rst) {
+    always_ff {
         if_reset {
-            registers       = 'x;
+            registers       = 0;
             if_pc           = 0;
             if_is_requested = 0;
             if_requested_pc = 0;
@@ -273,7 +273,9 @@ module core (
                     if_is_requested = 1;
                     if_requested_pc = if_pc;
                 } else {
-                    if_is_requested = 0;
+                    if if_is_requested & ibus_if.resp_valid {
+                        if_is_requested = 0;
+                    }
                 }
             }
             // MEMステージが新しいかどうかを更新
@@ -390,6 +392,7 @@ module core (
         },
     );
 
+    // IFステージとIDステージをつなぐFIFO
     inst fifo_if_id: fifo #(
         Width   : 3       ,
         DataType: idq_type,
@@ -406,6 +409,7 @@ module core (
 
     assign idq_wready_next = fifo_if_id.wready_next;
 
+    // IDステージとEXステージをつなぐレジスタ
     inst fifo_id_ex: fifo #(
         Width   : 0       ,
         DataType: exq_type,
@@ -420,6 +424,7 @@ module core (
         rdata : exq_rdata                   ,
     );
 
+    // EXステージとMEMステージをつなぐレジスタ
     inst fifo_ex_mem: fifo #(
         Width   : 0        ,
         DataType: memq_type,
@@ -434,6 +439,7 @@ module core (
         rdata : memq_rdata                          ,
     );
 
+    // MEMステージとWBステージをつなぐレジスタ
     inst fifo_mem_wb: fifo #(
         Width   : 0       ,
         DataType: wbq_type,
@@ -452,7 +458,7 @@ module core (
     var clock_count: i64;
 
     // ログの出力
-    always_ff (clk, rst) {
+    always_ff {
         if_reset {
             $display   ("RESET");
             clock_count = 0;
@@ -466,7 +472,7 @@ module core (
                     $display("  fetched: %h:%h", if_requested_pc, ibus_if.resp_rdata);
                 }
                 if ibus_if.ready & ibus_if.valid {
-                    $display("  req: %h", ibus_if.addr);
+                    $display("  request: %h", ibus_if.addr);
                 }
             }
             $display("ID ---");
@@ -511,7 +517,9 @@ module core (
                 if mem_csr_is_trap {
                     $display("  csr hazard: %h", mem_csr_trap_vector);
                 } else if mem_is_branch_hazard {
-                    $display("  branch hazard: expected:%h actual:%h", mem_next_pc_expected, memq_rdata.pc_next);
+                    $display("  branch hazard:");
+                    $display("    expected:%h", mem_next_pc_expected);
+                    $display("    actual  :%h", memq_rdata.pc_next);
                 }
             }
             $display("WB ---");

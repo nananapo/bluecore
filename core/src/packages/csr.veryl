@@ -7,9 +7,6 @@ package csr {
     }
 
     enum CsrAddr: logic<12> {
-        STVEC = 12'h105,
-        SEPC = 12'h141,
-        SCAUSE = 12'h142,
         MTVEC = 12'h305,
         MEPC = 12'h341,
         MCAUSE = 12'h342,
@@ -18,5 +15,4 @@ package csr {
     enum CsrCause: logic<eei::XLEN> {
         ENVIRONMENT_CALL_FROM_U_MODE = 8,
     }
-
 }

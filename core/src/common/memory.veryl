@@ -1,0 +1,107 @@
+/// メモリモジュール
+///
+/// ready = 1のときに命令を受容する
+/// valid = 1になったクロックの命令を受容する
+/// valid = 1になった次以降のクロックで結果を出力する
+/// rvalid = 1のクロックでのみ結果を出力する
+/// rvalid = 0のとき、前クロックでの結果は保持しない
+module memory #(
+    param DATA_WIDTH : u32    = 0             ,
+    param ADDR_WIDTH : u32    = 0             ,
+    param FILE_PATH  : string = ""            ,
+    local WMASK_WIDTH: u32    = DATA_WIDTH / 8,
+) (
+    clk   : input  clock             ,
+    rst   : input  reset             ,
+    ready : output logic             ,
+    valid : input  logic             ,
+    wen   : input  logic             ,
+    addr  : input  logic<ADDR_WIDTH> ,
+    wdata : input  logic<DATA_WIDTH> ,
+    wmask : input  logic<WMASK_WIDTH>,
+    rvalid: output logic             ,
+    rdata : output logic<DATA_WIDTH> ,
+) {
+    var mem_data: logic<DATA_WIDTH> [2 ** ADDR_WIDTH];
+
+    initial {
+        // パラメータの確認
+        if ADDR_WIDTH == 0 {
+            $fatal("ADDR_WIDTH == 0");
+        }
+        if DATA_WIDTH == 0 {
+            $fatal("DATA_WIDTH == 0");
+        }
+        if FILE_PATH != "" {
+            // ファイルのデータを初期値として書き込む
+            $display ("FILE_PATH: %s", FILE_PATH);
+            $readmemh(FILE_PATH, mem_data);
+        }
+    }
+    // メモリのステート
+    enum State: logic {
+        Ready,
+        Write,
+    }
+    var state: State;
+
+    // 書き込み命令のデータ保持用レジスタ
+    var addr_save : logic<ADDR_WIDTH> ;
+    var wdata_save: logic<DATA_WIDTH> ;
+    var wmask_save: logic<WMASK_WIDTH>;
+
+    // データ幅に合わせたマスクの生成
+    var wmask_expand: logic<DATA_WIDTH>;
+    for i in 0..DATA_WIDTH :wm_expand_block {
+        assign wmask_expand[i] = wmask_save[i / 8];
+    }
+
+    // アクセスするアドレス
+    let access_addr: logic<ADDR_WIDTH> = if state == State::Ready {
+        addr
+
+    } else {
+        addr_save
+    };
+
+    assign ready = state == State::Ready;
+
+    always_ff {
+        if state == State::Ready {
+            rdata = mem_data[access_addr];
+        } else {
+            // マスクした値の書き込み
+            mem_data[access_addr] = wdata_save & wmask_expand | rdata & ~wmask_expand;
+        }
+    }
+
+    always_ff {
+        if_reset {
+            rvalid     = 0;
+            state      = State::Ready;
+            addr_save  = 0;
+            wdata_save = 0;
+            wmask_save = 0;
+        } else {
+            if state == State::Ready {
+                if valid {
+                    rvalid = !wen;
+                    // 書き込み命令用にデータを保存
+                    addr_save  = addr;
+                    wdata_save = wdata;
+                    wmask_save = wmask;
+                    // 書き込み命令の場合はステートを移動
+                    if wen {
+                        state = State::Write;
+                    }
+                } else {
+                    rvalid = 0;
+                }
+            } else if state == State::Write {
+                // READYステートに戻る
+                state  = State::Ready;
+                rvalid = 1;
+            }
+        }
+    }
+}

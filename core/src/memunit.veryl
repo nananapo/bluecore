@@ -1,19 +1,18 @@
-import corectrl::*;
 import eei::*;
+import corectrl::*;
 
 module memunit (
-    clk     : input   logic           ,
-    rst     : input   logic           ,
-    dbus_if : modport membus_if::slave,
-    valid   : input   logic           ,
-    is_new  : input   logic           ,
-    is_stall: output  logic           ,
-    rdata   : output  UIntX           ,
-    ctrl    : input   InstCtrl        ,
-    rs2     : input   UIntX           ,
-    addr    : input   UIntX           ,
+    clk     : input   clock            ,
+    rst     : input   reset            ,
+    dbus_if : modport membus_if::master,
+    valid   : input   logic            ,
+    is_new  : input   logic            ,
+    is_stall: output  logic            ,
+    rdata   : output  UIntX            ,
+    ctrl    : input   InstCtrl         ,
+    rs2     : input   UIntX            ,
+    addr    : input   UIntX            ,
 ) {
-
     enum State: logic<2> {
         Init,
         WaitReady,
@@ -38,6 +37,9 @@ module memunit (
         dbus_if.wmask = req_mem_wmask;
     }
 
+    local W: u32        = MEMBUS_WIDTH;
+    let D: MemBusData = dbus_if.resp_rdata;
+
     always_comb {
         is_stall = valid & is_memcmd & case state {
             State::Init     : is_new,
@@ -45,37 +47,38 @@ module memunit (
             State::WaitValid: !dbus_if.resp_valid,
             default         : 0,
         };
+
         case ctrl.funct3 {
             3'b000 : case addr[1:0] {
-                         0      : rdata = {dbus_if.resp_rdata[7] repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[7:0]};
-                1      : rdata = {dbus_if.resp_rdata[15] repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[15:8]};
-                2      : rdata = {dbus_if.resp_rdata[23] repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[23:16]};
-                3      : rdata = {dbus_if.resp_rdata[31] repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[31:24]};
-                default: rdata = 'x;
-            }
+                         0      : rdata = {D[7] repeat W - 8, D[7:0]};
+                         1      : rdata = {D[15] repeat W - 8, D[15:8]};
+                         2      : rdata = {D[23] repeat W - 8, D[23:16]};
+                         3      : rdata = {D[31] repeat W - 8, D[31:24]};
+                         default: rdata = 'x;
+                     }
             3'b100 : case addr[1:0] {
-                         0      : rdata = {1'b0 repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[7:0]};
-                1      : rdata = {1'b0 repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[15:8]};
-                2      : rdata = {1'b0 repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[23:16]};
-                3      : rdata = {1'b0 repeat MEMBUS_WIDTH - 8, dbus_if.resp_rdata[31:24]};
-                default: rdata = 'x;
-            }
+                         0      : rdata = {1'b0 repeat W - 8, D[7:0]};
+                         1      : rdata = {1'b0 repeat W - 8, D[15:8]};
+                         2      : rdata = {1'b0 repeat W - 8, D[23:16]};
+                         3      : rdata = {1'b0 repeat W - 8, D[31:24]};
+                         default: rdata = 'x;
+                     }
             3'b001 : case addr[1:0] {
-                         0      : rdata = {dbus_if.resp_rdata[15] repeat MEMBUS_WIDTH - 16, dbus_if.resp_rdata[15:0]};
-                2      : rdata = {dbus_if.resp_rdata[31] repeat MEMBUS_WIDTH - 16, dbus_if.resp_rdata[31:16]};
-                default: rdata = 'x;
-            }
+                         0      : rdata = {D[15] repeat W - 16, D[15:0]};
+                         2      : rdata = {D[31] repeat W - 16, D[31:16]};
+                         default: rdata = 'x;
+                     }
             3'b101 : case addr[1:0] {
-                         0      : rdata = {1'b0 repeat MEMBUS_WIDTH - 16, dbus_if.resp_rdata[15:0]};
-                2      : rdata = {1'b0 repeat MEMBUS_WIDTH - 16, dbus_if.resp_rdata[31:16]};
-                default: rdata = 'x;
-            }
-            3'b010 : rdata = dbus_if.resp_rdata;
+                         0      : rdata = {1'b0 repeat W - 16, D[15:0]};
+                         2      : rdata = {1'b0 repeat W - 16, D[31:16]};
+                         default: rdata = 'x;
+                     }
+            3'b010 : rdata = D;
             default: rdata = 'x;
         }
     }
 
-    always_ff (clk) {
+    always_ff {
         req_mem_wen   = is_store;
         req_mem_addr  = addr;
         req_mem_wdata = rs2 << {addr[1:0], 3'b0};
@@ -83,15 +86,15 @@ module memunit (
             2'b00  : req_mem_wmask = 4'b1 << addr[1:0];
             2'b01  : case addr[1:0] {
                          2      : req_mem_wmask = 4'b1100;
-                0      : req_mem_wmask = 4'b0011;
-                default: req_mem_wmask = 'x;
-            }
+                         0      : req_mem_wmask = 4'b0011;
+                         default: req_mem_wmask = 'x;
+                     }
             2'b10  : req_mem_wmask = 4'b1111;
             default: req_mem_wmask = 'x;
         }
     }
 
-    always_ff (clk, rst) {
+    always_ff {
         if_reset {
             state = State::Init;
         } else {
