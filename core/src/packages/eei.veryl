@@ -1,11 +1,9 @@
 package eei {
-    local XLEN  : u32                = 32;
-    type Addr   = logic       <XLEN>;
-    type Inst   = logic       <32>  ;
-    type UIntX  = logic       <XLEN>;
-    type UInt12 = logic       <12>  ;
-    type UInt64 = logic       <64>  ;
-    type SIntX  = signed logic<XLEN>;
+    local XLEN : u32                = 32;
+    type Addr  = logic       <XLEN>;
+    type Inst  = logic       <32>  ;
+    type UIntX = logic       <XLEN>;
+    type SIntX = signed logic<XLEN>;
 
     local MEMBUS_WIDTH: u32                     = 32;
     type MemBusData   = logic<MEMBUS_WIDTH>    ;

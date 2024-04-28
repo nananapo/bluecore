@@ -3,7 +3,7 @@
 
 RISC-V Processor written in [Veryl](https://github.com/veryl-lang/veryl).
 
-bluecore is 6-stage in-order core supporting subset of RV[32|64]I.  
+bluecore is 5-stage in-order core supporting subset of RV32I.  
 Veryl version is latest on master branch.  
 
 ### build
@@ -17,7 +17,6 @@ $ make build
 ### run test
 
 - [x] rv32ui-p-*
-- [ ] rv64ui-p-*
 
 ```sh
 $ make verilator MEMFILE=test/riscv-tests-bin/rv32ui-p-add.bin.aligned CYCLE=0

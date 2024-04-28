@@ -31,7 +31,7 @@ module memunit (
     var req_mem_wmask: MemBusMask;
 
     always_comb {
-        dbus_if.valid = state === State::WaitReady;
+        dbus_if.valid = state == State::WaitReady;
         dbus_if.addr  = req_mem_addr;
         dbus_if.wen   = req_mem_wen;
         dbus_if.wdata = req_mem_wdata;

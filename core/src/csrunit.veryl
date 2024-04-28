@@ -3,17 +3,17 @@ import eei::*;
 import corectrl::*;
 
 module csrunit (
-    clk        : input  logic      ,
-    rst        : input  logic      ,
-    valid      : input  logic      ,
-    rdata      : output UIntX      ,
-    raise_trap : output logic      ,
-    trap_vector: output Addr       ,
-    pc         : input  Addr       ,
-    ctrl       : input  InstCtrl   ,
-    rd_addr    : input  logic   <5>,
-    csr_addr   : input  UInt12     ,
-    rs1        : input  UIntX      ,
+    clk        : input  logic       ,
+    rst        : input  logic       ,
+    valid      : input  logic       ,
+    rdata      : output UIntX       ,
+    raise_trap : output logic       ,
+    trap_vector: output Addr        ,
+    pc         : input  Addr        ,
+    ctrl       : input  InstCtrl    ,
+    rd_addr    : input  logic   <5> ,
+    csr_addr   : input  logic   <12>,
+    rs1        : input  UIntX       ,
 ) {
     // 現在のモード
     var mode: CsrMode;
