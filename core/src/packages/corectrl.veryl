@@ -62,6 +62,12 @@ package corectrl {
         return ctrl.is_system;
     }
 
+    function inst_is_csr_imm (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return inst_is_csr_op(ctrl) & ctrl.funct3[2] == 1'b1;
+    }
+
     function inst_use_rs1 (
         ctrl: input InstCtrl,
     ) -> logic    {

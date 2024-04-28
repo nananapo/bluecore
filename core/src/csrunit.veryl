@@ -6,10 +6,8 @@ module csrunit (
     clk        : input  logic      ,
     rst        : input  logic      ,
     valid      : input  logic      ,
-    is_new     : input  logic      ,
-    is_stall   : output logic      ,
-    is_trap    : output logic      ,
-    csr_rdata  : output UIntX      ,
+    rdata      : output UIntX      ,
+    raise_trap : output logic      ,
     trap_vector: output Addr       ,
     pc         : input  Addr       ,
     ctrl       : input  InstCtrl   ,
@@ -17,41 +15,19 @@ module csrunit (
     csr_addr   : input  UInt12     ,
     rs1        : input  UIntX      ,
 ) {
+    // 現在のモード
     var mode: CsrMode;
 
-    // registers
+    // レジスタ
     var mtvec : UIntX;
     var mepc  : UIntX;
     var mcause: UIntX;
-    var stvec : UIntX;
-    var sepc  : UIntX;
-    var scause: UIntX;
-
-    // csr read
-    var rdata: UIntX;
-    var wdata: UIntX;
-    always_comb {
-        rdata = case csr_addr {
-            CsrAddr::MTVEC : mtvec,
-            CsrAddr::MEPC  : mepc,
-            CsrAddr::MCAUSE: mcause,
-            CsrAddr::STVEC : stvec,
-            CsrAddr::SEPC  : sepc,
-            CsrAddr::SCAUSE: scause,
-            default        : 0,
-        };
-        wdata = case ctrl.funct3[1:0] {
-            2'b01  : rs1,
-            2'b10  : rdata | rs1,
-            2'b11  : rdata & ~rs1,
-            default: 0,
-        };
-    }
 
     let cmd_is_write: logic = ctrl.is_system & ctrl.funct3[1:0] != 0; // W or S or C
     let cmd_is_ecall: logic = ctrl.is_system & csr_addr == 0 & rs1[4:0] == 0 & ctrl.funct3 == 0 & rd_addr == 0;
     let cmd_is_mret : logic = ctrl.is_system & csr_addr == 12'b0011000_00010 & rs1[4:0] == 0 & ctrl.funct3 == 0 & rd_addr == 0;
 
+    // ECALLのとき、例外を発生させる
     let raise_expt: logic = cmd_is_ecall;
     let cause_expt: UIntX = if cmd_is_ecall {
         CsrCause::ENVIRONMENT_CALL_FROM_U_MODE + {1'b0 repeat XLEN - $bits(mode), mode}
@@ -59,60 +35,51 @@ module csrunit (
         0
     };
 
-    let trap_to_M: logic = 1;
-
-    var last_is_trap: logic;
+    // レジスタに書き込む用のデータ
+    var wdata: UIntX;
 
     always_comb {
-        csr_rdata = rdata;
-        is_trap   = valid & !is_new & last_is_trap;
-        is_stall  = valid & is_new & (raise_expt | cmd_is_mret);
+        raise_trap  = valid & (raise_expt | cmd_is_mret);
+        trap_vector = if (raise_expt) {
+            mtvec
+        } else {
+            mepc
+        };
+
+        case csr_addr {
+            CsrAddr::MTVEC : rdata = mtvec;
+            CsrAddr::MEPC  : rdata = mepc;
+            CsrAddr::MCAUSE: rdata = mcause;
+            default        : rdata = 'x;
+        }
+        case ctrl.funct3[1:0] {
+            2'b01  : wdata = rs1;
+            2'b10  : wdata = rdata | rs1;
+            2'b11  : wdata = rdata & ~rs1;
+            default: wdata = 'x;
+        }
     }
 
     always_ff (clk, rst) {
         if_reset {
-            mode         = CsrMode::M;
-            mcause       = 0;
-            mepc         = 0;
-            mtvec        = 0;
-            scause       = 0;
-            sepc         = 0;
-            stvec        = 0;
-            last_is_trap = 0;
-            trap_vector  = 0;
+            mode   = CsrMode::M;
+            mcause = 0;
+            mepc   = 0;
+            mtvec  = 0;
         } else if valid {
-            if is_new {
-                if raise_expt {
-                    last_is_trap = 1;
-                    if trap_to_M {
-                        mode        = CsrMode::M;
-                        mcause      = cause_expt;
-                        mepc        = pc;
-                        trap_vector = mtvec;
-                    } else {
-                        mode        = CsrMode::S;
-                        scause      = cause_expt;
-                        sepc        = pc;
-                        trap_vector = stvec;
-                    }
-                } else {
-                    if cmd_is_mret {
-                        last_is_trap = 1;
-                        mode         = CsrMode::S;
-                        trap_vector  = mepc;
-                    } else if cmd_is_write {
-                        last_is_trap = 0;
-                        case csr_addr {
-                            CsrAddr::MTVEC : mtvec  = wdata;
-                            CsrAddr::MEPC  : mepc   = {wdata[XLEN - 1:2], 2'b00};
-                            CsrAddr::MCAUSE: mcause = wdata;
-                            CsrAddr::STVEC : stvec  = wdata;
-                            CsrAddr::SEPC  : sepc   = {wdata[XLEN - 1:2], 2'b00};
-                            CsrAddr::SCAUSE: scause = wdata;
-                            default        : {}
-                        }
-                    } else {
-                        last_is_trap = 0;
+            if raise_expt {
+                mode   = CsrMode::M;
+                mcause = cause_expt;
+                mepc   = pc;
+            } else {
+                if cmd_is_mret {
+                    mode = CsrMode::S;
+                } else if cmd_is_write {
+                    case csr_addr {
+                        CsrAddr::MTVEC : mtvec  = wdata;
+                        CsrAddr::MEPC  : mepc   = {wdata[XLEN - 1:2], 2'b00};
+                        CsrAddr::MCAUSE: mcause = wdata;
+                        default        : {}
                     }
                 }
             }
