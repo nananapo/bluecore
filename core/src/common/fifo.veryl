@@ -11,6 +11,7 @@ module fifo #(
     rvalid: output logic   ,
     rdata : output DataType,
 ) {
+    // 2つ空きがあるかどうか
     var wready_next: logic;
 
     if Width == 0 :widthIfBlock {
@@ -47,12 +48,10 @@ module fifo #(
         var head: Addr;
         var tail: Addr;
 
-        local DataLen: u32 = 2 ** Width;
-
-        var dataList: DataType<DataLen>;
+        var data: DataType<2 ** Width>;
 
         assign rvalid = head != tail;
-        assign rdata  = dataList[head];
+        assign rdata  = data[head];
 
         let head_1     : Addr = head - 1;
         let head_2     : Addr = head_1 - 1;
@@ -61,16 +60,16 @@ module fifo #(
 
         always_ff (clk) {
             if !rst {
-                head     = 0;
-                tail     = 0;
-                dataList = 'x;
+                head = 0;
+                tail = 0;
+                data = 'x;
             } else {
                 if rready & rvalid {
                     head = head + 1;
                 }
                 if wready & wvalid {
-                    dataList[tail] = wdata;
-                    tail           = tail + 1;
+                    data[tail] = wdata;
+                    tail       = tail + 1;
                 }
             }
         }
