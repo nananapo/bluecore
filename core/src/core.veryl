@@ -1,12 +1,12 @@
+import eei::*;
+import corectrl::*;
+
 module core (
     clk    : input   logic           ,
     rst    : input   logic           ,
     ibus_if: modport membus_if::slave,
     dbus_if: modport membus_if::slave,
 ) {
-    import eei::*;
-    import corectrl::*;
-
     // レジスタ
     var registers: UIntX<32>;
 
@@ -95,19 +95,12 @@ module core (
         ibus_if.wmask = 0;
     }
 
-    // フェッチされた命令
-    let if_inst_fetched: Inst = if if_requested_pc[2] == 0 {
-        ibus_if.resp_rdata[31:0]
-    } else {
-        ibus_if.resp_rdata[63:32]
-    };
-
     // IFステージ -> IDステージ
     always_comb {
         idq_wvalid         = if_is_requested & ibus_if.resp_valid;
         idq_rready         = exq_wvalid & exq_wready;
         idq_wdata.addr     = if_requested_pc;
-        idq_wdata.instbits = if_inst_fetched;
+        idq_wdata.instbits = ibus_if.resp_rdata;
     }
 
     // IDステージ
@@ -217,9 +210,9 @@ module core (
     }
 
     // MEMステージ
-    var mem_is_new       : logic; // ステージに供給された命令が新しく供給されたものかどうか
-    var mem_memunit_stall: logic;
-    var mem_mem_rdata    : UIntX;
+    var mem_is_new   : logic; // ステージに供給された命令が新しく供給されたものかどうか
+    var mem_mem_stall: logic;
+    var mem_mem_rdata: UIntX;
 
     var mem_csr_rdata      : UIntX;
     var mem_csr_is_trap    : logic;
@@ -238,7 +231,7 @@ module core (
     // MEMステージ -> WBステージ
     always_comb {
         // メモリがストールしていない場合に次のステージに進む
-        wbq_wvalid         = memq_rvalid & !mem_memunit_stall;
+        wbq_wvalid         = memq_rvalid & !mem_mem_stall;
         wbq_rready         = 1;
         wbq_wdata.addr     = memq_rdata.addr;
         wbq_wdata.instbits = memq_rdata.instbits;
@@ -255,7 +248,8 @@ module core (
         };
     }
 
-    let reset_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
+    // 分岐ハザードかトラップのとき、MEMステージより前のステージをフラッシュする
+    let flush_before_memstage: logic = mem_is_branch_hazard | mem_csr_is_trap;
 
     always_ff (clk, rst) {
         if_reset {
@@ -266,7 +260,7 @@ module core (
             mem_is_new      = 0;
         } else {
             // フラッシュ時の動作
-            if reset_before_memstage {
+            if flush_before_memstage {
                 if_is_requested = 0; // 次のクロックでフェッチ開始する
                 if_pc           = if mem_csr_is_trap {
                     mem_csr_trap_vector // トラップ
@@ -372,7 +366,7 @@ module core (
         ctrl    : memq_rdata.ctrl   ,
         rs2     : memq_rdata.op     ,
         addr    : memq_rdata.alu_out,
-        is_stall: mem_memunit_stall ,
+        is_stall: mem_mem_stall     ,
         rdata   : mem_mem_rdata     ,
     );
 
@@ -401,7 +395,7 @@ module core (
         DataType: idq_type,
     ) (
         clk                                 ,
-        rst   : rst & !reset_before_memstage,
+        rst   : rst & !flush_before_memstage,
         wready: _                           ,
         wvalid: idq_wvalid                  ,
         wdata : idq_wdata                   ,
@@ -417,7 +411,7 @@ module core (
         DataType: exq_type,
     ) (
         clk                                 ,
-        rst   : rst & !reset_before_memstage,
+        rst   : rst & !flush_before_memstage,
         wready: exq_wready                  ,
         wvalid: exq_wvalid                  ,
         wdata : exq_wdata                   ,
@@ -433,7 +427,7 @@ module core (
         clk                                         ,
         rst                                         ,
         wready: memq_wready                         ,
-        wvalid: memq_wvalid & !reset_before_memstage,
+        wvalid: memq_wvalid & !flush_before_memstage,
         wdata : memq_wdata                          ,
         rready: memq_rready                         ,
         rvalid: memq_rvalid                         ,
@@ -467,9 +461,9 @@ module core (
             clock_count = clock_count + 1;
 
             $display("IF ---");
-            if !reset_before_memstage {
+            if !flush_before_memstage {
                 if if_is_requested & ibus_if.resp_valid {
-                    $display("  fetched: %h:%h", if_requested_pc, if_inst_fetched);
+                    $display("  fetched: %h:%h", if_requested_pc, ibus_if.resp_rdata);
                 }
                 if ibus_if.ready & ibus_if.valid {
                     $display("  req: %h", ibus_if.addr);

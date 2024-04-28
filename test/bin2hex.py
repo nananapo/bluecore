@@ -1,11 +1,18 @@
 import sys
 
-args = sys.argv[1:]
-if len(args) == 0:
-    print("Usage:", sys.argv[0], " [filename]")
+def print_usage():
+    print(sys.argv[1] )
+    print("Usage:", sys.argv[0], "[align(4 or 8)] [filename]")
     exit()
 
-FILE_NAME = args[0]
+args = sys.argv[1:]
+if len(args) != 2:
+    print_usage()
+if args[0] != "4" and args[0] != "8":
+    print_usage()
+
+ALIGN = int(args[0])
+FILE_NAME = args[1]
 
 allbytes = []
 with open(FILE_NAME, "rb") as f:
@@ -15,7 +22,6 @@ all = []
 for b in allbytes:
     all.append(format(b, '02x'))
 
-ALIGN = 8
 all += ["00"] * (ALIGN - len(all) % ALIGN)
 
 aligned = []

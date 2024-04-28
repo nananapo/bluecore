@@ -1,15 +1,15 @@
+import eei::*;
+
 interface membus_if {
-    import eei::*;
+    var ready: logic     ;
+    var valid: logic     ;
+    var addr : Addr      ;
+    var wen  : logic     ;
+    var wdata: MemBusData;
+    var wmask: MemBusMask;
 
-    var ready: logic         ;
-    var valid: logic         ;
-    var addr : eei::Addr     ;
-    var wen  : logic         ;
-    var wdata: eei::UInt64   ;
-    var wmask: logic      <8>;
-
-    var resp_valid: logic      ;
-    var resp_rdata: eei::UInt64;
+    var resp_valid: logic     ;
+    var resp_rdata: MemBusData;
 
     modport master {
         ready: output,

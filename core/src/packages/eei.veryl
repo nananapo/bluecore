@@ -7,6 +7,10 @@ package eei {
     type UInt64 = logic       <64>  ;
     type SIntX  = signed logic<XLEN>;
 
-    local RISCVTESTS_EXIT_ADDR    : Addr   = ('h1000) as Addr;
-    local RISCVTESTS_WDATA_SUCCESS: UInt64 = 1;
+    local MEMBUS_WIDTH: u32                     = 32;
+    type MemBusData   = logic<MEMBUS_WIDTH>    ;
+    type MemBusMask   = logic<MEMBUS_WIDTH / 8>;
+
+    local RISCVTESTS_EXIT_ADDR    : Addr       = 'h1000 as Addr;
+    local RISCVTESTS_WDATA_SUCCESS: MemBusData = 1;
 }
