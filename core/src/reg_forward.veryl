@@ -25,6 +25,8 @@ module reg_forward #(
     data_hazard: output logic,
     result     : output UIntX,
 ) {
+
+    // #@@range_begin(reg_hazard)
     let ex_hazard : logic = ex_valid & ex_addr == addr;
     let mem_hazard: logic = mem_valid & mem_addr == addr;
     let wb_hazard : logic = wb_valid & wb_addr == addr;
@@ -51,4 +53,5 @@ module reg_forward #(
             reg_data
         };
     }
+    // #@@range_end(reg_hazard)
 }

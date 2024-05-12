@@ -1,6 +1,7 @@
 import eei::*;
 
 package corectrl {
+    // #@@range_begin(ctrl)
     enum InstType: logic<6> {
         X = 6'b000000,
         R = 6'b000001,
@@ -24,6 +25,7 @@ package corectrl {
         funct3   : logic   <3>, // 命令のfunct3フィールド
         funct7   : logic   <7>, // 命令のfunct7フィールド
     }
+    // #@@range_end(ctrl)
 
     function inst_is_auipc (
         ctrl: input InstCtrl,

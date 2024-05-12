@@ -1,11 +1,13 @@
 import config::*;
 import eei::*;
 
+// #@@range_begin(port)
 module top (
     clk : input  logic    ,
     rst : input  logic    ,
     gpio: output logic<32>,
 ) {
+    // #@@range_end(port)
 
     // テストの状態を表すenumの定義
     enum TestState: logic<2> {
@@ -39,6 +41,7 @@ module top (
     var mem_rvalid: logic     ;
     var mem_rdata : MemBusData;
 
+    // #@@range_begin(inst_memory)
     // メモリのアドレスの幅
     local DATA_ADDR_WIDTH: u32 = 14;
     // アドレスのオフセット
@@ -64,6 +67,7 @@ module top (
         rvalid: mem_rvalid                           ,
         rdata : mem_rdata                            ,
     );
+    // #@@range_end(inst_memory)
 
     // メモリとcoreのinterface
     inst ibus_if: membus_if;
@@ -82,6 +86,7 @@ module top (
         }
     }
 
+    // #@@range_begin(membus_ctrl)
     // メモリとinterfaceの接続
     always_comb {
         // load/storeを優先する
@@ -106,7 +111,9 @@ module top (
             mem_wmask = ibus_if.wmask;
         }
     }
+    // #@@range_end(membus_ctrl)
 
+    // #@@range_begin(riscv_tests_check)
     always_ff (clk, rst) {
         if_reset {
             test_state = TestState::Reset;
@@ -131,7 +138,9 @@ module top (
             }
         }
     }
+    // #@@range_end(riscv_tests_check)
 
+    // #@@range_begin(inst_core)
     // coreのインスタンス化
     inst c: core (
         clk      ,
@@ -139,4 +148,5 @@ module top (
         ibus_if  ,
         dbus_if  ,
     );
+    // #@@range_end(inst_core)
 }

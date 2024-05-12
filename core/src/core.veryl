@@ -81,6 +81,7 @@ module core (
     var wbq_rvalid: logic   ;
     var wbq_rdata : wbq_type;
 
+    // #@@range_begin(ifstage_bus)
     // IFステージ
     var if_pc          : Addr ; // PC
     var if_is_requested: logic; // フェッチ中かどうか
@@ -94,6 +95,7 @@ module core (
         ibus_if.wdata = 'x; // 命令フェッチは書き込まない
         ibus_if.wmask = 0;
     }
+    // #@@range_end(ifstage_bus)
 
     // IFステージ -> IDステージ
     always_comb {
@@ -154,6 +156,7 @@ module core (
         exq_wdata.op1      = id_op1;
         exq_wdata.op2      = id_op2;
         exq_wdata.rs2      = id_rs2;
+        // #@@range_begin(idstage_wbctx)
         // LUI, BRANCH, JUMPは、IDステージでライトバックする値が確定する
         exq_wdata.wbctx.valid = inst_is_lui(id_ctrl) | inst_is_branch(id_ctrl) | inst_is_jump(id_ctrl);
         exq_wdata.wbctx.addr  = id_rd_addr;
@@ -162,6 +165,7 @@ module core (
         } else {
             idq_rdata.addr + 4
         };
+        // #@@range_end(idstage_wbctx)
     }
 
     // EXステージ
@@ -199,6 +203,8 @@ module core (
             exq_rdata.rs2
         };
         memq_wdata.imm = exq_rdata.imm;
+
+        // #@@range_begin(exstage_wbctx)
         // メモリ命令, CSR命令以外は、EXEステージでライトバックする値が確定する
         memq_wdata.wbctx.valid = exq_rdata.wbctx.valid | !(inst_is_memory_op(exq_rdata.ctrl) | inst_is_csr_op(exq_rdata.ctrl));
         memq_wdata.wbctx.addr  = exq_rdata.wbctx.addr;
@@ -207,6 +213,7 @@ module core (
         } else {
             ex_alu_out
         };
+        // #@@range_end(exstage_wbctx)
     }
 
     // MEMステージ
@@ -218,6 +225,7 @@ module core (
     var mem_csr_is_trap    : logic;
     var mem_csr_trap_vector: Addr ;
 
+    // #@@range_begin(bh_detect)
     // 正しい次のPC
     let mem_next_pc_expected: Addr = if !memq_rdata.br_taken {
         memq_rdata.pc_inc
@@ -227,6 +235,7 @@ module core (
 
     // 分岐ハザードが発生するかどうか
     let mem_is_branch_hazard: logic = memq_rvalid & mem_next_pc_expected != memq_rdata.pc_next;
+    // #@@range_end(bh_detect)
 
     // MEMステージ -> WBステージ
     always_comb {
@@ -236,6 +245,7 @@ module core (
         wbq_wdata.addr     = memq_rdata.addr;
         wbq_wdata.instbits = memq_rdata.instbits;
         wbq_wdata.ctrl     = memq_rdata.ctrl;
+        // #@@range_begin(memstage_wbctx)
         // メモリ命令とCSR命令のライトバックする値を確定する
         wbq_wdata.wbctx.valid = 1;
         wbq_wdata.wbctx.addr  = memq_rdata.wbctx.addr;
@@ -246,6 +256,7 @@ module core (
         } else {
             mem_csr_rdata
         };
+        // #@@range_end(memstage_wbctx)
     }
 
     // 分岐ハザードかトラップのとき、MEMステージより前のステージをフラッシュする
@@ -259,6 +270,7 @@ module core (
             if_requested_pc = 0;
             mem_is_new      = 0;
         } else {
+            // #@@range_begin(ifstage_ctrl)
             // フラッシュ時の動作
             if flush_before_memstage {
                 if_is_requested = 0; // 次のクロックでフェッチ開始する
@@ -278,6 +290,7 @@ module core (
                     }
                 }
             }
+            // #@@range_end(ifstage_ctrl)
             // MEMステージが新しいかどうかを更新
             if memq_rvalid {
                 mem_is_new = memq_rready;
@@ -285,9 +298,11 @@ module core (
                 mem_is_new = 1;
             }
             // レジスタにライトバック
+            // #@@range_begin(wb)
             if wbq_rvalid & wbq_rdata.ctrl.rf_wen {
                 registers[wbq_rdata.wbctx.addr] = wbq_rdata.wbctx.data;
             }
+            // #@@range_end(wb)
         }
     }
 
@@ -345,6 +360,7 @@ module core (
         result     : id_rs2   ,
     );
 
+    // #@@range_begin(exestage_alu)
     inst ex_alu: alu (
         ctrl  : exq_rdata.ctrl,
         op1   : exq_rdata.op1 ,
@@ -358,7 +374,9 @@ module core (
         op2   : exq_rdata.op2        ,
         take  : ex_br_taken          ,
     );
+    // #@@range_end(exestage_alu)
 
+    // #@@range_begin(memstage_inst)
     inst mem_memunit: memunit (
         clk                         ,
         rst                         ,
@@ -371,7 +389,9 @@ module core (
         is_stall: mem_mem_stall     ,
         rdata   : mem_mem_rdata     ,
     );
+    // #@@range_end(memstage_inst)
 
+    // #@@range_begin(csrstage)
     inst mem_csrunit: csrunit (
         clk                               ,
         rst                               ,
@@ -391,6 +411,7 @@ module core (
             memq_rdata.op
         },
     );
+    // #@@range_end(csrstage)
 
     // IFステージとIDステージをつなぐFIFO
     inst fifo_if_id: fifo #(

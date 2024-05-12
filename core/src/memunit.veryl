@@ -13,11 +13,13 @@ module memunit (
     rs2     : input   UIntX            ,
     addr    : input   UIntX            ,
 ) {
+    // #@@range_begin(state)
     enum State: logic<2> {
         Init,
         WaitReady,
         WaitValid,
     }
+    // #@@range_end(state)
 
     var state: State;
 
@@ -29,6 +31,7 @@ module memunit (
     var req_mem_wdata: MemBusData;
     var req_mem_wmask: MemBusMask;
 
+    // #@@range_begin(bus)
     always_comb {
         dbus_if.valid = state == State::WaitReady;
         dbus_if.addr  = req_mem_addr;
@@ -36,6 +39,7 @@ module memunit (
         dbus_if.wdata = req_mem_wdata;
         dbus_if.wmask = req_mem_wmask;
     }
+    // #@@range_end(bus)
 
     local W: u32        = MEMBUS_WIDTH;
     let D: MemBusData = dbus_if.resp_rdata;
@@ -94,6 +98,7 @@ module memunit (
         }
     }
 
+    // #@@range_begin(fsm)
     always_ff (clk, rst) {
         if_reset {
             state = State::Init;
@@ -114,4 +119,5 @@ module memunit (
             }
         }
     }
+    // #@@range_end(fsm)
 }
