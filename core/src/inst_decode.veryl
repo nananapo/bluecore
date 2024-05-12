@@ -41,7 +41,6 @@ module inst_decode (
     let imm_u: UIntX = {imm_u_g[msb] repeat XLEN - $bits(imm_u_g) - 12, imm_u_g, 12'b0};
     let imm_z: UIntX = {1'b0 repeat XLEN - $bits(imm_z_g), imm_z_g};
 
-    // #@@range_begin(decode)
     always_comb {
         case op {
             OP_LUI: {
@@ -52,8 +51,7 @@ module inst_decode (
                           imm  = imm_u;
                           ctrl = {T, InstType::U, T, F, F, F, F, F, F, f3, f7};
                       }
-                      // #@@range_end(decode)
-                      OP_JAL: {
+            OP_JAL: {
                         imm  = imm_j;
                         ctrl = {T, InstType::J, T, F, F, T, F, F, F, f3, f7};
                     }

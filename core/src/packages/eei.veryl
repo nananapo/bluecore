@@ -5,12 +5,7 @@ package eei {
     type UIntX = logic       <XLEN>;
     type SIntX = signed logic<XLEN>;
 
-    // #@@range_begin(membus)
     local MEMBUS_WIDTH: u32                     = 32;
     type MemBusData   = logic<MEMBUS_WIDTH>    ;
     type MemBusMask   = logic<MEMBUS_WIDTH / 8>;
-    // #@@range_end(membus)
-
-    local RISCVTESTS_EXIT_ADDR    : Addr       = 'h1000 as Addr;
-    local RISCVTESTS_WDATA_SUCCESS: MemBusData = 1;
 }

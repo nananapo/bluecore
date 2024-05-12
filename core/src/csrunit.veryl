@@ -27,7 +27,6 @@ module csrunit (
     let cmd_is_ecall: logic = ctrl.is_system & csr_addr == 0 & rs1[4:0] == 0 & ctrl.funct3 == 0 & rd_addr == 0;
     let cmd_is_mret : logic = ctrl.is_system & csr_addr == 12'b0011000_00010 & rs1[4:0] == 0 & ctrl.funct3 == 0 & rd_addr == 0;
 
-    // #@@range_begin(ecall)
     // ECALLのとき、例外を発生させる
     let raise_expt: logic = cmd_is_ecall;
     let cause_expt: UIntX = if cmd_is_ecall {
@@ -35,7 +34,6 @@ module csrunit (
     } else {
         0
     };
-    // #@@range_end(ecall)
 
     // レジスタに書き込む用のデータ
     var wdata: UIntX;
@@ -62,7 +60,6 @@ module csrunit (
         }
     }
 
-    // #@@range_begin(always)
     always_ff (clk, rst) {
         if_reset {
             mode   = CsrMode::M;
@@ -86,7 +83,7 @@ module csrunit (
                     }
                 }
             }
+
         }
     }
-    // #@@range_end(always)
 }

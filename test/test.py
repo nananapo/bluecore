@@ -11,11 +11,12 @@ parser.add_argument("-r", "--recursive", action='store_true', help="search file 
 parser.add_argument("-e", "--extension", default="hex", help="test file extension")
 parser.add_argument("-j", "--jobs", type=int, default=1, help="run N tests at once")
 parser.add_argument("-o", "--output_dir", default="results", help="result output directory")
-parser.add_argument("-t", "--time_limit", type=int, default=10, help="limit of execution time. set 0 to nolimit")
+parser.add_argument("-t", "--time_limit", type=float, default=10, help="limit of execution time. set 0 to nolimit")
+parser.add_argument("--test_exit_addr", default="'h1000", help="exit address on test")
+parser.add_argument("--test_wdata_succ", type=int, default=1, help="write value on test success")
 args = parser.parse_args()
 
 EXEFILE_MAGIC = "executable file: "
-
 MAKE_CMD_VERILATOR = "make -C " + args.project_dir+ " verilator "
 
 def read_lines(proc):
@@ -38,6 +39,11 @@ def test(fileName):
     options = []
     options.append("MEMFILE="+fileName)
     options.append("MDIR="+mdir+"/")
+    params = []
+    params.append("-DENV_TEST")
+    params.append("-DTEST_EXIT_ADDR="+args.test_exit_addr)
+    params.append("-DTEST_WDATA_SUCCESS="+str(args.test_wdata_succ))
+    options.append("OPTION=\"" + " ".join(map(lambda x:x.replace("\"", "\\\"").replace("\'", "\\\'") ,params)) + "\"")
 
     with open(resultFilePath, "w") as f:
         run_command = None
