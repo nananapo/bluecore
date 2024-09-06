@@ -1,0 +1,4 @@
+src/
+*/impl/*
+!*/impl/*_process_config.json
+*.gprj.user
