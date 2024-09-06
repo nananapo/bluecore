@@ -1,35 +1,41 @@
 # bluecore
-[![riscv-tests](https://github.com/nananapo/bluecore/actions/workflows/riscv-tests-verilator.yml/badge.svg)](https://github.com/nananapo/bluecore/actions/workflows/riscv-tests-verilator.yml)
 
-RISC-V Processor written in [Veryl](https://github.com/veryl-lang/veryl).
+bluecore is 5-stage pipelined ```RV64IMACZicsr_Zifencei_Zicntr``` CPU written in [Veryl](https://github.com/veryl-lang/veryl).  
+It supports Sv39.
 
-bluecore is 5-stage in-order core supporting subset of RV32I.  
-Veryl version is latest on master branch.  
+Do you want to write CPU in Veryl?  
+Yes! you can see [instruction](https://cpu.kanataso.net/).
 
-### build
+#### riscv-tests
+- [x] rv64u(i/m/a/c)-(p/v)-*
+- [x] rv64(s/m)i-p-*
+
+### build simulator
+
+require Verilator
 
 ```sh
-$ git clone https://github.com/nananapo/bluecore
-$ git submodule init
-$ git submodule update
+$ cd core
 $ make build
+$ make sim
+# target is objdir/sim
 ```
-### run test
 
-- [x] rv32ui-p-*
+### run your program
+
+compile ```test.c```
+```sh
+$ riscv64-unknown-elf-gcc -nostartfiles -nostdlib -T test/link.ld test.c test/entry.S 
+```
+
+convert elf to hex format
+```sh
+$ riscv64-unknown-elf-objcopy a.out -O binary test.bin
+$ python3 test/bin2hex.py 8 test.bin > test.bin.hex
+```
+
+run simulator
 
 ```sh
-$ make verilator MEMFILE=test/riscv-tests-bin/rv32ui-p-add.bin.hex CYCLE=0
-...
-wdata: 0000000000000001
-test: Success
+$ obj_dir/sim bootrom.hex test.bin.hex
 ```
-
-RV32I is selected as default. You can change ISA by change config.
-https://github.com/nananapo/bluecore/blob/353b16a1e0ecae902610ceb883ae1298682f97ca/core/src/PackageConf.veryl#L1-L2
-
-### synthesize
-```synth/gowin/``` directory is GOWIN FPGA Designer project.  
-You can synthesize bluecore on TangMega 138K Pro Dock (GW5AST).
-
-Change ```SYNTHESIS_GOWIN=0``` to ```1``` in ```core/src/PackageConf.veryl``` and run ```make build``` before open projects.

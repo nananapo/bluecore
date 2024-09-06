@@ -1,0 +1,28 @@
+name: Veryl History Test
+
+on:
+  push:
+
+jobs:
+  test-history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install verylup
+        run: |
+          cargo install verylup
+          verylup setup
+          verylup install nightly
+          verylup default nightly
+          veryl --version
+
+      - name: Run history tests
+        run: |
+          cp .github/scripts/test_history.py /tmp/test_history.py
+          python3 /tmp/test_history.py

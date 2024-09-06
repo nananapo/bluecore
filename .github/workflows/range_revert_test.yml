@@ -1,0 +1,17 @@
+name: Range Revert Test
+
+on:
+  push:
+
+jobs:
+  test-revert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run revert tests
+        run: |
+          cp .github/scripts/test_range_revert.py /tmp/test_range_revert.py
+          python3 /tmp/test_range_revert.py

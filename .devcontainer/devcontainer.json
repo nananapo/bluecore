@@ -1,0 +1,21 @@
+{
+    "name": "bluecore-devcontainer",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "mshr-h.veriloghdl",
+                "veryl-lang.veryl-vscode"
+            ]
+        }
+    },
+    "remoteEnv": {
+        "RUSTUP_HOME": "/home/vscode/.rustup",
+        "CARGO_HOME": "/home/vscode/.cargo",
+        "PATH": "/home/vscode/.cargo/bin:${containerEnv:PATH}"
+    },
+    "postCreateCommand": "echo 'devcontainer setup complete!'"
+}
