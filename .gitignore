@@ -1,2 +1,6 @@
 obj_dir/
 results/
+__pycache__
+*.log
+*.sv.map
+*.pyc

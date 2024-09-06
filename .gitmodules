@@ -1,3 +1,0 @@
-[submodule "test/riscv-tests-bin"]
-	path = test/riscv-tests-bin
-	url = https://github.com/nananapo/riscv-tests-bin
