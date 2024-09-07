@@ -1,0 +1,3 @@
+package eei {
+    const XLEN: u32 = 32;
+}
