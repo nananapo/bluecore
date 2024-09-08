@@ -1,0 +1,16 @@
+embed (inline) sv{{{
+    package svutil;
+        import "DPI-C" context function string get_env_value(input string key);
+        function string get_env(input string name);
+            return get_env_value(name);
+        endfunction
+    endpackage
+}}}
+
+package util {
+    function get_env (
+        name: input string,
+    ) -> string {
+        return $sv::svutil::get_env(name);
+    }
+}
