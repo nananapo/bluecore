@@ -1,0 +1,17 @@
+import eei::*;
+
+module top (
+    clk          : input clock ,
+    rst          : input reset ,
+    MEM_FILE_PATH: input string,
+) {
+
+    inst membus: membus_if::<MEM_DATA_WIDTH, XLEN>;
+
+    inst mem: memory::<MEM_DATA_WIDTH, 20> (
+        clk                     ,
+        rst                     ,
+        membus                  ,
+        FILE_PATH: MEM_FILE_PATH,
+    );
+}
