@@ -6,12 +6,37 @@ module top (
     MEM_FILE_PATH: input string,
 ) {
 
-    inst membus: membus_if::<MEM_DATA_WIDTH, XLEN>;
+    // アドレスをメモリのデータ単位でのアドレスに変換する
+    function addr_to_memaddr (
+        addr: input Addr,
+    ) -> Addr {
+        return addr >> $clog2(MEM_DATA_WIDTH / 8);
+    }
+
+    inst membus     : membus_if::<MEM_DATA_WIDTH, XLEN>;
+    inst membus_core: membus_if::<ILEN, XLEN>;
+
+    always_comb {
+        membus.valid      = membus_core.valid;
+        membus_core.ready = membus.ready;
+        // アドレスをデータ幅単位のアドレスに変換する
+        membus.addr        = addr_to_memaddr(membus_core.addr);
+        membus.wen         = 0; // 命令フェッチは常に読み込み
+        membus.wdata       = 'x;
+        membus_core.rvalid = membus.rvalid;
+        membus_core.rdata  = membus.rdata;
+    }
 
     inst mem: memory::<MEM_DATA_WIDTH, 20> (
         clk                     ,
         rst                     ,
         membus                  ,
         FILE_PATH: MEM_FILE_PATH,
+    );
+
+    inst c: core (
+        clk                ,
+        rst                ,
+        membus: membus_core,
     );
 }

@@ -1,0 +1,52 @@
+import eei::*;
+
+module core (
+    clk   : input   clock                        ,
+    rst   : input   reset                        ,
+    membus: modport membus_if::<ILEN, XLEN>::slave,
+) {
+
+    var if_pc          : Addr ;
+    var if_is_requested: logic; // フェッチ中かどうか
+    var if_pc_requested: Addr ; // 要求したアドレス
+
+    let if_pc_next: Addr = if_pc + 4;
+
+    // 命令フェッチ処理
+    always_comb {
+        membus.valid = 1;
+        membus.addr  = if_pc;
+        membus.wen   = 0;
+        membus.wdata = 'x; // wdataは使用しない
+    }
+
+    always_ff {
+        if_reset {
+            if_pc           = 0;
+            if_is_requested = 0;
+            if_pc_requested = 0;
+        } else {
+            if if_is_requested {
+                if membus.rvalid {
+                    if_is_requested = membus.ready;
+                    if membus.ready {
+                        if_pc           = if_pc_next;
+                        if_pc_requested = if_pc;
+                    }
+                }
+            } else {
+                if membus.ready {
+                    if_is_requested = 1;
+                    if_pc           = if_pc_next;
+                    if_pc_requested = if_pc;
+                }
+            }
+        }
+    }
+
+    always_ff {
+        if if_is_requested && membus.rvalid {
+            $display("%h : %h", if_pc_requested, membus.rdata);
+        }
+    }
+}
