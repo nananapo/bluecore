@@ -90,7 +90,6 @@ module core (
         }
     }
 
-    // #@@range_begin(inst)
     let inst_pc  : Addr     = if_fifo_rdata.addr;
     let inst_bits: Inst     = if_fifo_rdata.bits;
     var inst_ctrl: InstCtrl;
@@ -101,15 +100,12 @@ module core (
         ctrl: inst_ctrl,
         imm : inst_imm ,
     );
-    // #@@range_end(inst)
 
-    // #@@range_begin(debug)
     always_ff {
         if if_fifo_rvalid {
             $display("%h : %h", inst_pc, inst_bits);
-            @<b>|$display("  itype   : %b", inst_ctrl.itype);|
-            @<b>|$display("  imm     : %h", inst_imm);|
+            $display("  itype   : %b", inst_ctrl.itype);
+            $display("  imm     : %h", inst_imm);
         }
     }
-    // #@@range_end(debug)
 }
