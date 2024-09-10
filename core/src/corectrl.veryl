@@ -1,0 +1,26 @@
+import eei::*;
+
+package corectrl {
+    // 命令形式を表す列挙型
+    enum InstType: logic<6> {
+        X = 6'b000000,
+        R = 6'b000001,
+        I = 6'b000010,
+        S = 6'b000100,
+        B = 6'b001000,
+        U = 6'b010000,
+        J = 6'b100000,
+    }
+
+    // 制御に使うフラグ用の構造体
+    struct InstCtrl {
+        itype   : InstType   , // 命令の形式
+        rwb_en  : logic      , // レジスタに書き込むかどうか
+        is_lui  : logic      , // LUI命令である
+        is_aluop: logic      , // ALUを利用する命令である
+        is_jump : logic      , // ジャンプ命令である
+        is_load : logic      , // ロード命令である
+        funct3  : logic   <3>, // 命令のfunct3フィールド
+        funct7  : logic   <7>, // 命令のfunct7フィールド
+    }
+}
