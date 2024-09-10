@@ -1,0 +1,47 @@
+module fifo #(
+    param DATA_TYPE: type = logic,
+    param WIDTH    : u32  = 2    ,
+) (
+    clk   : input  clock    ,
+    rst   : input  reset    ,
+    wready: output logic    ,
+    wvalid: input  logic    ,
+    wdata : input  DATA_TYPE,
+    rready: input  logic    ,
+    rvalid: output logic    ,
+    rdata : output DATA_TYPE,
+) {
+    type Ptr = logic<WIDTH>;
+
+    var mem : DATA_TYPE [2 ** WIDTH];
+    var head: Ptr                   ;
+    var tail: Ptr                   ;
+
+    let tail_plus1: Ptr = tail + 1;
+
+    always_comb {
+        rvalid = head != tail;
+        rdata  = mem[head];
+    }
+
+    if WIDTH == 1 :wready_block {
+        assign wready = head == tail && rready;
+    } else {
+        assign wready = tail_plus1 != head;
+    }
+
+    always_ff {
+        if_reset {
+            head = 0;
+            tail = 0;
+        } else {
+            if wready && wvalid {
+                mem[tail] = wdata;
+                tail      = tail + 1;
+            }
+            if rready && rvalid {
+                head = head + 1;
+            }
+        }
+    }
+}
