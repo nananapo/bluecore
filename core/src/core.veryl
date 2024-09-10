@@ -6,12 +6,15 @@ module core (
     membus: modport membus_if::<ILEN, XLEN>::master,
 ) {
 
+    // #@@range_begin(fifo_type)
     // ifのFIFOのデータ型
     struct if_fifo_type {
         addr: Addr,
         bits: Inst,
     }
+    // #@@range_end(fifo_type)
 
+    // #@@range_begin(fifo_reg)
     // FIFOの制御用レジスタ
     var if_fifo_wready: logic       ;
     var if_fifo_wvalid: logic       ;
@@ -19,6 +22,7 @@ module core (
     var if_fifo_rready: logic       ;
     var if_fifo_rvalid: logic       ;
     var if_fifo_rdata : if_fifo_type;
+    // #@@range_end(fifo_reg)
 
     var if_pc          : Addr ;
     var if_is_requested: logic; // フェッチ中かどうか
@@ -26,6 +30,7 @@ module core (
 
     let if_pc_next: Addr = if_pc + 4;
 
+    // #@@range_begin(inst_if_fifo)
     // フェッチした命令を格納するFIFO
     inst if_fifo: fifo #(
         DATA_TYPE: if_fifo_type,
@@ -40,27 +45,32 @@ module core (
         rvalid: if_fifo_rvalid,
         rdata : if_fifo_rdata ,
     );
+    // #@@range_end(inst_if_fifo)
 
+    // #@@range_begin(fetch)
     // 命令フェッチ処理
     always_comb {
         // FIFOに2個以上空きがあるとき、命令をフェッチする
-        membus.valid = if_fifo.wready_two;
+        membus.valid = @<b>|if_fifo.wready_two|;
         membus.addr  = if_pc;
         membus.wen   = 0;
         membus.wdata = 'x; // wdataは使用しない
 
-        // 常にFIFOから命令を受け取る
-        if_fifo_rready = 1;
+        @<b>|// 常にFIFOから命令を受け取る|
+        @<b>|if_fifo_rready = 1;|
     }
+    // #@@range_end(fetch)
 
     always_ff {
-        if_reset {
-            if_pc           = 0;
-            if_is_requested = 0;
-            if_pc_requested = 0;
-            if_fifo_wvalid  = 0;
-            if_fifo_wdata   = 0;
-        } else {
+    // #@@range_begin(if_reset)
+    if_reset {
+        if_pc           = 0;
+        if_is_requested = 0;
+        if_pc_requested = 0;
+        @<b>|if_fifo_wvalid  = 0;|
+        @<b>|if_fifo_wdata   = 0;|
+    } else {
+    // #@@range_end(if_reset)
             if if_is_requested {
                 if membus.rvalid {
                     if_is_requested = membus.ready && membus.valid;
@@ -76,19 +86,22 @@ module core (
                     if_pc_requested = if_pc;
                 }
             }
-            // IFのFIFOの制御
-            if if_is_requested && membus.rvalid {
-                if_fifo_wvalid     = 1;
-                if_fifo_wdata.addr = if_pc_requested;
-                if_fifo_wdata.bits = membus.rdata;
-            } else {
-                if if_fifo_wvalid && if_fifo_wready {
-                    if_fifo_wvalid = 0;
-                }
-            }
+    // #@@range_begin(fifo_ctrl)
+    // IFのFIFOの制御
+    if if_is_requested && membus.rvalid { @<balloon>{フェッチできた時}
+        if_fifo_wvalid     = 1;
+        if_fifo_wdata.addr = if_pc_requested;
+        if_fifo_wdata.bits = membus.rdata;
+    } else {
+        if if_fifo_wvalid && if_fifo_wready { @<balloon>{FIFOにデータを格納できる時}
+            if_fifo_wvalid = 0;
+        }
+    }
+    // #@@range_end(fifo_ctrl)
         }
     }
 
+    // #@@range_begin(debug)
     let inst_pc  : Addr = if_fifo_rdata.addr;
     let inst_bits: Inst = if_fifo_rdata.bits;
 
@@ -97,4 +110,6 @@ module core (
             $display("%h : %h", inst_pc, inst_bits);
         }
     }
+    // #@@range_end(debug)
+
 }
