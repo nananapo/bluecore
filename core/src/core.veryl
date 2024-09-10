@@ -1,4 +1,5 @@
 import eei::*;
+import corectrl::*;
 
 module core (
     clk   : input   clock                        ,
@@ -89,12 +90,22 @@ module core (
         }
     }
 
-    let inst_pc  : Addr = if_fifo_rdata.addr;
-    let inst_bits: Inst = if_fifo_rdata.bits;
+    let inst_pc  : Addr     = if_fifo_rdata.addr;
+    let inst_bits: Inst     = if_fifo_rdata.bits;
+    var inst_ctrl: InstCtrl;
+    var inst_imm : UIntX   ;
+
+    inst decoder: inst_decoder (
+        bits: inst_bits,
+        ctrl: inst_ctrl,
+        imm : inst_imm ,
+    );
 
     always_ff {
         if if_fifo_rvalid {
             $display("%h : %h", inst_pc, inst_bits);
+            $display("  itype   : %b", inst_ctrl.itype);
+            $display("  imm     : %h", inst_imm);
         }
     }
 }
