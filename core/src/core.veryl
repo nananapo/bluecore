@@ -101,12 +101,9 @@ module core (
         imm : inst_imm ,
     );
 
-    // #@@range_begin(define)
     // レジスタ
     var regfile: UIntX<32>;
-    // #@@range_end(define)
 
-    // #@@range_begin(use)
     // レジスタ番号
     let rs1_addr: logic<5> = inst_bits[19:15];
     let rs2_addr: logic<5> = inst_bits[24:20];
@@ -122,9 +119,7 @@ module core (
     } else {
         regfile[rs2_addr]
     };
-    // #@@range_end(use)
 
-    // #@@range_begin(init)
     // レジスタの初期化
     always_ff {
         if_reset {
@@ -133,9 +128,7 @@ module core (
             }
         }
     }
-    // #@@range_end(init)
 
-    // #@@range_begin(debug)
     always_ff {
         if if_fifo_rvalid {
             $display("%h : %h", inst_pc, inst_bits);
@@ -145,5 +138,4 @@ module core (
             $display("  rs2[%d] : %h", rs2_addr, rs2_data);
         }
     }
-    // #@@range_end(debug)
 }
