@@ -101,11 +101,41 @@ module core (
         imm : inst_imm ,
     );
 
+    // レジスタ
+    var regfile: UIntX<32>;
+
+    // レジスタ番号
+    let rs1_addr: logic<5> = inst_bits[19:15];
+    let rs2_addr: logic<5> = inst_bits[24:20];
+
+    // ソースレジスタのデータ
+    let rs1_data: UIntX = if rs1_addr == 0 {
+        0
+    } else {
+        regfile[rs1_addr]
+    };
+    let rs2_data: UIntX = if rs2_addr == 0 {
+        0
+    } else {
+        regfile[rs2_addr]
+    };
+
+    // レジスタの初期化
+    always_ff {
+        if_reset {
+            for i: i32 in 0..32 {
+                regfile[i] = i + 100;
+            }
+        }
+    }
+
     always_ff {
         if if_fifo_rvalid {
             $display("%h : %h", inst_pc, inst_bits);
             $display("  itype   : %b", inst_ctrl.itype);
             $display("  imm     : %h", inst_imm);
+            $display("  rs1[%d] : %h", rs1_addr, rs1_data);
+            $display("  rs2[%d] : %h", rs2_addr, rs2_data);
         }
     }
 }
