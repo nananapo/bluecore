@@ -11,6 +11,7 @@ package eei {
     // メモリのデータ幅
     const MEM_DATA_WIDTH: u32 = 32;
 
+    // #@@range_begin(opcode)
     // opcode
     const OP_LUI   : logic<7> = 7'b0110111;
     const OP_AUIPC : logic<7> = 7'b0010111;
@@ -21,4 +22,5 @@ package eei {
     const OP_BRANCH: logic<7> = 7'b1100011;
     const OP_LOAD  : logic<7> = 7'b0000011;
     const OP_STORE : logic<7> = 7'b0100011;
+    // #@@range_end(opcode)
 }
