@@ -21,28 +21,37 @@ module memory::<DATA_WIDTH: u32, ADDR_WIDTH: u32> #(
         }
     }
 
+    // #@@range_begin(state)
     // 状態
     enum State {
         Ready,
         WriteValid,
     }
     var state: State;
+    // #@@range_end(state)
 
+    // #@@range_begin(var)
     var addr_saved : logic   <ADDR_WIDTH>;
     var wdata_saved: DataType            ;
     var wmask_saved: logic   <DATA_WIDTH>;
     var rdata_saved: DataType            ;
+    // #@@range_end(var)
 
+    // #@@range_begin(always_ready)
     always_comb {
         membus.ready = state == State::Ready;
     }
+    // #@@range_end(always_ready)
 
+    // #@@range_begin(always_mem)
     always_ff {
         if state == State::WriteValid {
             mem[addr_saved[ADDR_WIDTH - 1:0]] = wdata_saved & wmask_saved | rdata_saved & ~wmask_saved;
         }
     }
+    // #@@range_end(always_mem)
 
+    // #@@range_begin(always_state)
     always_ff {
         if_reset {
             state         = State::Ready;
@@ -72,4 +81,5 @@ module memory::<DATA_WIDTH: u32, ADDR_WIDTH: u32> #(
             }
         }
     }
+    // #@@range_end(always_state)
 }

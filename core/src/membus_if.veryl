@@ -4,27 +4,32 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
     var addr  : logic<ADDR_WIDTH>    ;
     var wen   : logic                ;
     var wdata : logic<DATA_WIDTH>    ;
+    // #@@range_begin(wmask)
     var wmask : logic<DATA_WIDTH / 8>;
+    // #@@range_end(wmask)
     var rvalid: logic                ;
     var rdata : logic<DATA_WIDTH>    ;
 
+    // #@@range_begin(master)
     modport master {
         valid       : output,
         ready       : input ,
         addr        : output,
         wen         : output,
         wdata       : output,
-        wmask       : output,
+        @<b>|wmask       : output,|
         rvalid      : input ,
         rdata       : input ,
-        wmask_expand: import,
+        @<b>|wmask_expand: import,|
     }
 
     modport slave {
-        wmask_expand: import,
+        @<b>|wmask_expand: import,|
         ..converse(master)
     }
+    // #@@range_end(master)
 
+    // #@@range_begin(func)
     // get DATA_WIDTH-bit expanded wmask
     function wmask_expand () -> logic<DATA_WIDTH> {
         var result: logic<DATA_WIDTH>;
@@ -34,4 +39,5 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
         }
         return result;
     }
+    // #@@range_end(func)
 }
