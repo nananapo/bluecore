@@ -1,11 +1,12 @@
 interface membus_if::<DATA_WIDTH: const, ADDR_WIDTH: const> {
-    var valid : logic            ;
-    var ready : logic            ;
-    var addr  : logic<ADDR_WIDTH>;
-    var wen   : logic            ;
-    var wdata : logic<DATA_WIDTH>;
-    var rvalid: logic            ;
-    var rdata : logic<DATA_WIDTH>;
+    var valid : logic                ;
+    var ready : logic                ;
+    var addr  : logic<ADDR_WIDTH>    ;
+    var wen   : logic                ;
+    var wdata : logic<DATA_WIDTH>    ;
+    var wmask : logic<DATA_WIDTH / 8>;
+    var rvalid: logic                ;
+    var rdata : logic<DATA_WIDTH>    ;
 
     modport master {
         valid : output,
@@ -13,6 +14,7 @@ interface membus_if::<DATA_WIDTH: const, ADDR_WIDTH: const> {
         addr  : output,
         wen   : output,
         wdata : output,
+        wmask : output,
         rvalid: input ,
         rdata : input ,
     }
@@ -23,6 +25,7 @@ interface membus_if::<DATA_WIDTH: const, ADDR_WIDTH: const> {
         addr  : input ,
         wen   : input ,
         wdata : input ,
+        wmask : input ,
         rvalid: output,
         rdata : output,
     }
