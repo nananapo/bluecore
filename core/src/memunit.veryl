@@ -23,9 +23,14 @@ module memunit (
 
     var state: State;
 
-    var req_wen  : logic                ;
-    var req_addr : Addr                 ;
-    var req_wdata: logic<MEM_DATA_WIDTH>;
+    var req_wen  : logic                    ;
+    var req_addr : Addr                     ;
+    var req_wdata: logic<MEM_DATA_WIDTH>    ;
+    var req_wmask: logic<MEM_DATA_WIDTH / 8>;
+
+    const W   : u32                   = XLEN;
+    let D   : logic<MEM_DATA_WIDTH> = membus.rdata;
+    let sext: logic                 = ctrl.funct3[2] == 1'b0;
 
     always_comb {
         // メモリアクセス
@@ -33,8 +38,24 @@ module memunit (
         membus.addr  = req_addr;
         membus.wen   = req_wen;
         membus.wdata = req_wdata;
+        membus.wmask = req_wmask;
         // loadの結果
-        rdata = membus.rdata;
+        rdata = case ctrl.funct3[1:0] {
+            2'b00  : case addr[1:0] {
+                0      : {sext & D[7] repeat W - 8, D[7:0]},
+                1      : {sext & D[15] repeat W - 8, D[15:8]},
+                2      : {sext & D[23] repeat W - 8, D[23:16]},
+                3      : {sext & D[31] repeat W - 8, D[31:24]},
+                default: 'x,
+            },
+            2'b01  : case addr[1:0] {
+                0      : {sext & D[15] repeat W - 16, D[15:0]},
+                2      : {sext & D[31] repeat W - 16, D[31:16]},
+                default: 'x,
+            },
+            2'b10  : D,
+            default: 'x,
+        };
         // stall判定
         stall = valid & case state {
             State::Init     : is_new && inst_is_memop(ctrl),
@@ -50,6 +71,7 @@ module memunit (
             req_wen   = 0;
             req_addr  = 0;
             req_wdata = 0;
+            req_wmask = 0;
         } else {
             if valid {
                 case state {
@@ -57,7 +79,17 @@ module memunit (
                         state     = State::WaitReady;
                         req_wen   = inst_is_store(ctrl);
                         req_addr  = addr;
-                        req_wdata = rs2;
+                        req_wdata = rs2 << {addr[1:0], 3'b0};
+                        req_wmask = case ctrl.funct3[1:0] {
+                            2'b00  : 4'b1 << addr[1:0],
+                            2'b01  : case addr[1:0] {
+                                2      : 4'b1100,
+                                0      : 4'b0011,
+                                default: 'x,
+                            },
+                            2'b10  : 4'b1111,
+                            default: 'x,
+                        };
                     }
                     State::WaitReady: if membus.ready {
                         state = State::WaitValid;
