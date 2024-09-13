@@ -15,18 +15,42 @@ module top #(
         return addr[$clog2(MEM_DATA_WIDTH / 8)+:MEM_ADDR_WIDTH];
     }
 
-    inst membus     : membus_if::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH>;
-    inst membus_core: membus_if::<ILEN, XLEN>;
+    inst membus  : membus_if::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH>;
+    inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
+    inst d_membus: membus_if::<MEM_DATA_WIDTH, XLEN>; // ロードストア命令用
+
+    var memarb_last_i: logic;
+
+    // メモリアクセスを調停する
+    always_ff {
+        if_reset {
+            memarb_last_i = 0;
+        } else {
+            if membus.ready {
+                memarb_last_i = !d_membus.valid;
+            }
+        }
+    }
 
     always_comb {
-        membus.valid      = membus_core.valid;
-        membus_core.ready = membus.ready;
-        // アドレスをデータ幅単位のアドレスに変換する
-        membus.addr        = addr_to_memaddr(membus_core.addr);
-        membus.wen         = 0; // 命令フェッチは常に読み込み
-        membus.wdata       = 'x;
-        membus_core.rvalid = membus.rvalid;
-        membus_core.rdata  = membus.rdata;
+        i_membus.ready  = membus.ready && !d_membus.valid;
+        i_membus.rvalid = membus.rvalid && memarb_last_i;
+        i_membus.rdata  = membus.rdata;
+
+        d_membus.ready  = membus.ready;
+        d_membus.rvalid = membus.rvalid && !memarb_last_i;
+        d_membus.rdata  = membus.rdata;
+
+        membus.valid = i_membus.valid | d_membus.valid;
+        if d_membus.valid {
+            membus.addr  = addr_to_memaddr(d_membus.addr);
+            membus.wen   = d_membus.wen;
+            membus.wdata = d_membus.wdata;
+        } else {
+            membus.addr  = addr_to_memaddr(i_membus.addr);
+            membus.wen   = 0; // 命令フェッチは常に読み込み
+            membus.wdata = 'x;
+        }
     }
 
     inst mem: memory::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH> #(
@@ -39,8 +63,9 @@ module top #(
     );
 
     inst c: core (
-        clk                ,
-        rst                ,
-        membus: membus_core,
+        clk       ,
+        rst       ,
+        i_membus  ,
+        d_membus  ,
     );
 }

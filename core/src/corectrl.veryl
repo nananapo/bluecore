@@ -23,4 +23,18 @@ package corectrl {
         funct3  : logic   <3>, // 命令のfunct3フィールド
         funct7  : logic   <7>, // 命令のfunct7フィールド
     }
+
+    // 命令がメモリにアクセスする命令か判別する関数
+    function inst_is_memop (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.itype == InstType::S || ctrl.is_load;
+    }
+
+    // 命令がストア命令か判別する関数
+    function inst_is_store (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return inst_is_memop(ctrl) && !ctrl.is_load;
+    }
 }
