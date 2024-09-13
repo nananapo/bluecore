@@ -5,9 +5,11 @@ package eei {
     type UIntX  = logic       <XLEN>;
     type UInt32 = logic       <32>  ;
     type UInt64 = logic       <64>  ;
+    // #@@range_begin(define)
     type SIntX  = signed logic<XLEN>;
     type SInt32 = signed logic<32>  ;
     type SInt64 = signed logic<64>  ;
+    // #@@range_end(define)
     type Inst   = logic       <ILEN>;
     type Addr   = logic       <XLEN>;
 
