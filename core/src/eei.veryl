@@ -2,11 +2,14 @@ package eei {
     const XLEN: u32 = 32;
     const ILEN: u32 = 32;
 
-    type UIntX  = logic<XLEN>;
-    type UInt32 = logic<32>  ;
-    type UInt64 = logic<64>  ;
-    type Inst   = logic<ILEN>;
-    type Addr   = logic<XLEN>;
+    type UIntX  = logic       <XLEN>;
+    type UInt32 = logic       <32>  ;
+    type UInt64 = logic       <64>  ;
+    type SIntX  = signed logic<XLEN>;
+    type SInt32 = signed logic<32>  ;
+    type SInt64 = signed logic<64>  ;
+    type Inst   = logic       <ILEN>;
+    type Addr   = logic       <XLEN>;
 
     // メモリのデータ幅
     const MEM_DATA_WIDTH: u32 = 32;
