@@ -120,15 +120,6 @@ module core (
         regfile[rs2_addr]
     };
 
-    // レジスタの初期化
-    always_ff {
-        if_reset {
-            for i: i32 in 0..32 {
-                regfile[i] = i + 100;
-            }
-        }
-    }
-
     // ALU
     var op1       : UIntX;
     var op2       : UIntX;
@@ -162,6 +153,25 @@ module core (
         result: alu_result,
     );
 
+    let rd_addr: logic<5> = inst_bits[11:7];
+    let wb_data: UIntX    = if inst_ctrl.is_lui {
+        inst_imm
+    } else {
+        alu_result
+    };
+
+    always_ff {
+        if_reset {
+            for i: i32 in 0..32 {
+                regfile[i] = i + 100;
+            }
+        } else {
+            if if_fifo_rvalid && inst_ctrl.rwb_en {
+                regfile[rd_addr] = wb_data;
+            }
+        }
+    }
+
     always_ff {
         if if_fifo_rvalid {
             $display("%h : %h", inst_pc, inst_bits);
@@ -172,6 +182,9 @@ module core (
             $display("  op1     : %h", op1);
             $display("  op2     : %h", op2);
             $display("  alu res : %h", alu_result);
+            if inst_ctrl.rwb_en {
+                $display("  reg[%d] <= %h", rd_addr, wb_data);
+            }
         }
     }
 }
