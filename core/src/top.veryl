@@ -46,10 +46,12 @@ module top #(
             membus.addr  = addr_to_memaddr(d_membus.addr);
             membus.wen   = d_membus.wen;
             membus.wdata = d_membus.wdata;
+            membus.wmask = d_membus.wmask;
         } else {
             membus.addr  = addr_to_memaddr(i_membus.addr);
             membus.wen   = 0; // 命令フェッチは常に読み込み
             membus.wdata = 'x;
+            membus.wmask = 'x;
         }
     }
 

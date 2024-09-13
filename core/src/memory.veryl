@@ -21,19 +21,54 @@ module memory::<DATA_WIDTH: u32, ADDR_WIDTH: u32> #(
         }
     }
 
+    // 状態
+    enum State {
+        Ready,
+        WriteValid,
+    }
+    var state: State;
+
+    var addr_saved : logic   <ADDR_WIDTH>;
+    var wdata_saved: DataType            ;
+    var wmask_saved: logic   <DATA_WIDTH>;
+    var rdata_saved: DataType            ;
+
     always_comb {
-        membus.ready = 1;
+        membus.ready = state == State::Ready;
+    }
+
+    always_ff {
+        if state == State::WriteValid {
+            mem[addr_saved[ADDR_WIDTH - 1:0]] = wdata_saved & wmask_saved | rdata_saved & ~wmask_saved;
+        }
     }
 
     always_ff {
         if_reset {
+            state         = State::Ready;
             membus.rvalid = 0;
             membus.rdata  = 0;
+            addr_saved    = 0;
+            wdata_saved   = 0;
+            wmask_saved   = 0;
+            rdata_saved   = 0;
         } else {
-            membus.rvalid = membus.valid;
-            membus.rdata  = mem[membus.addr[ADDR_WIDTH - 1:0]];
-            if membus.valid && membus.wen {
-                mem[membus.addr[ADDR_WIDTH - 1:0]] = membus.wdata;
+            case state {
+                State::Ready: {
+                    membus.rvalid = membus.valid & !membus.wen;
+                    membus.rdata  = mem[membus.addr[ADDR_WIDTH - 1:0]];
+                    addr_saved    = membus.addr[ADDR_WIDTH - 1:0];
+                    wdata_saved   = membus.wdata;
+                    wmask_saved   = membus.wmask_expand();
+                    rdata_saved   = mem[membus.addr[ADDR_WIDTH - 1:0]];
+                    if membus.valid && membus.wen {
+                        state = State::WriteValid;
+                    }
+                }
+                State::WriteValid: {
+                    state         = State::Ready;
+                    membus.rvalid = 1;
+                }
             }
         }
     }
