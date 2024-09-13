@@ -9,13 +9,11 @@ module memory::<DATA_WIDTH: const, ADDR_WIDTH: const> (
 
     var mem: DataType [2 ** ADDR_WIDTH];
 
-    // #@@range_begin(wmask)
     // 書き込みマスクをDATA_WIDTHに展開した値
     var wmask_expand: DataType;
     for i in 0..DATA_WIDTH :wm_expand_block {
         assign wmask_expand[i] = wmask_saved[i / 8];
     }
-    // #@@range_end(wmask)
 
     initial {
         // memをFILE_PATHに格納されているデータで初期化
@@ -24,37 +22,28 @@ module memory::<DATA_WIDTH: const, ADDR_WIDTH: const> (
         }
     }
 
-    // #@@range_begin(state)
     // 状態
     enum State {
         Ready,
         WriteValid,
     }
     var state: State;
-    // #@@range_end(state)
 
-    // #@@range_begin(var)
     var addr_saved : logic   <ADDR_WIDTH>;
     var wdata_saved: DataType            ;
     var wmask_saved: MaskType            ;
     var rdata_saved: DataType            ;
-    // #@@range_end(var)
 
-    // #@@range_begin(always_ready)
     always_comb {
         membus.ready = state == State::Ready;
     }
-    // #@@range_end(always_ready)
 
-    // #@@range_begin(always_mem)
     always_ff {
         if state == State::WriteValid {
             mem[addr_saved[ADDR_WIDTH - 1:0]] = wdata_saved & wmask_expand | rdata_saved & ~wmask_expand;
         }
     }
-    // #@@range_end(always_mem)
 
-    // #@@range_begin(always_state)
     always_ff {
         if_reset {
             state         = State::Ready;
@@ -84,5 +73,4 @@ module memory::<DATA_WIDTH: const, ADDR_WIDTH: const> (
             }
         }
     }
-    // #@@range_end(always_state)
 }
