@@ -48,7 +48,6 @@ module core (
     var memu_rdata: UIntX;
     var memu_stall: logic;
 
-// #@@range_begin(wmask)
     // 命令フェッチ処理
     always_comb {
         // FIFOに2個以上空きがあるとき、命令をフェッチする
@@ -56,8 +55,7 @@ module core (
         i_membus.addr  = if_pc;
         i_membus.wen   = 0;
         i_membus.wdata = 'x; // wdataは使用しない
-        @<b>|i_membus.wmask = 'x; // wmaskは使用しない|
-// #@@range_end(wmask)
+        i_membus.wmask = 'x; // wmaskは使用しない
 
         // memunitが処理中ではないとき、FIFOから命令を取り出していい
         if_fifo_rready = !memu_stall;
