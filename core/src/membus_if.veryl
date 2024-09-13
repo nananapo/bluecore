@@ -4,29 +4,25 @@ interface membus_if::<DATA_WIDTH: const, ADDR_WIDTH: const> {
     var addr  : logic<ADDR_WIDTH>    ;
     var wen   : logic                ;
     var wdata : logic<DATA_WIDTH>    ;
+    // #@@range_begin(wmask)
     var wmask : logic<DATA_WIDTH / 8>;
+    // #@@range_end(wmask)
     var rvalid: logic                ;
     var rdata : logic<DATA_WIDTH>    ;
 
+    // #@@range_begin(master)
     modport master {
-        valid : output,
-        ready : input ,
-        addr  : output,
-        wen   : output,
-        wdata : output,
-        wmask : output,
-        rvalid: input ,
-        rdata : input ,
+        ...
+        @<b>|wmask : output,|
+        ...
     }
+    // #@@range_end(master)
 
+    // #@@range_begin(slave)
     modport slave {
-        valid : input ,
-        ready : output,
-        addr  : input ,
-        wen   : input ,
-        wdata : input ,
-        wmask : input ,
-        rvalid: output,
-        rdata : output,
+        ...
+        @<b>|wmask : input ,|
+        ...
     }
+    // #@@range_end(slave)
 }
