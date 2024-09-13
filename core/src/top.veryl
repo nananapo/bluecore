@@ -41,18 +41,20 @@ module top #(
         d_membus.rvalid = membus.rvalid && !memarb_last_i;
         d_membus.rdata  = membus.rdata;
 
-        membus.valid = i_membus.valid | d_membus.valid;
-        if d_membus.valid {
-            membus.addr  = addr_to_memaddr(d_membus.addr);
-            membus.wen   = d_membus.wen;
-            membus.wdata = d_membus.wdata;
-            membus.wmask = d_membus.wmask;
-        } else {
-            membus.addr  = addr_to_memaddr(i_membus.addr);
-            membus.wen   = 0; // 命令フェッチは常に読み込み
-            membus.wdata = 'x;
-            membus.wmask = 'x;
-        }
+    // #@@range_begin(wmask)
+    membus.valid = i_membus.valid | d_membus.valid;
+    if d_membus.valid {
+        membus.addr  = addr_to_memaddr(d_membus.addr);
+        membus.wen   = d_membus.wen;
+        membus.wdata = d_membus.wdata;
+        @<b>|membus.wmask = d_membus.wmask;|
+    } else {
+        membus.addr  = addr_to_memaddr(i_membus.addr);
+        membus.wen   = 0; // 命令フェッチは常に読み込み
+        membus.wdata = 'x;
+        @<b>|membus.wmask = 'x;|
+    }
+    // #@@range_end(wmask)
     }
 
     inst mem: memory::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH> #(
