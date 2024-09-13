@@ -1,14 +1,12 @@
 import eei::*;
 import corectrl::*;
 
-// #@@range_begin(port)
 module core (
     clk     : input   clock                                   ,
     rst     : input   reset                                   ,
     i_membus: modport membus_if::<ILEN, XLEN>::master          ,
     d_membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master,
 ) {
-// #@@range_end(port)
 
     // ifのFIFOのデータ型
     struct if_fifo_type {
@@ -47,18 +45,14 @@ module core (
 
     // 命令フェッチ処理
     always_comb {
-// #@@range_begin(fetch)
-    // FIFOに空きがあるとき、命令をフェッチする
-    i_membus.valid = if_fifo_wready;
-    i_membus.addr  = if_pc;
-    i_membus.wen   = 0;
-    i_membus.wdata = 'x; // wdataは使用しない
-// #@@range_end(fetch)
+        // FIFOに空きがあるとき、命令をフェッチする
+        i_membus.valid = if_fifo_wready;
+        i_membus.addr  = if_pc;
+        i_membus.wen   = 0;
+        i_membus.wdata = 'x; // wdataは使用しない
 
-// #@@range_begin(rready)
-    // memunitが処理中ではないとき、FIFOから命令を取り出していい
-    if_fifo_rready = !memu_stall;
-// #@@range_end(rready)
+        // memunitが処理中ではないとき、FIFOから命令を取り出していい
+        if_fifo_rready = !memu_stall;
     }
 
     always_ff {
@@ -97,10 +91,8 @@ module core (
         }
     }
 
-// #@@range_begin(valid_new)
     let inst_valid : logic    = if_fifo_rvalid;
     var inst_is_new: logic   ; // 命令が今のクロックで供給されたかどうか
-// #@@range_end(valid_new)
     let inst_pc    : Addr     = if_fifo_rdata.addr;
     let inst_bits  : Inst     = if_fifo_rdata.bits;
     var inst_ctrl  : InstCtrl;
@@ -164,7 +156,6 @@ module core (
         result: alu_result,
     );
 
-// #@@range_begin(new_ff)
     always_ff {
         if_reset {
             inst_is_new = 0;
@@ -176,9 +167,7 @@ module core (
             }
         }
     }
-// #@@range_end(new_ff)
 
-// #@@range_begin(inst)
     var memu_rdata: UIntX;
     var memu_stall: logic;
 
@@ -194,9 +183,7 @@ module core (
         stall : memu_stall ,
         membus: d_membus   ,
     );
-// #@@range_end(inst)
 
-// #@@range_begin(rd)
     let rd_addr: logic<5> = inst_bits[11:7];
     let wb_data: UIntX    = if inst_ctrl.is_lui {
         inst_imm
@@ -205,17 +192,13 @@ module core (
     } else {
         alu_result
     };
-// #@@range_end(rd)
 
-// #@@range_begin(wb_ready)
     always_ff {
         if inst_valid && if_fifo_rready && inst_ctrl.rwb_en {
             regfile[rd_addr] = wb_data;
         }
     }
-// #@@range_end(wb_ready)
 
-// #@@range_begin(clock_count)
     var clock_count: u64;
 
     always_ff {
@@ -227,22 +210,17 @@ module core (
                 $display("# %d", clock_count);
                 $display("%h : %h", inst_pc, inst_bits);
                 $display("  itype     : %b", inst_ctrl.itype);
-// #@@range_end(clock_count)
-    $display("  imm       : %h", inst_imm);
-    $display("  rs1[%d]   : %h", rs1_addr, rs1_data);
-    $display("  rs2[%d]   : %h", rs2_addr, rs2_data);
-    $display("  op1       : %h", op1);
-    $display("  op2       : %h", op2);
-    $display("  alu res   : %h", alu_result);
-// #@@range_begin(mem)
-    $display("  mem stall : %b", memu_stall);
-    $display("  mem rdata : %h", memu_rdata);
-// #@@range_end(mem)
-// #@@range_begin(wb_debug)
-    if if_fifo_rready && inst_ctrl.rwb_en {
-        $display("  reg[%d] <= %h", rd_addr, wb_data);
-    }
-// #@@range_end(wb_debug)
+                $display("  imm       : %h", inst_imm);
+                $display("  rs1[%d]   : %h", rs1_addr, rs1_data);
+                $display("  rs2[%d]   : %h", rs2_addr, rs2_data);
+                $display("  op1       : %h", op1);
+                $display("  op2       : %h", op2);
+                $display("  alu res   : %h", alu_result);
+                $display("  mem stall : %b", memu_stall);
+                $display("  mem rdata : %h", memu_rdata);
+                if if_fifo_rready && inst_ctrl.rwb_en {
+                    $display("  reg[%d] <= %h", rd_addr, wb_data);
+                }
             }
         }
     }
