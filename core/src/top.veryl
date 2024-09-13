@@ -1,10 +1,12 @@
 import eei::*;
 
+// #@@range_begin(port)
 module top (
     clk          : input clock ,
     rst          : input reset ,
     MEM_FILE_PATH: input string,
 ) {
+// #@@range_end(port)
 
     // アドレスをメモリのデータ単位でのアドレスに変換する
     function addr_to_memaddr (
@@ -13,6 +15,7 @@ module top (
         return addr >> $clog2(MEM_DATA_WIDTH / 8);
     }
 
+// #@@range_begin(arb)
     inst membus  : membus_if::<MEM_DATA_WIDTH, XLEN>;
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     inst d_membus: membus_if::<MEM_DATA_WIDTH, XLEN>; // ロードストア命令用
@@ -50,6 +53,7 @@ module top (
             membus.wdata = 'x;
         }
     }
+// #@@range_end(arb)
 
     inst mem: memory::<MEM_DATA_WIDTH, 20> (
         clk                     ,
@@ -58,10 +62,12 @@ module top (
         FILE_PATH: MEM_FILE_PATH,
     );
 
+// #@@range_begin(core_inst)
     inst c: core (
         clk       ,
         rst       ,
         i_membus  ,
         d_membus  ,
     );
+// #@@range_end(core_inst)
 }
