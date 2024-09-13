@@ -129,7 +129,6 @@ module core (
         }
     }
 
-    // #@@range_begin(data)
     // ALU
     var op1       : UIntX;
     var op2       : UIntX;
@@ -155,18 +154,14 @@ module core (
                      }
         }
     }
-    // #@@range_end(data)
 
-    // #@@range_begin(inst)
     inst alum: alu (
         ctrl  : inst_ctrl ,
         op1               ,
         op2               ,
         result: alu_result,
     );
-    // #@@range_end(inst)
 
-    // #@@range_begin(debug)
     always_ff {
         if if_fifo_rvalid {
             $display("%h : %h", inst_pc, inst_bits);
@@ -174,10 +169,9 @@ module core (
             $display("  imm     : %h", inst_imm);
             $display("  rs1[%d] : %h", rs1_addr, rs1_data);
             $display("  rs2[%d] : %h", rs2_addr, rs2_data);
-            $display("  op1     : %h", op1); @<balloon>{追加}
-            $display("  op2     : %h", op2); @<balloon>{追加}
-            $display("  alu res : %h", alu_result); @<balloon>{追加}
+            $display("  op1     : %h", op1);
+            $display("  op2     : %h", op2);
+            $display("  alu res : %h", alu_result);
         }
     }
-    // #@@range_end(debug)
 }
