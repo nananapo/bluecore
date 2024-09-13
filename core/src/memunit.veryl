@@ -40,36 +40,44 @@ module memunit (
     var req_wen  : logic                    ;
     var req_addr : Addr                     ;
     var req_wdata: logic<MEM_DATA_WIDTH>    ;
+    // #@@range_begin(def_wmask)
     var req_wmask: logic<MEM_DATA_WIDTH / 8>;
+    // #@@range_end(def_wmask)
 
+    // #@@range_begin(wd)
     const W   : u32                   = XLEN;
     let D   : logic<MEM_DATA_WIDTH> = membus.rdata;
     let sext: logic                 = ctrl.funct3[2] == 1'b0;
+    // #@@range_end(wd)
 
     always_comb {
-        // メモリアクセス
-        membus.valid = state == State::WaitReady;
-        membus.addr  = req_addr;
-        membus.wen   = req_wen;
-        membus.wdata = req_wdata;
-        membus.wmask = req_wmask;
-        // loadの結果
-        rdata = case ctrl.funct3[1:0] {
-            2'b00  : case addr[1:0] {
-                0      : {sext & D[7] repeat W - 8, D[7:0]},
-                1      : {sext & D[15] repeat W - 8, D[15:8]},
-                2      : {sext & D[23] repeat W - 8, D[23:16]},
-                3      : {sext & D[31] repeat W - 8, D[31:24]},
-                default: 'x,
-            },
-            2'b01  : case addr[1:0] {
-                0      : {sext & D[15] repeat W - 16, D[15:0]},
-                2      : {sext & D[31] repeat W - 16, D[31:16]},
-                default: 'x,
-            },
-            2'b10  : D,
+    // #@@range_begin(mem_wmask)
+    // メモリアクセス
+    membus.valid = state == State::WaitReady;
+    membus.addr  = req_addr;
+    membus.wen   = req_wen;
+    membus.wdata = req_wdata;
+    @<b>|membus.wmask = req_wmask;|
+    // #@@range_end(mem_wmask)
+    // #@@range_begin(load)
+    // loadの結果
+    rdata = case ctrl.funct3[1:0] {
+        2'b00  : case addr[1:0] {
+            0      : {sext & D[7] repeat W - 8, D[7:0]},
+            1      : {sext & D[15] repeat W - 8, D[15:8]},
+            2      : {sext & D[23] repeat W - 8, D[23:16]},
+            3      : {sext & D[31] repeat W - 8, D[31:24]},
             default: 'x,
-        };
+        },
+        2'b01  : case addr[1:0] {
+            0      : {sext & D[15] repeat W - 16, D[15:0]},
+            2      : {sext & D[31] repeat W - 16, D[31:16]},
+            default: 'x,
+        },
+        2'b10  : D,
+        default: 'x,
+    };
+    // #@@range_end(load)
         // stall判定
         stall = valid & case state {
             State::Init     : is_new && inst_is_memop(ctrl),
@@ -80,13 +88,15 @@ module memunit (
     }
 
     always_ff {
-        if_reset {
-            state     = State::Init;
-            req_wen   = 0;
-            req_addr  = 0;
-            req_wdata = 0;
-            req_wmask = 0;
-        } else {
+    // #@@range_begin(always_reset)
+    if_reset {
+        state     = State::Init;
+        req_wen   = 0;
+        req_addr  = 0;
+        req_wdata = 0;
+        @<b>|req_wmask = 0;|
+    } else {
+    // #@@range_end(always_reset)
             if valid {
                 case state {
                     State::Init: if is_new & inst_is_memop(ctrl) {
@@ -94,16 +104,18 @@ module memunit (
                         req_wen   = inst_is_store(ctrl);
                         req_addr  = addr;
                         req_wdata = rs2 << {addr[1:0], 3'b0};
-                        req_wmask = case ctrl.funct3[1:0] {
-                            2'b00  : 4'b1 << addr[1:0],
-                            2'b01  : case addr[1:0] {
-                                2      : 4'b1100,
-                                0      : 4'b0011,
-                                default: 'x,
-                            },
-                            2'b10  : 4'b1111,
-                            default: 'x,
-                        };
+    // #@@range_begin(always_wmask)
+    req_wmask = case ctrl.funct3[1:0] {
+        2'b00  : 4'b1 << addr[1:0], @<balloon>{SB命令のとき、アドレス下位2ビット分だけ1を左シフトする}
+        2'b01  : case addr[1:0] { @<balloon>{SH命令のとき}
+            2      : 4'b1100, @<balloon>{上位2バイトに書き込む}
+            0      : 4'b0011, @<balloon>{下位2バイトに書き込む}
+            default: 'x,
+        },
+        2'b10  : 4'b1111, @<balloon>{SW命令のとき、全体に書き込む}
+        default: 'x,
+    };
+    // #@@range_end(always_wmask)
                     }
                     State::WaitReady: if membus.ready {
                         state = State::WaitValid;
