@@ -21,19 +21,19 @@ module alu (
         if ctrl.is_aluop {
             case ctrl.funct3 {
                 3'b000: result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 {
-                            add
-                        } else {
-                            sub
-                        };
+                    add
+                } else {
+                    sub
+                };
                 3'b001: result = sll;
                 3'b010: result = slt;
                 3'b011: result = sltu;
                 3'b100: result = op1 ^ op2;
                 3'b101: result = if ctrl.funct7 == 0 {
-                            srl
-                        } else {
-                            sra
-                        };
+                    srl
+                } else {
+                    sra
+                };
                 3'b110 : result = op1 | op2;
                 3'b111 : result = op1 & op2;
                 default: result = 'x;
