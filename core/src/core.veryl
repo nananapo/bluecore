@@ -7,13 +7,14 @@ module core (
     i_membus: modport membus_if::<ILEN, XLEN>::master          ,
     d_membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master,
 ) {
-
+    // #@@range_begin(function)
     // 命令が分岐命令かどうかを判定する
     function inst_is_br (
         ctrl: input InstCtrl,
     ) -> logic    {
         return ctrl.itype == InstType::B;
     }
+    // #@@range_end(function)
 
     // ifのFIFOのデータ型
     struct if_fifo_type {
@@ -173,6 +174,7 @@ module core (
         result: alu_result,
     );
 
+    // #@@range_begin(inst)
     var brunit_take: logic;
 
     inst bru: brunit (
@@ -181,13 +183,16 @@ module core (
         op2                     ,
         take  : brunit_take     ,
     );
+    // #@@range_end(inst)
 
-    assign control_hazard         = inst_valid && (inst_ctrl.is_jump || inst_is_br(inst_ctrl) && brunit_take);
-    assign control_hazard_pc_next = if inst_is_br(inst_ctrl) {
-        inst_pc + inst_imm
-    } else {
+    // #@@range_begin(hazard)
+    assign control_hazard         = inst_valid && @<b>|(|inst_ctrl.is_jump @<b>{|| inst_is_br(inst_ctrl) && brunit_take)};
+    assign control_hazard_pc_next = @<b>|if inst_is_br(inst_ctrl) {|
+        @<b>|inst_pc + inst_imm|
+    @<b>|} else {|
         alu_result
-    };
+    @<b>|}|;
+    // #@@range_end(hazard)
 
     always_ff {
         if_reset {
@@ -253,9 +258,11 @@ module core (
                 $display("  alu res   : %h", alu_result);
                 $display("  mem stall : %b", memu_stall);
                 $display("  mem rdata : %h", memu_rdata);
-                if inst_is_br(inst_ctrl) {
-                    $display("  br take   : %b", brunit_take);
-                }
+    // #@@range_begin(debug)
+    if inst_is_br(inst_ctrl) {
+        $display("  br take   : %b", brunit_take);
+    }
+    // #@@range_end(debug)
                 if if_fifo_rready && inst_ctrl.rwb_en {
                     $display("  reg[%d] <= %h", rd_addr, wb_data);
                 }
