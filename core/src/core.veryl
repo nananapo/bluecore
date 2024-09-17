@@ -29,17 +29,20 @@ module core (
     var if_fifo_rdata : if_fifo_type;
 
     // フェッチした命令を格納するFIFO
-    // #@@range_begin(fifo)
     inst if_fifo: fifo #(
         DATA_TYPE: if_fifo_type,
         WIDTH    : 3           ,
     ) (
         clk                   ,
         rst                   ,
-        flush : control_hazard, @<balloon>{追加}
-        ...
+        flush : control_hazard,
+        wready: if_fifo_wready,
+        wvalid: if_fifo_wvalid,
+        wdata : if_fifo_wdata ,
+        rready: if_fifo_rready,
+        rvalid: if_fifo_rvalid,
+        rdata : if_fifo_rdata ,
     );
-    // #@@range_end(fifo)
 
     // 命令フェッチ処理
     always_comb {
@@ -53,15 +56,16 @@ module core (
         if_fifo_rready = !memu_stall;
     }
 
-    // #@@range_begin(hazard)
     let control_hazard        : logic = inst_valid && inst_ctrl.is_jump;
     let control_hazard_pc_next: Addr  = alu_result;
-    // #@@range_end(hazard)
 
-    // #@@range_begin(always)
     always_ff {
         if_reset {
-            ...
+            if_pc           = 0;
+            if_is_requested = 0;
+            if_pc_requested = 0;
+            if_fifo_wvalid  = 0;
+            if_fifo_wdata   = 0;
         } else {
             if control_hazard {
                 if_pc           = control_hazard_pc_next;
@@ -69,16 +73,33 @@ module core (
                 if_fifo_wvalid  = 0;
             } else {
                 if if_is_requested {
-                    ...
+                    if i_membus.rvalid {
+                        if_is_requested = i_membus.ready && i_membus.valid;
+                        if i_membus.ready && i_membus.valid {
+                            if_pc           = if_pc_next;
+                            if_pc_requested = if_pc;
+                        }
+                    }
+                } else {
+                    if i_membus.ready && i_membus.valid {
+                        if_is_requested = 1;
+                        if_pc           = if_pc_next;
+                        if_pc_requested = if_pc;
+                    }
                 }
                 // IFのFIFOの制御
                 if if_is_requested && i_membus.rvalid {
-                    ...
+                    if_fifo_wvalid     = 1;
+                    if_fifo_wdata.addr = if_pc_requested;
+                    if_fifo_wdata.bits = i_membus.rdata;
+                } else {
+                    if if_fifo_wvalid && if_fifo_wready {
+                        if_fifo_wvalid = 0;
+                    }
                 }
             }
         }
     }
-    // #@@range_end(always)
 
     let inst_valid : logic    = if_fifo_rvalid;
     var inst_is_new: logic   ; // 命令が今のクロックで供給されたかどうか
@@ -174,7 +195,6 @@ module core (
     );
 
     let rd_addr: logic<5> = inst_bits[11:7];
-    // #@@range_begin(wb)
     let wb_data: UIntX    = if inst_ctrl.is_lui {
         inst_imm
     } else if inst_ctrl.is_jump {
@@ -184,7 +204,6 @@ module core (
     } else {
         alu_result
     };
-    // #@@range_end(wb)
 
     always_ff {
         if inst_valid && if_fifo_rready && inst_ctrl.rwb_en {
