@@ -8,6 +8,13 @@ module core (
     d_membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master,
 ) {
 
+    // 命令が分岐命令かどうかを判定する
+    function inst_is_br (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.itype == InstType::B;
+    }
+
     var if_pc          : Addr ;
     var if_is_requested: logic; // フェッチ中かどうか
     var if_pc_requested: Addr ; // 要求したアドレス
@@ -56,8 +63,12 @@ module core (
         if_fifo_rready = !memu_stall;
     }
 
-    let control_hazard        : logic = inst_valid && inst_ctrl.is_jump;
-    let control_hazard_pc_next: Addr  = alu_result;
+    let control_hazard        : logic = inst_valid && (inst_ctrl.is_jump || inst_is_br(inst_ctrl) && brunit_take);
+    let control_hazard_pc_next: Addr  = if inst_is_br(inst_ctrl) {
+        inst_pc + inst_imm
+    } else {
+        alu_result
+    };
 
     always_ff {
         if_reset {
@@ -178,6 +189,15 @@ module core (
         result: alu_result,
     );
 
+    var brunit_take: logic;
+
+    inst bru: brunit (
+        funct3: inst_ctrl.funct3,
+        op1                     ,
+        op2                     ,
+        take  : brunit_take     ,
+    );
+
     var memu_rdata: UIntX;
     var memu_stall: logic;
 
@@ -230,6 +250,9 @@ module core (
                 $display("  alu res   : %h", alu_result);
                 $display("  mem stall : %b", memu_stall);
                 $display("  mem rdata : %h", memu_rdata);
+                if inst_is_br(inst_ctrl) {
+                    $display("  br take   : %b", brunit_take);
+                }
                 if if_fifo_rready && inst_ctrl.rwb_en {
                     $display("  reg[%d] <= %h", rd_addr, wb_data);
                 }
