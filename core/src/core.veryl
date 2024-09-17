@@ -166,8 +166,21 @@ module core (
         result: alu_result,
     );
 
-    assign control_hazard         = inst_valid && inst_ctrl.is_jump;
-    assign control_hazard_pc_next = alu_result & ~1;
+    var brunit_take: logic;
+
+    inst bru: brunit (
+        funct3: inst_ctrl.funct3,
+        op1                     ,
+        op2                     ,
+        take  : brunit_take     ,
+    );
+
+    assign control_hazard         = inst_valid && (inst_ctrl.is_jump || inst_is_br(inst_ctrl) && brunit_take);
+    assign control_hazard_pc_next = if inst_is_br(inst_ctrl) {
+        inst_pc + inst_imm
+    } else {
+        alu_result & ~1
+    };
 
     always_ff {
         if_reset {
@@ -233,6 +246,9 @@ module core (
                 $display("  alu res   : %h", alu_result);
                 $display("  mem stall : %b", memu_stall);
                 $display("  mem rdata : %h", memu_rdata);
+                if inst_is_br(inst_ctrl) {
+                    $display("  br take   : %b", brunit_take);
+                }
                 if if_fifo_rready && inst_ctrl.rwb_en {
                     $display("  reg[%d] <= %h", rd_addr, wb_data);
                 }
