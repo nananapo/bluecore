@@ -4,7 +4,9 @@ module fifo #(
 ) (
     clk   : input  clock    ,
     rst   : input  reset    ,
+    // #@@range_begin(port)
     flush : input  logic    ,
+    // #@@range_end(port)
     wready: output logic    ,
     wvalid: input  logic    ,
     wdata : input  DATA_TYPE,
@@ -31,6 +33,7 @@ module fifo #(
         assign wready = tail_plus1 != head;
     }
 
+    // #@@range_begin(always)
     always_ff {
         if_reset {
             head = 0;
@@ -50,4 +53,5 @@ module fifo #(
             }
         }
     }
+    // #@@range_end(always)
 }
