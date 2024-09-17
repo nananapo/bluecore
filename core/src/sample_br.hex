@@ -1,0 +1,7 @@
+00100093 //  0: addi x1, x0, 1
+10100063 //  4: beq x0, x1, 0x100
+00101863 //  8: bne x0, x1, 0x10
+deadbeef //  c:
+deadbeef // 10:
+deadbeef // 14:
+0000d063 // 18: bge x1, x0, 0
