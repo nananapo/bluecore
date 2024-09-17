@@ -1,13 +1,11 @@
-// #@@range_begin(port)
 module fifo #(
     param DATA_TYPE: type = logic,
     param WIDTH    : u32  = 2    ,
 ) (
     clk   : input  clock    ,
     rst   : input  reset    ,
-    @<b>|flush : input  logic    ,|
+    flush : input  logic    ,
     wready: output logic    ,
-// #@@range_end(port)
     wvalid: input  logic    ,
     wdata : input  DATA_TYPE,
     rready: input  logic    ,
@@ -37,16 +35,15 @@ module fifo #(
     // 2つ以上空きがあるかどうか
     let wready_two: logic = wready && tail_plus2 != head;
 
-    // #@@range_begin(always)
     always_ff {
         if_reset {
             head = 0;
             tail = 0;
         } else {
-            @<b>|if flush {|
-            @<b>|    head = 0;|
-            @<b>|    tail = 0;|
-            @<b>|} else {|
+            if flush {
+                head = 0;
+                tail = 0;
+            } else {
                 if wready && wvalid {
                     mem[tail] = wdata;
                     tail      = tail + 1;
@@ -54,8 +51,7 @@ module fifo #(
                 if rready && rvalid {
                     head = head + 1;
                 }
-            @<b>|}|
+            }
         }
     }
-    // #@@range_end(always)
 }
