@@ -4,6 +4,7 @@ module fifo #(
 ) (
     clk       : input  clock        ,
     rst       : input  reset        ,
+    flush     : input  logic        ,
     wready    : output logic        ,
     wready_two: output logic     = _,
     wvalid    : input  logic        ,
@@ -22,11 +23,15 @@ module fifo #(
                 rdata  = 0;
                 rvalid = 0;
             } else {
-                if wready && wvalid {
-                    rdata  = wdata;
-                    rvalid = 1;
-                } else if rready {
+                if flush {
                     rvalid = 0;
+                } else {
+                    if wready && wvalid {
+                        rdata  = wdata;
+                        rvalid = 1;
+                    } else if rready {
+                        rvalid = 0;
+                    }
                 }
             }
         }
@@ -52,12 +57,17 @@ module fifo #(
                 head = 0;
                 tail = 0;
             } else {
-                if wready && wvalid {
-                    mem[tail] = wdata;
-                    tail      = tail + 1;
-                }
-                if rready && rvalid {
-                    head = head + 1;
+                if flush {
+                    head = 0;
+                    tail = 0;
+                } else {
+                    if wready && wvalid {
+                        mem[tail] = wdata;
+                        tail      = tail + 1;
+                    }
+                    if rready && rvalid {
+                        head = head + 1;
+                    }
                 }
             }
         }
