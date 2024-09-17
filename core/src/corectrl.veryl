@@ -38,10 +38,12 @@ package corectrl {
         return inst_is_memop(ctrl) && !ctrl.is_load;
     }
 
+    // #@@range_begin(function)
     // 命令が分岐命令かどうかを判定する
     function inst_is_br (
         ctrl: input InstCtrl,
     ) -> logic    {
         return ctrl.itype == InstType::B;
     }
+    // #@@range_end(function)
 }
