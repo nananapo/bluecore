@@ -1,0 +1,9 @@
+0100006f //  0: jal x0, 0x10 : 0x10にジャンプする
+deadbeef //  4:
+deadbeef //  8:
+deadbeef //  c:
+01800093 // 10: addi x1, x0, 0x18
+00808067 // 14: jalr x0, 8(x1) : x1+8=0x20にジャンプする
+deadbeef // 18:
+deadbeef // 1c:
+fe1ff06f // 20: jal x0, -0x20 : 0にジャンプする
