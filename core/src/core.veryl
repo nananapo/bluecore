@@ -151,14 +151,8 @@ module core (
     let wb_data: UIntX    = if inst_ctrl.is_lui ? inst_imm : alu_result;
 
     always_ff {
-        if_reset {
-            for i: i32 in 0..32 {
-                regfile[i] = i;
-            }
-        } else {
-            if if_fifo_rvalid && inst_ctrl.rwb_en {
-                regfile[rd_addr] = wb_data;
-            }
+        if if_fifo_rvalid && inst_ctrl.rwb_en {
+            regfile[rd_addr] = wb_data;
         }
     }
 
