@@ -160,11 +160,13 @@ module core (
         alu_result
     };
 
+    // #@@range_begin(wb)
     always_ff {
         if if_fifo_rvalid && inst_ctrl.rwb_en {
             regfile[rd_addr] = wb_data;
         }
     }
+    // #@@range_end(wb)
 
     always_ff {
         if if_fifo_rvalid {
