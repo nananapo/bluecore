@@ -217,6 +217,22 @@ module core (
         membus: d_membus   ,
     );
 
+    var csru_rdata: UIntX;
+
+    inst csru: csrunit (
+        clk                       ,
+        rst                       ,
+        valid   : inst_valid      ,
+        ctrl    : inst_ctrl       ,
+        csr_addr: inst_bits[31:20],
+        rs1     : if inst_ctrl.funct3[2] == 1 && inst_ctrl.funct3[1:0] != 0 {
+            {1'b0 repeat XLEN - $bits(rs1_addr), rs1_addr} // rs1を0で拡張する
+        } else {
+            rs1_data
+        },
+        rdata: csru_rdata                                                                                                  ,
+    );
+
     let rd_addr: logic<5> = inst_bits[11:7];
     let wb_data: UIntX    = if inst_ctrl.is_lui {
         inst_imm
@@ -224,6 +240,8 @@ module core (
         inst_pc + 4
     } else if inst_ctrl.is_load {
         memu_rdata
+    } else if inst_ctrl.is_csr {
+        csru_rdata
     } else {
         alu_result
     };
@@ -253,6 +271,9 @@ module core (
                 $display("  alu res   : %h", alu_result);
                 $display("  mem stall : %b", memu_stall);
                 $display("  mem rdata : %h", memu_rdata);
+                if inst_ctrl.is_csr {
+                    $display("  csr rdata : %h", csru_rdata);
+                }
                 if inst_is_br(inst_ctrl) {
                     $display("  br take   : %b", brunit_take);
                 }
