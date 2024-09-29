@@ -1,0 +1,15 @@
+import eei::*;
+import corectrl::*;
+
+module csrunit (
+    clk     : input  clock       ,
+    rst     : input  reset       ,
+    valid   : input  logic       ,
+    ctrl    : input  InstCtrl    ,
+    csr_addr: input  logic   <12>,
+    rs1     : input  UIntX       ,
+    rdata   : output UIntX       ,
+) {
+    // CSRR(W|S|C)[I]命令かどうか
+    let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
+}
