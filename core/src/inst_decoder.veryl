@@ -36,21 +36,18 @@ module inst_decoder (
             OP_STORE        : imm_s,
             default         : 'x,
         };
-    // #@@range_begin(decode)
-                                           is_csrを追加
-    ctrl = {case op {                           ↓
-        OP_LUI   : {InstType::U, T, T, F, F, F, F},
-        OP_AUIPC : {InstType::U, T, F, F, F, F, F},
-        OP_JAL   : {InstType::J, T, F, F, T, F, F},
-        OP_JALR  : {InstType::I, T, F, F, T, F, F},
-        OP_BRANCH: {InstType::B, F, F, F, F, F, F},
-        OP_LOAD  : {InstType::I, T, F, F, F, T, F},
-        OP_STORE : {InstType::S, F, F, F, F, F, F},
-        OP_OP    : {InstType::R, T, F, T, F, F, F},
-        OP_OP_IMM: {InstType::I, T, F, T, F, F, F},
-        OP_SYSTEM: {InstType::I, T, F, F, F, F, T}, @<balloon>{追加}
-        default  : {InstType::X, F, F, F, F, F, F},
-    }, f3, f7};
-    // #@@range_end(decode)
+        ctrl = {case op {
+            OP_LUI   : {InstType::U, T, T, F, F, F, F},
+            OP_AUIPC : {InstType::U, T, F, F, F, F, F},
+            OP_JAL   : {InstType::J, T, F, F, T, F, F},
+            OP_JALR  : {InstType::I, T, F, F, T, F, F},
+            OP_BRANCH: {InstType::B, F, F, F, F, F, F},
+            OP_LOAD  : {InstType::I, T, F, F, F, T, F},
+            OP_STORE : {InstType::S, F, F, F, F, F, F},
+            OP_OP    : {InstType::R, T, F, T, F, F, F},
+            OP_OP_IMM: {InstType::I, T, F, T, F, F, F},
+            OP_SYSTEM: {InstType::I, T, F, F, F, F, T},
+            default  : {InstType::X, F, F, F, F, F, F},
+        }, f3, f7};
     }
 }
