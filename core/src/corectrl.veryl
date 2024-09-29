@@ -12,7 +12,6 @@ package corectrl {
         J = 6'b100000,
     }
 
-    // #@@range_begin(is_csr)
     // 制御に使うフラグ用の構造体
     struct InstCtrl {
         itype   : InstType   , // 命令の形式
@@ -21,11 +20,10 @@ package corectrl {
         is_aluop: logic      , // ALUを利用する命令である
         is_jump : logic      , // ジャンプ命令である
         is_load : logic      , // ロード命令である
-        @<b>|is_csr  : logic      , // CSR命令である|
+        is_csr  : logic      , // CSR命令である
         funct3  : logic   <3>, // 命令のfunct3フィールド
         funct7  : logic   <7>, // 命令のfunct7フィールド
     }
-    // #@@range_end(is_csr)
 
     // 命令がメモリにアクセスする命令か判別する関数
     function inst_is_memop (
