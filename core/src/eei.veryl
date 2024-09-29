@@ -31,5 +31,11 @@ package eei {
     // CSRのアドレス
     enum CsrAddr: logic<12> {
         MTVEC = 12'h305,
+        MEPC = 12'h341,
+        MCAUSE = 12'h342,
+    }
+
+    enum CsrCause: UIntX {
+        ENVIRONMENT_CALL_FROM_M_MODE = 11,
     }
 }
