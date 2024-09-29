@@ -28,10 +28,8 @@ package eei {
     const OP_STORE : logic<7> = 7'b0100011;
     const OP_SYSTEM: logic<7> = 7'b1110011;
 
-    // #@@range_begin(csr_addr)
     // CSRのアドレス
     enum CsrAddr: logic<12> {
         MTVEC = 12'h305,
     }
-    // #@@range_end(csr_addr)
 }
