@@ -28,18 +28,14 @@ package eei {
     const OP_STORE : logic<7> = 7'b0100011;
     const OP_SYSTEM: logic<7> = 7'b1110011;
 
-// #@@range_begin(addr)
     // CSRのアドレス
     enum CsrAddr: logic<12> {
         MTVEC = 12'h305,
-        @<b>|MEPC = 12'h341,|
-        @<b>|MCAUSE = 12'h342,|
+        MEPC = 12'h341,
+        MCAUSE = 12'h342,
     }
-// #@@range_end(addr)
 
-// #@@range_begin(cause)
     enum CsrCause: UIntX {
         ENVIRONMENT_CALL_FROM_M_MODE = 11,
     }
-// #@@range_end(cause)
 }
