@@ -26,7 +26,5 @@ package eei {
     const OP_BRANCH: logic<7> = 7'b1100011;
     const OP_LOAD  : logic<7> = 7'b0000011;
     const OP_STORE : logic<7> = 7'b0100011;
-    // #@@range_begin(opcode)
     const OP_SYSTEM: logic<7> = 7'b1110011;
-    // #@@range_end(opcode)
 }
