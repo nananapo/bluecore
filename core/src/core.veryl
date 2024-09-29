@@ -233,9 +233,9 @@ module core (
         } else {
             rs1_data
         },
-        rdata      : csru_rdata                                                                                                  ,
-        raise_trap : csru_raise_trap                                                                                             ,
-        trap_vector: csru_trap_vector                                                                                            ,
+        rdata      : csru_rdata                                                                                                         ,
+        raise_trap : csru_raise_trap                                                                                                    ,
+        trap_vector: csru_trap_vector                                                                                                   ,
     );
 
     let rd_addr: logic<5> = inst_bits[11:7];
