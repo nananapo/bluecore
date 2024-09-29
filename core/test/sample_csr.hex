@@ -1,0 +1,2 @@
+305bd0f3 // 0: csrrwi x1, mtvec, 0b10111
+30502173 // 4: csrrs  x2, mtvec, x0

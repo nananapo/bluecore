@@ -10,6 +10,55 @@ module csrunit (
     rs1     : input  UIntX       ,
     rdata   : output UIntX       ,
 ) {
+
+    // CSRのアドレス
+    enum CsrAddr: logic<12> {
+        MTVEC = 12'h305,
+    }
+
+    // wmasks
+    const MTVEC_WMASK: UIntX = 'hffff_fffc;
+
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
+
+    // CSR
+    var mtvec: UIntX;
+
+    var wmask: UIntX; // write mask
+    var wdata: UIntX; // write data
+
+    always_comb {
+        // read
+        rdata = case csr_addr {
+            CsrAddr::MTVEC: mtvec,
+            default       : 'x,
+        };
+        // write
+        wmask = case csr_addr {
+            CsrAddr::MTVEC: MTVEC_WMASK,
+            default       : 0,
+        };
+        wdata = case ctrl.funct3[1:0] {
+            2'b01  : rs1,
+            2'b10  : rdata | rs1,
+            2'b11  : rdata & ~rs1,
+            default: 'x,
+        } & wmask;
+    }
+
+    always_ff {
+        if_reset {
+            mtvec = 0;
+        } else {
+            if valid {
+                if is_wsc {
+                    case csr_addr {
+                        CsrAddr::MTVEC: mtvec = wdata;
+                        default       : {}
+                    }
+                }
+            }
+        }
+    }
 }
