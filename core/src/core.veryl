@@ -210,6 +210,7 @@ module core (
         membus: d_membus   ,
     );
 
+    // #@@range_begin(csru)
     var csru_rdata: UIntX;
 
     inst csru: csrunit (
@@ -223,9 +224,11 @@ module core (
         } else {
             rs1_data
         },
-        rdata: csru_rdata                                                                                                  ,
+        rdata: csru_rdata,
     );
+    // #@@range_end(csru)
 
+    // #@@range_begin(wb)
     let rd_addr: logic<5> = inst_bits[11:7];
     let wb_data: UIntX    = if inst_ctrl.is_lui {
         inst_imm
@@ -233,11 +236,12 @@ module core (
         inst_pc + 4
     } else if inst_ctrl.is_load {
         memu_rdata
-    } else if inst_ctrl.is_csr {
-        csru_rdata
-    } else {
+    } @<b>|else if inst_ctrl.is_csr {|
+        @<b>|csru_rdata|
+    @<b>|}| else {
         alu_result
     };
+    // #@@range_end(wb)
 
     always_ff {
         if inst_valid && if_fifo_rready && inst_ctrl.rwb_en {
@@ -264,9 +268,11 @@ module core (
                 $display("  alu res   : %h", alu_result);
                 $display("  mem stall : %b", memu_stall);
                 $display("  mem rdata : %h", memu_rdata);
-                if inst_ctrl.is_csr {
-                    $display("  csr rdata : %h", csru_rdata);
-                }
+    // #@@range_begin(debug)
+    if inst_ctrl.is_csr {
+        $display("  csr rdata : %h", csru_rdata);
+    }
+    // #@@range_end(debug)
                 if inst_is_br(inst_ctrl) {
                     $display("  br take   : %b", brunit_take);
                 }
