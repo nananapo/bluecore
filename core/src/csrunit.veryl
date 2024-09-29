@@ -11,19 +11,24 @@ module csrunit (
     rdata   : output UIntX       ,
 ) {
 
+    // #@@range_begin(wmask)
     // wmasks
     const MTVEC_WMASK: UIntX = 'hffff_fffc;
+    // #@@range_end(wmask)
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
 
+    // #@@range_begin(mtvec)
     // CSR
     var mtvec: UIntX;
+    // #@@range_end(mtvec)
 
+    // #@@range_begin(rw)
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
-
-    always_comb {
+    
+     always_comb {
         // read
         rdata = case csr_addr {
             CsrAddr::MTVEC: mtvec,
@@ -41,7 +46,9 @@ module csrunit (
             default: 'x,
         } & wmask;
     }
+    // #@@range_end(rw)
 
+    // #@@range_begin(always)
     always_ff {
         if_reset {
             mtvec = 0;
@@ -56,4 +63,5 @@ module csrunit (
             }
         }
     }
+    // #@@range_end(always)
 }
