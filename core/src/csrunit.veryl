@@ -1,35 +1,44 @@
 import eei::*;
 import corectrl::*;
 
+// #@@range_begin(port)
 module csrunit (
     clk        : input  clock       ,
     rst        : input  reset       ,
     valid      : input  logic       ,
-    pc         : input  Addr        ,
+    @<b>|pc         : input  Addr        ,|
     ctrl       : input  InstCtrl    ,
-    rd_addr    : input  logic   <5> ,
+    @<b>|rd_addr    : input  logic   <5> ,|
     csr_addr   : input  logic   <12>,
     rs1        : input  UIntX       ,
     rdata      : output UIntX       ,
-    raise_trap : output logic       ,
-    trap_vector: output Addr        ,
+    @<b>|raise_trap : output logic       ,|
+    @<b>|trap_vector: output Addr        ,|
 ) {
+// #@@range_end(port)
 
     // wmasks
+// #@@range_begin(wmask)
     const MTVEC_WMASK : UIntX = 'hffff_fffc;
-    const MEPC_WMASK  : UIntX = 'hffff_fffc;
-    const MCAUSE_WMASK: UIntX = 'hffff_ffff;
+    @<b>|const MEPC_WMASK  : UIntX = 'hffff_fffc;|
+    @<b>|const MCAUSE_WMASK: UIntX = 'hffff_ffff;|
+// #@@range_end(wmask)
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
+// #@@range_begin(is_ecall)
     // ECALL命令かどうか
     let is_ecall: logic = ctrl.is_csr && csr_addr == 0 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;
+// #@@range_end(is_ecall)
 
+// #@@range_begin(reg)
     // CSR
     var mtvec : UIntX;
-    var mepc  : UIntX;
-    var mcause: UIntX;
+    @<b>|var mepc  : UIntX;|
+    @<b>|var mcause: UIntX;|
+// #@@range_end(reg)
 
+// #@@range_begin(expt)
     // Exception
     let raise_expt: logic = valid && is_ecall;
     let expt_cause: UIntX = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
@@ -38,25 +47,30 @@ module csrunit (
     assign raise_trap  = raise_expt;
     let trap_cause : UIntX = expt_cause;
     assign trap_vector = mtvec;
+// #@@range_end(expt)
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
 
     always_comb {
         // read
-        rdata = case csr_addr {
-            CsrAddr::MTVEC : mtvec,
-            CsrAddr::MEPC  : mepc,
-            CsrAddr::MCAUSE: mcause,
-            default        : 'x,
-        };
+// #@@range_begin(rdata)
+    rdata = case csr_addr {
+        CsrAddr::MTVEC : mtvec,
+        @<b>|CsrAddr::MEPC  : mepc,|
+        @<b>|CsrAddr::MCAUSE: mcause,|
+        default        : 'x,
+    };
+// #@@range_end(rdata)
         // write
-        wmask = case csr_addr {
-            CsrAddr::MTVEC : MTVEC_WMASK,
-            CsrAddr::MEPC  : MEPC_WMASK,
-            CsrAddr::MCAUSE: MCAUSE_WMASK,
-            default        : 0,
-        };
+// #@@range_begin(always_wmask)
+    wmask = case csr_addr {
+        CsrAddr::MTVEC : MTVEC_WMASK,
+        @<b>|CsrAddr::MEPC  : MEPC_WMASK,|
+        @<b>|CsrAddr::MCAUSE: MCAUSE_WMASK,|
+        default        : 0,
+    };
+// #@@range_end(always_wmask)
         wdata = case ctrl.funct3[1:0] {
             2'b01  : rs1,
             2'b10  : rdata | rs1,
@@ -65,27 +79,39 @@ module csrunit (
         } & wmask;
     }
 
-    always_ff {
-        if_reset {
-            mtvec  = 0;
-            mepc   = 0;
-            mcause = 0;
-        } else {
-            if valid {
-                if raise_trap {
-                    mepc   = pc;
-                    mcause = trap_cause;
-                } else {
-                    if is_wsc {
-                        case csr_addr {
-                            CsrAddr::MTVEC : mtvec  = wdata;
-                            CsrAddr::MEPC  : mepc   = wdata;
-                            CsrAddr::MCAUSE: mcause = wdata;
-                            default        : {}
-                        }
-                    }
+// #@@range_begin(always_ff_trap)
+always_ff {
+    if_reset {
+        ...
+    } else {
+        if valid {
+            @<b>|if raise_trap {| @<balloon>{トラップ時の動作}
+                @<b>|mepc   = pc;|
+                @<b>|mcause = trap_cause;|
+            @<b>|} else {|
+                if is_wsc {
+                    ...
+// #@@range_end(always_ff_trap)
+
+// #@@range_begin(always_ff_csr)
+always_ff {
+    if_reset {
+        mtvec  = 0;
+        @<b>|mepc   = 0;|
+        @<b>|mcause = 0;|
+    } else {
+        if valid {
+            if is_wsc {
+                case csr_addr {
+                    CsrAddr::MTVEC : mtvec  = wdata;
+                    @<b>|CsrAddr::MEPC  : mepc   = wdata;|
+                    @<b>|CsrAddr::MCAUSE: mcause = wdata;|
+                    default        : {}
                 }
             }
         }
     }
+}
+// #@@range_end(always_ff_csr)
+
 }
