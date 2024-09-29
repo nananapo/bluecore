@@ -182,8 +182,10 @@ module core (
         take  : brunit_take     ,
     );
 
-    assign control_hazard         = inst_valid && (inst_ctrl.is_jump || inst_is_br(inst_ctrl) && brunit_take);
-    assign control_hazard_pc_next = if inst_is_br(inst_ctrl) {
+    assign control_hazard         = inst_valid && (csru_raise_trap || inst_ctrl.is_jump || inst_is_br(inst_ctrl) && brunit_take);
+    assign control_hazard_pc_next = if csru_raise_trap {
+        csru_trap_vector
+    } else if inst_is_br(inst_ctrl) {
         inst_pc + inst_imm
     } else {
         alu_result
@@ -217,20 +219,26 @@ module core (
         membus: d_membus   ,
     );
 
-    var csru_rdata: UIntX;
+    var csru_rdata      : UIntX;
+    var csru_raise_trap : logic;
+    var csru_trap_vector: Addr ;
 
     inst csru: csrunit (
         clk                       ,
         rst                       ,
         valid   : inst_valid      ,
+        pc      : inst_pc         ,
         ctrl    : inst_ctrl       ,
+        rd_addr                   ,
         csr_addr: inst_bits[31:20],
         rs1     : if inst_ctrl.funct3[2] == 1 && inst_ctrl.funct3[1:0] != 0 {
             {1'b0 repeat XLEN - $bits(rs1_addr), rs1_addr} // rs1を0で拡張する
         } else {
             rs1_data
         },
-        rdata: csru_rdata                                                                                                         ,
+        rdata      : csru_rdata                                                                                                         ,
+        raise_trap : csru_raise_trap                                                                                                    ,
+        trap_vector: csru_trap_vector                                                                                                   ,
     );
 
     let rd_addr: logic<5> = inst_bits[11:7];
@@ -273,6 +281,8 @@ module core (
                 $display("  mem rdata : %h", memu_rdata);
                 if inst_ctrl.is_csr {
                     $display("  csr rdata : %h", csru_rdata);
+                    $display("  csr trap  : %b", csru_raise_trap);
+                    $display("  csr vec   : %h", csru_trap_vector);
                 }
                 if inst_is_br(inst_ctrl) {
                     $display("  br take   : %b", brunit_take);
