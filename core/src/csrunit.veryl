@@ -35,10 +35,8 @@ module csrunit (
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
     // ECALL命令かどうか
     let is_ecall: logic = ctrl.is_csr && csr_addr == 0 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;
-    // #@@range_begin(is_mret)
     // MRET命令かどうか
     let is_mret: logic = ctrl.is_csr && csr_addr == 12'b0011000_00010 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;
-    // #@@range_end(is_mret)
 
     // CSR
     var mtvec : UIntX;
@@ -49,7 +47,6 @@ module csrunit (
     let raise_expt: logic = valid && is_ecall;
     let expt_cause: UIntX = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
 
-    // #@@range_begin(trap)
     // Trap
     assign raise_trap  = raise_expt || (valid && is_mret);
     let trap_cause : UIntX = expt_cause;
@@ -58,7 +55,6 @@ module csrunit (
     } else {
         mepc
     };
-    // #@@range_end(trap)
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
