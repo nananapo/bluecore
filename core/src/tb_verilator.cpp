@@ -72,9 +72,7 @@ int main(int argc, char** argv) {
 
     dut->final();
 
-    // #@@range_begin(return)
     #ifdef TEST_MODE
         return dut->test_success != 1;
     #endif
-    // #@@range_end(return)
 }

@@ -1,15 +1,14 @@
 import eei::*;
-// #@@range_begin(port)
+
 module top #(
     param MEMORY_FILEPATH_IS_ENV: bit    = 1                 ,
     param MEMORY_FILEPATH       : string = "MEMORY_FILE_PATH",
 ) (
     clk: input clock,
     rst: input reset,
-    @<b>|#[ifdef(TEST_MODE)]|
-    @<b>|test_success: output bit,|
+    #[ifdef(TEST_MODE)]
+    test_success: output bit,
 ) {
-// #@@range_end(port)
 
     // アドレスをメモリのデータ単位でのアドレスに変換する
     function addr_to_memaddr (
@@ -24,7 +23,6 @@ module top #(
 
     var memarb_last_i: logic;
 
-    // #@@range_begin(detect)
     // riscv-testsの終了を検知する
     #[ifdef(TEST_MODE)]
     always_ff {
@@ -40,7 +38,6 @@ module top #(
             $finish();
         }
     }
-    // #@@range_end(detect)
 
     // メモリアクセスを調停する
     always_ff {
