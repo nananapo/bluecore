@@ -1,15 +1,14 @@
 import eei::*;
-// #@@range_begin(port)
+
 module top #(
     param MEMORY_FILEPATH_IS_ENV: bit    = 1                 ,
     param MEMORY_FILEPATH       : string = "MEMORY_FILE_PATH",
 ) (
-    @<b>|#[ifdef(TEST_MODE)]|
-    @<b>|test_success: output bit  ,|
+    #[ifdef(TEST_MODE)]
+    test_success: output bit  ,
     clk         : input  clock,
     rst         : input  reset,
 ) {
-// #@@range_end(port)
 
     // アドレスをメモリのデータ単位でのアドレスに変換する
     function addr_to_memaddr (
@@ -24,7 +23,6 @@ module top #(
 
     var memarb_last_i: logic;
 
-    // #@@range_begin(detect)
     const RISCVTESTS_TOHOST_ADDR: Addr = 'h1000 as Addr;
     #[ifdef(TEST_MODE)]
     always_ff {
@@ -43,7 +41,6 @@ module top #(
             }
         }
     }
-    // #@@range_end(detect)
 
     // メモリアクセスを調停する
     always_ff {
