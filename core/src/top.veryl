@@ -19,6 +19,20 @@ module top (
 
     var memarb_last_i: logic;
 
+    // riscv-testsの終了を検知する
+    const RISCVTESTS_TOHOST_ADDR: Addr = 32'h1000;
+    always_ff {
+        if membus.valid && membus.wen == 1 && membus.addr == RISCVTESTS_TOHOST_ADDR {
+            if membus.wdata == 1 {
+                $display("riscv-tests success!");
+            } else {
+                $display("riscv-tests failed!");
+                $error  ("wdata : %h", membus.wdata);
+            }
+            $finish();
+        }
+    }
+
     // メモリアクセスを調停する
     always_ff {
         if_reset {
