@@ -6,6 +6,8 @@ module top #(
 ) (
     clk: input clock,
     rst: input reset,
+    #[ifdef(TEST_MODE)]
+    test_success: output bit,
 ) {
 
     // アドレスをメモリのデータ単位でのアドレスに変換する
@@ -20,6 +22,22 @@ module top #(
     inst d_membus: membus_if::<MEM_DATA_WIDTH, XLEN>; // ロードストア命令用
 
     var memarb_last_i: logic;
+
+    // riscv-testsの終了を検知する
+    #[ifdef(TEST_MODE)]
+    always_ff {
+        let RISCVTESTS_TOHOST_ADDR: Addr = 'h1000 as Addr;
+        if d_membus.valid && d_membus.ready && d_membus.wen == 1 && d_membus.addr == RISCVTESTS_TOHOST_ADDR && d_membus.wdata[lsb] == 1'b1 {
+            test_success = d_membus.wdata == 1;
+            if d_membus.wdata == 1 {
+                $display("riscv-tests success!");
+            } else {
+                $display("riscv-tests failed!");
+                $error  ("wdata : %h", d_membus.wdata);
+            }
+            $finish();
+        }
+    }
 
     // メモリアクセスを調停する
     always_ff {
