@@ -19,7 +19,6 @@ module top (
 
     var memarb_last_i: logic;
 
-    // #@@range_begin(detect)
     // riscv-testsの終了を検知する
     const RISCVTESTS_TOHOST_ADDR: Addr = 32'h1000;
     always_ff {
@@ -33,7 +32,6 @@ module top (
             $finish();
         }
     }
-    // #@@range_end(detect)
 
     // メモリアクセスを調停する
     always_ff {
