@@ -71,4 +71,8 @@ int main(int argc, char** argv) {
     }
 
     dut->final();
+
+    #ifdef TEST_MODE
+        return dut->test_success != 1;
+    #endif
 }
