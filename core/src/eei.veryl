@@ -1,5 +1,7 @@
 package eei {
-    const XLEN: u32 = 64;
+    // #@@range_begin(xlen)
+    const XLEN: u32 = @<b>|64|;
+    // #@@range_end(xlen)
     const ILEN: u32 = 32;
 
     type UIntX  = logic       <XLEN>;
