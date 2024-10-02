@@ -10,9 +10,9 @@ module alu (
     let add: UIntX = op1 + op2;
     let sub: UIntX = op1 - op2;
 
-    let sll: UIntX = op1 << op2[4:0];
-    let srl: UIntX = op1 >> op2[4:0];
-    let sra: SIntX = $signed(op1) >>> op2[4:0];
+    let sll: UIntX = op1 << op2[5:0];
+    let srl: UIntX = op1 >> op2[5:0];
+    let sra: SIntX = $signed(op1) >>> op2[5:0];
 
     let slt : UIntX = {1'b0 repeat XLEN - 1, $signed(op1) <: $signed(op2)};
     let sltu: UIntX = {1'b0 repeat XLEN - 1, op1 <: op2};
