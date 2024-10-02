@@ -16,9 +16,7 @@ module inst_decoder (
     let imm_i: UIntX = {bits[31] repeat XLEN - $bits(imm_i_g), imm_i_g};
     let imm_s: UIntX = {bits[31] repeat XLEN - $bits(imm_s_g), imm_s_g};
     let imm_b: UIntX = {bits[31] repeat XLEN - $bits(imm_b_g) - 1, imm_b_g, 1'b0};
-    // #@@range_begin(imm)
     let imm_u: UIntX = {bits[31] repeat XLEN - $bits(imm_u_g) - 12, imm_u_g, 12'b0};
-    // #@@range_end(imm)
     let imm_j: UIntX = {bits[31] repeat XLEN - $bits(imm_j_g) - 1, imm_j_g, 1'b0};
 
     let op: logic<7> = bits[6:0];
