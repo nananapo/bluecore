@@ -30,11 +30,9 @@ module alu (
     let srl: UIntX = op1 >> op2[5:0];
     let sra: SIntX = $signed(op1) >>> op2[5:0];
 
-    // #@@range_begin(let)
     let sll32: UInt32 = op1[31:0] << op2[4:0];
     let srl32: UInt32 = op1[31:0] >> op2[4:0];
     let sra32: SInt32 = $signed(op1[31:0]) >>> op2[4:0];
-    // #@@range_end(let)
 
     let slt : UIntX = {1'b0 repeat XLEN - 1, $signed(op1) <: $signed(op2)};
     let sltu: UIntX = {1'b0 repeat XLEN - 1, op1 <: op2};
@@ -47,15 +45,15 @@ module alu (
                         } else {
                             sel_w(ctrl.is_op32, sub32, sub)
                         };
-    // #@@range_begin(case)
-    3'b001: result = @<b>|sel_w(ctrl.is_op32, sll32, sll)|;
-    ...
-    3'b101: result = if ctrl.funct7 == 0 {
-                @<b>|sel_w(ctrl.is_op32, srl32, srl)|
-            } else {
-                @<b>|sel_w(ctrl.is_op32, sra32, sra)|
-            };
-    // #@@range_end(case)
+                3'b001: result = sel_w(ctrl.is_op32, sll32, sll);
+                3'b010: result = slt;
+                3'b011: result = sltu;
+                3'b100: result = op1 ^ op2;
+                3'b101: result = if ctrl.funct7 == 0 {
+                            sel_w(ctrl.is_op32, srl32, srl)
+                        } else {
+                            sel_w(ctrl.is_op32, sra32, sra)
+                        };
                 3'b110 : result = op1 | op2;
                 3'b111 : result = op1 & op2;
                 default: result = 'x;
