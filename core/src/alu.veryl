@@ -7,8 +7,24 @@ module alu (
     op2   : input  UIntX   ,
     result: output UIntX   ,
 ) {
+
+    function sel_w (
+        is_op32: input logic ,
+        value32: input UInt32,
+        value64: input UInt64,
+    ) -> UInt64 {
+        if is_op32 {
+            return {value32[msb] repeat 32, value32};
+        } else {
+            return value64;
+        }
+    }
+
     let add: UIntX = op1 + op2;
     let sub: UIntX = op1 - op2;
+
+    let add32: UInt32 = op1[31:0] + op2[31:0];
+    let sub32: UInt32 = op1[31:0] - op2[31:0];
 
     let sll: UIntX = op1 << op2[5:0];
     let srl: UIntX = op1 >> op2[5:0];
@@ -21,9 +37,9 @@ module alu (
         if ctrl.is_aluop {
             case ctrl.funct3 {
                 3'b000: result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 {
-                    add
+                    sel_w(ctrl.is_op32, add32, add)
                 } else {
-                    sub
+                    sel_w(ctrl.is_op32, sub32, sub)
                 };
                 3'b001: result = sll;
                 3'b010: result = slt;
