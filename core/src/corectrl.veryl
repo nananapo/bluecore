@@ -18,6 +18,7 @@ package corectrl {
         rwb_en  : logic      , // レジスタに書き込むかどうか
         is_lui  : logic      , // LUI命令である
         is_aluop: logic      , // ALUを利用する命令である
+        is_op32 : logic      , // OP-32またはOP-IMM-32である
         is_jump : logic      , // ジャンプ命令である
         is_load : logic      , // ロード命令である
         is_csr  : logic      , // CSR命令である
