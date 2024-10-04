@@ -8,6 +8,7 @@ module alu (
     result: output UIntX   ,
 ) {
 
+    // #@@range_begin(sel)
     function sel_w (
         is_op32: input logic ,
         value32: input UInt32,
@@ -19,12 +20,15 @@ module alu (
             return value64;
         }
     }
+    // #@@range_end(sel)
 
     let add: UIntX = op1 + op2;
     let sub: UIntX = op1 - op2;
 
+    // #@@range_begin(32)
     let add32: UInt32 = op1[31:0] + op2[31:0];
     let sub32: UInt32 = op1[31:0] - op2[31:0];
+    // #@@range_end(32)
 
     let sll: UIntX = op1 << op2[5:0];
     let srl: UIntX = op1 >> op2[5:0];
@@ -36,11 +40,13 @@ module alu (
     always_comb {
         if ctrl.is_aluop {
             case ctrl.funct3 {
-                3'b000: result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 {
-                    sel_w(ctrl.is_op32, add32, add)
-                } else {
-                    sel_w(ctrl.is_op32, sub32, sub)
-                };
+    // #@@range_begin(case)
+    3'b000: result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 {
+        @<b>|sel_w(ctrl.is_op32, add32, add)|
+    } else {
+        @<b>|sel_w(ctrl.is_op32, sub32, sub)|
+    };
+    // #@@range_end(case)
                 3'b001: result = sll;
                 3'b010: result = slt;
                 3'b011: result = sltu;
