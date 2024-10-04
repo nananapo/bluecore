@@ -17,10 +17,8 @@ module top (
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     inst d_membus: membus_if::<MEM_DATA_WIDTH, XLEN>; // ロードストア命令用
 
-    // #@@range_begin(last_iaddr)
     var memarb_last_i    : logic;
-    @<b>|var memarb_last_iaddr: Addr ;|
-    // #@@range_end(last_iaddr)
+    var memarb_last_iaddr: Addr ;
 
     // riscv-testsの終了を検知する
     const RISCVTESTS_TOHOST_ADDR: Addr = 32'h1000;
@@ -36,31 +34,27 @@ module top (
         }
     }
 
-    // #@@range_begin(always_arb)
     // メモリアクセスを調停する
     always_ff {
         if_reset {
             memarb_last_i     = 0;
-            @<b>|memarb_last_iaddr = 0;|
+            memarb_last_iaddr = 0;
         } else {
             if membus.ready {
                 memarb_last_i     = !d_membus.valid;
-                @<b>|memarb_last_iaddr = i_membus.addr;|
+                memarb_last_iaddr = i_membus.addr;
             }
         }
     }
-    // #@@range_end(always_arb)
 
     always_comb {
         i_membus.ready  = membus.ready && !d_membus.valid;
         i_membus.rvalid = membus.rvalid && memarb_last_i;
-    // #@@range_begin(rdata)    
-    i_membus.rdata  = if memarb_last_iaddr[2] == 0 {
-        membus.rdata[31:0]
-    } else {
-        membus.rdata[63:32]
-    };
-    //#@@range_end(rdata)
+        i_membus.rdata  = if memarb_last_iaddr[2] == 0 {
+            membus.rdata[31:0]
+        } else {
+            membus.rdata[63:32]
+        };
 
         d_membus.ready  = membus.ready;
         d_membus.rvalid = membus.rvalid && !memarb_last_i;
