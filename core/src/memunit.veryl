@@ -67,7 +67,7 @@ module memunit (
                 2      : {sext & D[31] repeat W - 16, D[31:16]},
                 default: 'x,
             },
-            2'b10  : D,
+            2'b10  : {D[31] repeat W - 32, D[31:0]},
             default: 'x,
         };
         // stall判定
@@ -93,7 +93,7 @@ module memunit (
                         state     = State::WaitReady;
                         req_wen   = inst_is_store(ctrl);
                         req_addr  = addr;
-                        req_wdata = rs2 << {addr[1:0], 3'b0};
+                        req_wdata = rs2[MEM_DATA_WIDTH - 1:0] << {addr[1:0], 3'b0};
                         req_wmask = case ctrl.funct3[1:0] {
                             2'b00  : 4'b1 << addr[1:0],
                             2'b01  : case addr[1:0] {
