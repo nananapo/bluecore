@@ -27,11 +27,9 @@ module csrunit (
     }
 
     // wmasks
-    // #@@range_begin(wmask)
-    const MTVEC_WMASK : UIntX = 'h@<b>|ffff_ffff_|ffff_fffc;
-    const MEPC_WMASK  : UIntX = 'h@<b>|ffff_ffff_|ffff_fffc;
-    const MCAUSE_WMASK: UIntX = 'h@<b>|ffff_ffff_|ffff_ffff;
-    // #@@range_end(wmask)
+    const MTVEC_WMASK : UIntX = 'hffff_ffff_ffff_fffc;
+    const MEPC_WMASK  : UIntX = 'hffff_ffff_ffff_fffc;
+    const MCAUSE_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
