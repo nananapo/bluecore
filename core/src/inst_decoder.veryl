@@ -27,34 +27,29 @@ module inst_decoder (
     const F: logic = 1'b0;
 
     always_comb {
-    // #@@range_begin(imm)
-    imm = case op {
-        OP_LUI, OP_AUIPC       : imm_u,
-        OP_JAL                 : imm_j,
-        OP_JALR, OP_LOAD       : imm_i,
-        OP_OP_IMM, @<b>|OP_OP_IMM_32|: imm_i,
-        OP_BRANCH              : imm_b,
-        OP_STORE               : imm_s,
-        default                : 'x,
-    };
-    // #@@range_end(imm)
-    // #@@range_begin(ctrl)
-                                       is_op32を追加
-    ctrl = {case op {                        ↓
-        OP_LUI      : {InstType::U, T, T, F, @<b>|F|, F, F, F},
-        OP_AUIPC    : {InstType::U, T, F, F, @<b>|F|, F, F, F},
-        OP_JAL      : {InstType::J, T, F, F, @<b>|F|, T, F, F},
-        OP_JALR     : {InstType::I, T, F, F, @<b>|F|, T, F, F},
-        OP_BRANCH   : {InstType::B, F, F, F, @<b>|F|, F, F, F},
-        OP_LOAD     : {InstType::I, T, F, F, @<b>|F|, F, T, F},
-        OP_STORE    : {InstType::S, F, F, F, @<b>|F|, F, F, F},
-        OP_OP       : {InstType::R, T, F, T, @<b>|F|, F, F, F},
-        OP_OP_IMM   : {InstType::I, T, F, T, @<b>|F|, F, F, F},
-        @<b>|OP_OP_32    : {InstType::R, T, F, T, @<b>|T|, F, F, F},| @<balloon>{追加}
-        @<b>|OP_OP_IMM_32: {InstType::I, T, F, T, @<b>|T|, F, F, F},| @<balloon>{追加}
-        OP_SYSTEM   : {InstType::I, T, F, F, @<b>|F|, F, F, T},
-        default     : {InstType::X, F, F, F, @<b>|F|, F, F, F},
-    }, f3, f7};
-    // #@@range_end(ctrl)
+        imm = case op {
+            OP_LUI, OP_AUIPC       : imm_u,
+            OP_JAL                 : imm_j,
+            OP_JALR, OP_LOAD       : imm_i,
+            OP_OP_IMM, OP_OP_IMM_32: imm_i,
+            OP_BRANCH              : imm_b,
+            OP_STORE               : imm_s,
+            default                : 'x,
+        };
+        ctrl = {case op {
+            OP_LUI      : {InstType::U, T, T, F, F, F, F, F},
+            OP_AUIPC    : {InstType::U, T, F, F, F, F, F, F},
+            OP_JAL      : {InstType::J, T, F, F, F, T, F, F},
+            OP_JALR     : {InstType::I, T, F, F, F, T, F, F},
+            OP_BRANCH   : {InstType::B, F, F, F, F, F, F, F},
+            OP_LOAD     : {InstType::I, T, F, F, F, F, T, F},
+            OP_STORE    : {InstType::S, F, F, F, F, F, F, F},
+            OP_OP       : {InstType::R, T, F, T, F, F, F, F},
+            OP_OP_IMM   : {InstType::I, T, F, T, F, F, F, F},
+            OP_OP_32    : {InstType::R, T, F, T, T, F, F, F},
+            OP_OP_IMM_32: {InstType::I, T, F, T, T, F, F, F},
+            OP_SYSTEM   : {InstType::I, T, F, F, F, F, F, T},
+            default     : {InstType::X, F, F, F, F, F, F, F},
+        }, f3, f7};
     }
 }
