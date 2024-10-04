@@ -67,9 +67,7 @@ module memunit (
                 2      : {sext & D[31] repeat W - 16, D[31:16]},
                 default: 'x,
             },
-    // #@@range_begin(lw)
-    2'b10  : @<b>|{D[31] repeat W - 32, D[31:0]}|,
-    // #@@range_end(lw)
+            2'b10  : {D[31] repeat W - 32, D[31:0]},
             default: 'x,
         };
         // stall判定
@@ -90,14 +88,12 @@ module memunit (
             req_wmask = 0;
         } else {
             if valid {
-    // #@@range_begin(req_wdata)
-    case state {
-        State::Init: if is_new & inst_is_memop(ctrl) {
-            state     = State::WaitReady;
-            req_wen   = inst_is_store(ctrl);
-            req_addr  = addr;
-            req_wdata = rs2@<b>|[MEM_DATA_WIDTH - 1:0]| << {addr[1:0], 3'b0};
-    // #@@range_end(req_wdata)
+                case state {
+                    State::Init: if is_new & inst_is_memop(ctrl) {
+                        state     = State::WaitReady;
+                        req_wen   = inst_is_store(ctrl);
+                        req_addr  = addr;
+                        req_wdata = rs2[MEM_DATA_WIDTH - 1:0] << {addr[1:0], 3'b0};
                         req_wmask = case ctrl.funct3[1:0] {
                             2'b00  : 4'b1 << addr[1:0],
                             2'b01  : case addr[1:0] {
