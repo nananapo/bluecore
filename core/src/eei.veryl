@@ -12,7 +12,7 @@ package eei {
     type Addr   = logic       <XLEN>;
 
     // メモリのデータ幅
-    const MEM_DATA_WIDTH: u32 = 32;
+    const MEM_DATA_WIDTH: u32 = 64;
 
     // opcode
     const OP_LUI      : logic<7> = 7'b0110111;
