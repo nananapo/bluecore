@@ -15,14 +15,16 @@ package eei {
     const MEM_DATA_WIDTH: u32 = 32;
 
     // opcode
-    const OP_LUI   : logic<7> = 7'b0110111;
-    const OP_AUIPC : logic<7> = 7'b0010111;
-    const OP_OP    : logic<7> = 7'b0110011;
-    const OP_OP_IMM: logic<7> = 7'b0010011;
-    const OP_JAL   : logic<7> = 7'b1101111;
-    const OP_JALR  : logic<7> = 7'b1100111;
-    const OP_BRANCH: logic<7> = 7'b1100011;
-    const OP_LOAD  : logic<7> = 7'b0000011;
-    const OP_STORE : logic<7> = 7'b0100011;
-    const OP_SYSTEM: logic<7> = 7'b1110011;
+    const OP_LUI      : logic<7> = 7'b0110111;
+    const OP_AUIPC    : logic<7> = 7'b0010111;
+    const OP_OP       : logic<7> = 7'b0110011;
+    const OP_OP_IMM   : logic<7> = 7'b0010011;
+    const OP_OP_32    : logic<7> = 7'b0111011;
+    const OP_OP_IMM_32: logic<7> = 7'b0011011;
+    const OP_JAL      : logic<7> = 7'b1101111;
+    const OP_JALR     : logic<7> = 7'b1100111;
+    const OP_BRANCH   : logic<7> = 7'b1100011;
+    const OP_LOAD     : logic<7> = 7'b0000011;
+    const OP_STORE    : logic<7> = 7'b0100011;
+    const OP_SYSTEM   : logic<7> = 7'b1110011;
 }
