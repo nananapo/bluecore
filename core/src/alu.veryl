@@ -8,6 +8,7 @@ module alu (
     result: output UIntX   ,
 ) {
 
+    // #@@range_begin(sel)
     function sel_w (
         is_op32: input logic ,
         value32: input UInt32,
@@ -19,12 +20,15 @@ module alu (
             return value64;
         }
     }
+    // #@@range_end(sel)
 
     let add: UIntX = op1 + op2;
     let sub: UIntX = op1 - op2;
 
+    // #@@range_begin(32)
     let add32: UInt32 = op1[31:0] + op2[31:0];
     let sub32: UInt32 = op1[31:0] - op2[31:0];
+    // #@@range_end(32)
 
     let sll: UIntX = op1 << op2[5:0];
     let srl: UIntX = op1 >> op2[5:0];
@@ -33,12 +37,14 @@ module alu (
     let slt : UIntX = {1'b0 repeat XLEN - 1, $signed(op1) <: $signed(op2)};
     let sltu: UIntX = {1'b0 repeat XLEN - 1, op1 <: op2};
 
+    // #@@range_begin(case)
     always_comb {
         if ctrl.is_aluop {
             case ctrl.funct3 {
-                3'b000 : result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 ? sel_w(ctrl.is_op32, add32, add) : sel_w(ctrl.is_op32, sub32, sub);
+                3'b000 : result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 ? @<b>|sel_w(ctrl.is_op32, add32, |add@<b>|)| : @<b>|sel_w(ctrl.is_op32, sub32, |sub@<b>|)|;
                 3'b001 : result = sll;
                 3'b010 : result = slt;
+    // #@@range_end(case)
                 3'b011 : result = sltu;
                 3'b100 : result = op1 ^ op2;
                 3'b101 : result = if ctrl.funct7[5] == 0 ? srl : sra;
