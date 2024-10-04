@@ -21,7 +21,8 @@ module top #(
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     inst d_membus: membus_if::<MEM_DATA_WIDTH, XLEN>; // ロードストア命令用
 
-    var memarb_last_i: logic;
+    var memarb_last_i    : logic;
+    var memarb_last_iaddr: Addr ;
 
     // riscv-testsの終了を検知する
     #[ifdef(TEST_MODE)]
@@ -42,10 +43,12 @@ module top #(
     // メモリアクセスを調停する
     always_ff {
         if_reset {
-            memarb_last_i = 0;
+            memarb_last_i     = 0;
+            memarb_last_iaddr = 0;
         } else {
             if membus.ready {
-                memarb_last_i = !d_membus.valid;
+                memarb_last_i     = !d_membus.valid;
+                memarb_last_iaddr = i_membus.addr;
             }
         }
     }
@@ -53,7 +56,11 @@ module top #(
     always_comb {
         i_membus.ready  = membus.ready && !d_membus.valid;
         i_membus.rvalid = membus.rvalid && memarb_last_i;
-        i_membus.rdata  = membus.rdata;
+        i_membus.rdata  = if memarb_last_iaddr[2] == 0 {
+            membus.rdata[31:0]
+        } else {
+            membus.rdata[63:32]
+        };
 
         d_membus.ready  = membus.ready;
         d_membus.rvalid = membus.rvalid && !memarb_last_i;
