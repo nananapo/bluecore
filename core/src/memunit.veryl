@@ -53,7 +53,9 @@ module memunit (
                 2      : {sext & D[31] repeat W - 16, D[31:16]},
                 default: 'x,
             },
-            2'b10  : {sext & D[31] repeat W - 32, D[31:0]},
+    // #@@range_begin(lwu)
+    2'b10  : {@<b>|sext & D[31]| repeat W - 32, D[31:0]},
+    // #@@range_end(lwu)
             default: 'x,
         };
         // stall判定
