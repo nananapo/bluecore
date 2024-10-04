@@ -12,7 +12,9 @@ package eei {
     type Addr   = logic       <XLEN>;
 
     // メモリのデータ幅
-    const MEM_DATA_WIDTH: u32 = 64;
+    // #@@range_begin(width)
+    const MEM_DATA_WIDTH: u32 = @<b>|64|;
+    // #@@range_end(width)
     // メモリのアドレス幅
     const MEM_ADDR_WIDTH: u32 = 16;
 
