@@ -108,25 +108,25 @@ module core (
         }
     }
 
-    let inst_valid : logic    = if_fifo_rvalid;
-    var inst_is_new: logic   ; // 命令が今のクロックで供給されたかどうか
-    let inst_pc    : Addr     = if_fifo_rdata.addr;
-    let inst_bits  : Inst     = if_fifo_rdata.bits;
-    var inst_ctrl  : InstCtrl;
-    var inst_imm   : UIntX   ;
+    let ids_valid    : logic    = if_fifo_rvalid;
+    var ids_is_new   : logic   ; // 命令が今のクロックで供給されたかどうか
+    let ids_pc       : Addr     = if_fifo_rdata.addr;
+    let ids_inst_bits: Inst     = if_fifo_rdata.bits;
+    var ids_ctrl     : InstCtrl;
+    var ids_imm      : UIntX   ;
 
     inst decoder: inst_decoder (
-        bits: inst_bits,
-        ctrl: inst_ctrl,
-        imm : inst_imm ,
+        bits: ids_inst_bits,
+        ctrl: ids_ctrl     ,
+        imm : ids_imm      ,
     );
 
     // レジスタ
     var regfile: UIntX<32>;
 
     // レジスタ番号
-    let rs1_addr: logic<5> = inst_bits[19:15];
-    let rs2_addr: logic<5> = inst_bits[24:20];
+    let rs1_addr: logic<5> = ids_inst_bits[19:15];
+    let rs2_addr: logic<5> = ids_inst_bits[24:20];
 
     // ソースレジスタのデータ
     let rs1_data: UIntX = if rs1_addr == 0 {
@@ -146,18 +146,18 @@ module core (
     var alu_result: UIntX;
 
     always_comb {
-        case inst_ctrl.itype {
+        case ids_ctrl.itype {
             InstType::R, InstType::B: {
                                           op1 = rs1_data;
                                           op2 = rs2_data;
                                       }
             InstType::I, InstType::S: {
                                           op1 = rs1_data;
-                                          op2 = inst_imm;
+                                          op2 = ids_imm;
                                       }
             InstType::U, InstType::J: {
-                                          op1 = inst_pc;
-                                          op2 = inst_imm;
+                                          op1 = ids_pc;
+                                          op2 = ids_imm;
                                       }
             default: {
                          op1 = 'x;
@@ -167,7 +167,7 @@ module core (
     }
 
     inst alum: alu (
-        ctrl  : inst_ctrl ,
+        ctrl  : ids_ctrl  ,
         op1               ,
         op2               ,
         result: alu_result,
@@ -176,29 +176,29 @@ module core (
     var brunit_take: logic;
 
     inst bru: brunit (
-        funct3: inst_ctrl.funct3,
-        op1                     ,
-        op2                     ,
-        take  : brunit_take     ,
+        funct3: ids_ctrl.funct3,
+        op1                    ,
+        op2                    ,
+        take  : brunit_take    ,
     );
 
-    assign control_hazard         = inst_valid && (csru_raise_trap || inst_ctrl.is_jump || inst_is_br(inst_ctrl) && brunit_take);
+    assign control_hazard         = ids_valid && (csru_raise_trap || ids_ctrl.is_jump || inst_is_br(ids_ctrl) && brunit_take);
     assign control_hazard_pc_next = if csru_raise_trap {
         csru_trap_vector
-    } else if inst_is_br(inst_ctrl) {
-        inst_pc + inst_imm
+    } else if inst_is_br(ids_ctrl) {
+        ids_pc + ids_imm
     } else {
         alu_result
     };
 
     always_ff {
         if_reset {
-            inst_is_new = 0;
+            ids_is_new = 0;
         } else {
             if if_fifo_rvalid {
-                inst_is_new = if_fifo_rready;
+                ids_is_new = if_fifo_rready;
             } else {
-                inst_is_new = 1;
+                ids_is_new = 1;
             }
         }
     }
@@ -207,16 +207,16 @@ module core (
     var memu_stall: logic;
 
     inst memu: memunit (
-        clk                ,
-        rst                ,
-        valid : inst_valid ,
-        is_new: inst_is_new,
-        ctrl  : inst_ctrl  ,
-        addr  : alu_result ,
-        rs2   : rs2_data   ,
-        rdata : memu_rdata ,
-        stall : memu_stall ,
-        membus: d_membus   ,
+        clk               ,
+        rst               ,
+        valid : ids_valid ,
+        is_new: ids_is_new,
+        ctrl  : ids_ctrl  ,
+        addr  : alu_result,
+        rs2   : rs2_data  ,
+        rdata : memu_rdata,
+        stall : memu_stall,
+        membus: d_membus  ,
     );
 
     var csru_rdata      : UIntX;
@@ -224,38 +224,38 @@ module core (
     var csru_trap_vector: Addr ;
 
     inst csru: csrunit (
-        clk                       ,
-        rst                       ,
-        valid   : inst_valid      ,
-        pc      : inst_pc         ,
-        ctrl    : inst_ctrl       ,
-        rd_addr                   ,
-        csr_addr: inst_bits[31:20],
-        rs1     : if inst_ctrl.funct3[2] == 1 && inst_ctrl.funct3[1:0] != 0 {
+        clk                           ,
+        rst                           ,
+        valid   : ids_valid           ,
+        pc      : ids_pc              ,
+        ctrl    : ids_ctrl            ,
+        rd_addr                       ,
+        csr_addr: ids_inst_bits[31:20],
+        rs1     : if ids_ctrl.funct3[2] == 1 && ids_ctrl.funct3[1:0] != 0 {
             {1'b0 repeat XLEN - $bits(rs1_addr), rs1_addr} // rs1を0で拡張する
         } else {
             rs1_data
         },
-        rdata      : csru_rdata                                                                                                         ,
-        raise_trap : csru_raise_trap                                                                                                    ,
-        trap_vector: csru_trap_vector                                                                                                   ,
+        rdata      : csru_rdata                                                                                                       ,
+        raise_trap : csru_raise_trap                                                                                                  ,
+        trap_vector: csru_trap_vector                                                                                                 ,
     );
 
-    let rd_addr: logic<5> = inst_bits[11:7];
-    let wb_data: UIntX    = if inst_ctrl.is_lui {
-        inst_imm
-    } else if inst_ctrl.is_jump {
-        inst_pc + 4
-    } else if inst_ctrl.is_load {
+    let rd_addr: logic<5> = ids_inst_bits[11:7];
+    let wb_data: UIntX    = if ids_ctrl.is_lui {
+        ids_imm
+    } else if ids_ctrl.is_jump {
+        ids_pc + 4
+    } else if ids_ctrl.is_load {
         memu_rdata
-    } else if inst_ctrl.is_csr {
+    } else if ids_ctrl.is_csr {
         csru_rdata
     } else {
         alu_result
     };
 
     always_ff {
-        if inst_valid && if_fifo_rready && inst_ctrl.rwb_en {
+        if ids_valid && if_fifo_rready && ids_ctrl.rwb_en {
             regfile[rd_addr] = wb_data;
         }
     }
@@ -267,11 +267,11 @@ module core (
             clock_count = 1;
         } else {
             clock_count = clock_count + 1;
-            if inst_valid {
+            if ids_valid {
                 $display("# %d", clock_count);
-                $display("%h : %h", inst_pc, inst_bits);
-                $display("  itype     : %b", inst_ctrl.itype);
-                $display("  imm       : %h", inst_imm);
+                $display("%h : %h", ids_pc, ids_inst_bits);
+                $display("  itype     : %b", ids_ctrl.itype);
+                $display("  imm       : %h", ids_imm);
                 $display("  rs1[%d]   : %h", rs1_addr, rs1_data);
                 $display("  rs2[%d]   : %h", rs2_addr, rs2_data);
                 $display("  op1       : %h", op1);
@@ -279,15 +279,15 @@ module core (
                 $display("  alu res   : %h", alu_result);
                 $display("  mem stall : %b", memu_stall);
                 $display("  mem rdata : %h", memu_rdata);
-                if inst_ctrl.is_csr {
+                if ids_ctrl.is_csr {
                     $display("  csr rdata : %h", csru_rdata);
                     $display("  csr trap  : %b", csru_raise_trap);
                     $display("  csr vec   : %h", csru_trap_vector);
                 }
-                if inst_is_br(inst_ctrl) {
+                if inst_is_br(ids_ctrl) {
                     $display("  br take   : %b", brunit_take);
                 }
-                if if_fifo_rready && inst_ctrl.rwb_en {
+                if if_fifo_rready && ids_ctrl.rwb_en {
                     $display("  reg[%d] <= %h", rd_addr, wb_data);
                 }
             }
