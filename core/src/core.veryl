@@ -108,14 +108,12 @@ module core (
         }
     }
 
-    // #@@range_begin(ifs)
     let ids_valid    : logic    = if_fifo_rvalid;
     var ids_is_new   : logic   ; // 命令が今のクロックで供給されたかどうか
     let ids_pc       : Addr     = if_fifo_rdata.addr;
     let ids_inst_bits: Inst     = if_fifo_rdata.bits;
     var ids_ctrl     : InstCtrl;
     var ids_imm      : UIntX   ;
-    // #@@range_end(ifs)
 
     inst decoder: inst_decoder (
         bits: ids_inst_bits,
