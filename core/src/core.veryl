@@ -14,13 +14,67 @@ module core (
         bits: Inst,
     }
 
-    // FIFOの制御用レジスタ
+    struct exq_type {
+        addr: Addr    ,
+        bits: Inst    ,
+        ctrl: InstCtrl,
+        imm : UIntX   ,
+    }
+
+    struct memq_type {
+        addr      : Addr       ,
+        bits      : Inst       ,
+        ctrl      : InstCtrl   ,
+        imm       : UIntX      ,
+        alu_result: UIntX      ,
+        rs1_addr  : logic   <5>,
+        rs1_data  : UIntX      ,
+        rs2_data  : UIntX      ,
+        br_taken  : logic      ,
+        jump_addr : Addr       ,
+    }
+
+    struct wbq_type {
+        addr      : Addr    ,
+        bits      : Inst    ,
+        ctrl      : InstCtrl,
+        imm       : UIntX   ,
+        alu_result: UIntX   ,
+        mem_rdata : UIntX   ,
+        csr_rdata : UIntX   ,
+    }
+
+    // 命令メモリ -> IFのFIFO
     var if_fifo_wready: logic       ;
     var if_fifo_wvalid: logic       ;
     var if_fifo_wdata : if_fifo_type;
     var if_fifo_rready: logic       ;
     var if_fifo_rvalid: logic       ;
     var if_fifo_rdata : if_fifo_type;
+
+    // ID -> EXのFIFO
+    var exq_wready: logic   ;
+    var exq_wvalid: logic   ;
+    var exq_wdata : exq_type;
+    var exq_rready: logic   ;
+    var exq_rvalid: logic   ;
+    var exq_rdata : exq_type;
+
+    // EX -> MEMのFIFO
+    var memq_wready: logic    ;
+    var memq_wvalid: logic    ;
+    var memq_wdata : memq_type;
+    var memq_rready: logic    ;
+    var memq_rvalid: logic    ;
+    var memq_rdata : memq_type;
+
+    // MEM -> WBのFIFO
+    var wbq_wready: logic   ;
+    var wbq_wvalid: logic   ;
+    var wbq_wdata : wbq_type;
+    var wbq_rready: logic   ;
+    var wbq_rvalid: logic   ;
+    var wbq_rdata : wbq_type;
 
     var if_pc          : Addr ;
     var if_is_requested: logic; // フェッチ中かどうか
@@ -286,4 +340,49 @@ module core (
             }
         }
     }
+
+    inst id_ex_fifo: fifo #(
+        DATA_TYPE: exq_type,
+        WIDTH    : 1       ,
+    ) (
+        clk                   ,
+        rst                   ,
+        flush : control_hazard,
+        wready: exq_wready    ,
+        wvalid: exq_wvalid    ,
+        wdata : exq_wdata     ,
+        rready: exq_rready    ,
+        rvalid: exq_rvalid    ,
+        rdata : exq_rdata     ,
+    );
+
+    inst ex_mem_fifo: fifo #(
+        DATA_TYPE: memq_type,
+        WIDTH    : 1        ,
+    ) (
+        clk                   ,
+        rst                   ,
+        flush : control_hazard,
+        wready: memq_wready   ,
+        wvalid: memq_wvalid   ,
+        wdata : memq_wdata    ,
+        rready: memq_rready   ,
+        rvalid: memq_rvalid   ,
+        rdata : memq_rdata    ,
+    );
+
+    inst mem_wb_fifo: fifo #(
+        DATA_TYPE: wbq_type,
+        WIDTH    : 1       ,
+    ) (
+        clk               ,
+        rst               ,
+        flush : 0         ,
+        wready: wbq_wready,
+        wvalid: wbq_wvalid,
+        wdata : wbq_wdata ,
+        rready: wbq_rready,
+        rvalid: wbq_rvalid,
+        rdata : wbq_rdata ,
+    );
 }
