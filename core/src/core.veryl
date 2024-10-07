@@ -21,16 +21,13 @@ module core (
         bits: Inst,
     }
 
-    // #@@range_begin(extype)
     struct exq_type {
         addr: Addr    ,
         bits: Inst    ,
         ctrl: InstCtrl,
         imm : UIntX   ,
     }
-    // #@@range_end(extype)
 
-    // #@@range_begin(memtype)
     struct memq_type {
         addr      : Addr    ,
         bits      : Inst    ,
@@ -40,9 +37,7 @@ module core (
         br_taken  : logic   ,
         jump_addr : logic   ,
     }
-    // #@@range_end(memtype)
 
-    // #@@range_begin(wbtype)
     struct wbq_type {
         addr      : Addr    ,
         bits      : Inst    ,
@@ -51,7 +46,6 @@ module core (
         mem_rdata : UIntX   ,
         csr_rdata : UIntX   ,
     }
-    // #@@range_end(wbtype)
 
     // 命令メモリ -> IFのFIFO
     var if_fifo_wready: logic       ;
@@ -61,7 +55,6 @@ module core (
     var if_fifo_rvalid: logic       ;
     var if_fifo_rdata : if_fifo_type;
 
-    // #@@range_begin(var)
     // ID -> EXのFIFO
     var exq_wready: logic   ;
     var exq_wvalid: logic   ;
@@ -85,7 +78,6 @@ module core (
     var wbq_rready: logic    ;
     var wbq_rvalid: logic    ;
     var wbq_rdata : memq_type;
-    // #@@range_end(var)
 
     var if_pc          : Addr ;
     var if_is_requested: logic; // フェッチ中かどうか
@@ -350,7 +342,6 @@ module core (
         rdata : if_fifo_rdata ,
     );
 
-    // #@@range_begin(fifos)
     inst id_ex_fifo: fifo #(
         DATA_TYPE: exq_type,
         WIDTH    : 1       ,
@@ -387,7 +378,7 @@ module core (
     ) (
         clk               ,
         rst               ,
-        @<b>|flush : 0|         , @<balloon>{注意! 0です}
+        flush : 0         ,
         wready: wbq_wready,
         wvalid: wbq_wvalid,
         wdata : wbq_wdata ,
@@ -395,5 +386,4 @@ module core (
         rvalid: wbq_rvalid,
         rdata : wbq_rdata ,
     );
-    // #@@range_end(fifos)
 }
