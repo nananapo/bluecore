@@ -173,6 +173,13 @@ module core (
         imm : ids_imm      ,
     );
 
+    always_comb {
+        exq_wdata.addr = if_fifo_rdata.addr;
+        exq_wdata.bits = if_fifo_rdata.bits;
+        exq_wdata.ctrl = ids_ctrl;
+        exq_wdata.imm  = ids_imm;
+    }
+
     // レジスタ
     var regfile: UIntX<32>;
 
@@ -298,29 +305,15 @@ module core (
             clock_count = 1;
         } else {
             clock_count = clock_count + 1;
+
+            $display("\n");
+            $display("# %d", clock_count);
+
+            $display("ID ------");
             if ids_valid {
-                $display("# %d", clock_count);
                 $display("%h : %h", ids_pc, ids_inst_bits);
-                $display("  itype     : %b", ids_ctrl.itype);
-                $display("  imm       : %h", ids_imm);
-                $display("  rs1[%d]   : %h", rs1_addr, rs1_data);
-                $display("  rs2[%d]   : %h", rs2_addr, rs2_data);
-                $display("  op1       : %h", op1);
-                $display("  op2       : %h", op2);
-                $display("  alu res   : %h", alu_result);
-                $display("  mem stall : %b", memu_stall);
-                $display("  mem rdata : %h", memu_rdata);
-                if ids_ctrl.is_csr {
-                    $display("  csr rdata : %h", csru_rdata);
-                    $display("  csr trap  : %b", csru_raise_trap);
-                    $display("  csr vec   : %h", csru_trap_vector);
-                }
-                if inst_is_br(ids_ctrl) {
-                    $display("  br take   : %b", brunit_take);
-                }
-                if if_fifo_rready && ids_ctrl.rwb_en {
-                    $display("  reg[%d] <= %h", rd_addr, wb_data);
-                }
+                $display("itype : %b", ids_ctrl.itype);
+                $display("imm   : %h", ids_imm);
             }
         }
     }
