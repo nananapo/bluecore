@@ -84,9 +84,12 @@ module core (
     var wbq_rdata : wbq_type;
 
 
+    // #@@range_begin(mark_if)
     ///////////////////////////////// IF Stage /////////////////////////////////
 
     var if_pc          : Addr ;
+    ...
+    // #@@range_end(mark_if)
     var if_is_requested: logic; // フェッチ中かどうか
     var if_pc_requested: Addr ; // 要求したアドレス
 
@@ -162,9 +165,14 @@ module core (
         }
     }
 
+    // #@@range_begin(mark_id)
     ///////////////////////////////// ID Stage /////////////////////////////////
+    // #@@range_end(mark_id)
 
     let ids_valid    : logic    = if_fifo_rvalid;
+    // #@@range_begin(id_is_new)
+    @<del>|var ids_is_new   : logic   ;|
+    // #@@range_end(id_is_new)
     let ids_pc       : Addr     = if_fifo_rdata.addr;
     let ids_inst_bits: Inst     = if_fifo_rdata.bits;
     var ids_ctrl     : InstCtrl;
@@ -176,6 +184,7 @@ module core (
         imm : ids_imm      ,
     );
 
+    // #@@range_begin(always_comb_id)
     always_comb {
         // ID -> EX
         if_fifo_rready = exq_wready;
@@ -185,76 +194,84 @@ module core (
         exq_wdata.ctrl = ids_ctrl;
         exq_wdata.imm  = ids_imm;
     }
+    // #@@range_end(always_comb_id)
 
+    // #@@range_begin(mark_ex)
     ///////////////////////////////// EX Stage /////////////////////////////////
+    // #@@range_end(mark_ex)
 
+    // #@@range_begin(var_ex)
     let exs_valid    : logic    = exq_rvalid;
     let exs_pc       : Addr     = exq_rdata.addr;
     let exs_inst_bits: Inst     = exq_rdata.bits;
     let exs_ctrl     : InstCtrl = exq_rdata.ctrl;
     let exs_imm      : UIntX    = exq_rdata.imm;
+    // #@@range_end(var_ex)
 
     // レジスタ
     var regfile: UIntX<32>;
 
+    // #@@range_begin(ex_prefix)
     // レジスタ番号
-    let exs_rs1_addr: logic<5> = exs_inst_bits[19:15];
-    let exs_rs2_addr: logic<5> = exs_inst_bits[24:20];
+    let @<b>|exs_|rs1_addr: logic<5> = @<b>|exs|_inst_bits[19:15];
+    let @<b>|exs_|rs2_addr: logic<5> = @<b>|exs|_inst_bits[24:20];
 
     // ソースレジスタのデータ
-    let exs_rs1_data: UIntX = if exs_rs1_addr == 0 {
+    let @<b>|exs_|rs1_data: UIntX = if @<b>|exs_|rs1_addr == 0 {
         0
     } else {
-        regfile[exs_rs1_addr]
+        regfile[@<b>|exs_|rs1_addr]
     };
-    let exs_rs2_data: UIntX = if exs_rs2_addr == 0 {
+    let @<b>|exs_|rs2_data: UIntX = if @<b>|exs_|rs2_addr == 0 {
         0
     } else {
-        regfile[exs_rs2_addr]
+        regfile[@<b>|exs_|rs2_addr]
     };
 
     // ALU
-    var exs_op1       : UIntX;
-    var exs_op2       : UIntX;
-    var exs_alu_result: UIntX;
+    var @<b>|exs_|op1       : UIntX;
+    var @<b>|exs_|op2       : UIntX;
+    var @<b>|exs_|alu_result: UIntX;
 
     always_comb {
-        case exs_ctrl.itype {
+        case @<b>|exs|_ctrl.itype {
             InstType::R, InstType::B: {
-                                          exs_op1 = exs_rs1_data;
-                                          exs_op2 = exs_rs2_data;
+                                          @<b>|exs_|op1 = @<b>|exs_|rs1_data;
+                                          @<b>|exs_|op2 = @<b>|exs_|rs2_data;
                                       }
             InstType::I, InstType::S: {
-                                          exs_op1 = exs_rs1_data;
-                                          exs_op2 = exs_imm;
+                                          @<b>|exs_|op1 = @<b>|exs_|rs1_data;
+                                          @<b>|exs_|op2 = @<b>|exs|_imm;
                                       }
             InstType::U, InstType::J: {
-                                          exs_op1 = exs_pc;
-                                          exs_op2 = exs_imm;
+                                          @<b>|exs_|op1 = @<b>|exs|_pc;
+                                          @<b>|exs_|op2 = @<b>|exs|_imm;
                                       }
             default: {
-                         exs_op1 = 'x;
-                         exs_op2 = 'x;
+                         @<b>|exs_|op1 = 'x;
+                         @<b>|exs_|op2 = 'x;
                      }
         }
     }
 
     inst alum: alu (
-        ctrl  : exs_ctrl      ,
-        op1   : exs_op1       ,
-        op2   : exs_op2       ,
-        result: exs_alu_result,
+        ctrl  : @<b>|exs|_ctrl      ,
+        op1   : @<b>|exs_|op1       ,
+        op2   : @<b>|exs_|op2       ,
+        result: @<b>|exs_|alu_result,
     );
 
-    var exs_brunit_take: logic;
+    var @<b>|exs_|brunit_take: logic;
 
     inst bru: brunit (
-        funct3: exs_ctrl.funct3,
-        op1   : exs_op1        ,
-        op2   : exs_op2        ,
-        take  : exs_brunit_take,
+        funct3: @<b>|exs|_ctrl.funct3,
+        op1   : @<b>|exs_|op1        ,
+        op2   : @<b>|exs_|op2        ,
+        take  : @<b>|exs_|brunit_take,
     );
+    // #@@range_end(ex_prefix)
 
+    // #@@range_begin(always_comb_ex)
     always_comb {
         // EX -> MEM
         exq_rready            = memq_wready;
@@ -267,52 +284,64 @@ module core (
         memq_wdata.rs1_data   = exs_rs1_data;
         memq_wdata.rs2_data   = exs_rs2_data;
         memq_wdata.alu_result = exs_alu_result;
+        @<balloon>{ジャンプ命令、または、分岐命令かつ分岐が成立するとき、1にする}
         memq_wdata.br_taken   = exs_ctrl.is_jump || inst_is_br(exs_ctrl) && exs_brunit_take;
         memq_wdata.jump_addr  = if inst_is_br(exs_ctrl) {
-            exs_pc + exs_imm
+            exs_pc + exs_imm @<balloon>{分岐命令の分岐先アドレス}
         } else {
-            exs_alu_result
+            exs_alu_result @<balloon>{ジャンプ命令のジャンプ先アドレス}
         };
     }
+    // #@@range_end(always_comb_ex)
 
+    // #@@range_begin(mark_mem)
     ///////////////////////////////// MEM Stage /////////////////////////////////
+    // #@@range_end(mark_mem)
+
+    // #@@range_begin(var_mem)
     var mems_is_new   : logic      ;
     let mems_valid    : logic       = memq_rvalid;
     let mems_pc       : Addr        = memq_rdata.addr;
     let mems_inst_bits: Inst        = memq_rdata.bits;
     let mems_ctrl     : InstCtrl    = memq_rdata.ctrl;
     let mems_rd_addr  : logic   <5> = mems_inst_bits[11:7];
+    // #@@range_end(var_mem)
 
-    assign control_hazard         = mems_valid && (csru_raise_trap || mems_ctrl.is_jump || memq_rdata.br_taken);
+    // #@@range_begin(mem_prefix1)
+    assign control_hazard         = @<b>|mems|_valid && (csru_raise_trap || @<b>|mems|_ctrl.is_jump || @<b>|memq_rdata.|br_taken);
     assign control_hazard_pc_next = if csru_raise_trap {
         csru_trap_vector
     } else {
-        memq_rdata.jump_addr
+        @<b>|memq_rdata.|jump_addr
     };
+    // #@@range_end(mem_prefix1)
 
+    // #@@range_begin(mem_is_new)
     always_ff {
         if_reset {
-            mems_is_new = 0;
+            @<b>|mems|_is_new = 0;
         } else {
             if memq_rvalid {
-                mems_is_new = memq_rready;
+                @<b>|mems|_is_new = memq_rready;
             } else {
-                mems_is_new = 1;
+                @<b>|mems|_is_new = 1;
             }
         }
     }
+    // #@@range_end(mem_is_new)
 
+    // #@@range_begin(mem_prefix2)
     var memu_rdata: UIntX;
     var memu_stall: logic;
 
     inst memu: memunit (
         clk                          ,
         rst                          ,
-        valid : mems_valid           ,
-        is_new: mems_is_new          ,
-        ctrl  : mems_ctrl            ,
-        addr  : memq_rdata.alu_result,
-        rs2   : memq_rdata.rs2_data  ,
+        valid : @<b>|mems|_valid           ,
+        is_new: @<b>|mems|_is_new          ,
+        ctrl  : @<b>|mems|_ctrl            ,
+        addr  : @<b>|memq_rdata.|alu_result,
+        rs2   : @<b>|memq_rdata.|rs2_data  ,
         rdata : memu_rdata           ,
         stall : memu_stall           ,
         membus: d_membus             ,
@@ -325,21 +354,23 @@ module core (
     inst csru: csrunit (
         clk                            ,
         rst                            ,
-        valid   : mems_valid           ,
-        pc      : mems_pc              ,
-        ctrl    : mems_ctrl            ,
-        rd_addr : mems_rd_addr         ,
-        csr_addr: mems_inst_bits[31:20],
-        rs1     : if mems_ctrl.funct3[2] == 1 && mems_ctrl.funct3[1:0] != 0 {
-            {1'b0 repeat XLEN - $bits(memq_rdata.rs1_addr), memq_rdata.rs1_addr} // rs1を0で拡張する
+        valid   : @<b>|mems|_valid           ,
+        pc      : @<b>|mems|_pc              ,
+        ctrl    : @<b>|mems|_ctrl            ,
+        rd_addr : @<b>|mems|_rd_addr         ,
+        csr_addr: @<b>|mems|_inst_bits[31:20],
+        rs1     : if @<b>|mems|_ctrl.funct3[2] == 1 && @<b>|mems|_ctrl.funct3[1:0] != 0 {
+            {1'b0 repeat XLEN - $bits(@<b>|memq_rdata.|rs1_addr), @<b>|memq_rdata.|rs1_addr} // rs1を0で拡張する
         } else {
-            memq_rdata.rs1_data
+            @<b>|memq_rdata.|rs1_data
         },
-        rdata      : csru_rdata                                                                                                                                          ,
-        raise_trap : csru_raise_trap                                                                                                                                     ,
-        trap_vector: csru_trap_vector                                                                                                                                    ,
+        rdata      : csru_rdata,
+        raise_trap : csru_raise_trap,
+        trap_vector: csru_trap_vector,
     );
+    // #@@range_end(mem_prefix2)
 
+    // #@@range_begin(always_comb_mem)
     always_comb {
         // MEM -> WB
         memq_rready          = wbq_wready && !memu_stall;
@@ -352,38 +383,49 @@ module core (
         wbq_wdata.mem_rdata  = memu_rdata;
         wbq_wdata.csr_rdata  = csru_rdata;
     }
+    // #@@range_end(always_comb_mem)
 
+    // #@@range_begin(mark_wb)
     ///////////////////////////////// WB Stage /////////////////////////////////
+    // #@@range_end(mark_wb)
+
+    // #@@range_begin(var_wb)
     let wbs_valid    : logic    = wbq_rvalid;
     let wbs_pc       : Addr     = wbq_rdata.addr;
     let wbs_inst_bits: Inst     = wbq_rdata.bits;
     let wbs_ctrl     : InstCtrl = wbq_rdata.ctrl;
     let wbs_imm      : UIntX    = wbq_rdata.imm;
+    // #@@range_end(var_wb)
 
-    let wbs_rd_addr: logic<5> = wbs_inst_bits[11:7];
-    let wbs_wb_data: UIntX    = if wbs_ctrl.is_lui {
-        wbs_imm
-    } else if wbs_ctrl.is_jump {
-        wbs_pc + 4
-    } else if wbs_ctrl.is_load {
-        wbq_rdata.mem_rdata
-    } else if wbs_ctrl.is_csr {
-        wbq_rdata.csr_rdata
+    // #@@range_begin(wb_prefix)
+    let @<b>|wbs_|rd_addr: logic<5> = @<b>|wbs|_inst_bits[11:7];
+    let @<b>|wbs_|wb_data: UIntX    = if @<b>|wbs|_ctrl.is_lui {
+        @<b>|wbs|_imm
+    } else if @<b>|wbs|_ctrl.is_jump {
+        @<b>|wbs_pc| + 4
+    } else if @<b>|wbs|_ctrl.is_load {
+        @<b>|wbq_rdata.|mem_rdata
+    } else if @<b>|wbs|_ctrl.is_csr {
+        @<b>|wbq_rdata.|csr_rdata
     } else {
-        wbq_rdata.alu_result
+        @<b>|wbq_rdata.|alu_result
     };
 
     always_ff {
-        if wbs_valid && wbs_ctrl.rwb_en {
-            regfile[wbs_rd_addr] = wbs_wb_data;
+        if @<b>|wbs|_valid && @<b>|wbs|_ctrl.rwb_en {
+            regfile[@<b>|wbs_|rd_addr] = @<b>|wbs_|wb_data;
         }
     }
+    // #@@range_end(wb_prefix)
 
+    // #@@range_begin(always_comb_wb)
     always_comb {
         // WB -> END
         wbq_rready = 1;
     }
+    // #@@range_end(always_comb_wb)
 
+    // #@@range_begin(debug)
     ///////////////////////////////// DEBUG /////////////////////////////////
     var clock_count: u64;
 
@@ -439,6 +481,7 @@ module core (
             }
         }
     }
+    // #@@range_end(debug)
 
     ///////////////////////////////// FIFO /////////////////////////////////
 
