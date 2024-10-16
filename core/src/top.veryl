@@ -8,16 +8,21 @@ module top #(
     rst: input reset,
 ) {
 
+    // #@@range_begin(addr_to_memaddr)
     // アドレスをメモリのデータ単位でのアドレスに変換する
     function addr_to_memaddr (
         addr: input logic<XLEN>          ,
     ) -> logic<MEM_ADDR_WIDTH> {
         return addr[$clog2(MEM_DATA_WIDTH / 8)+:MEM_ADDR_WIDTH];
     }
+    // #@@range_end(addr_to_memaddr)
 
+    // #@@range_begin(membus)
     inst membus     : membus_if::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH>;
-    inst membus_core: membus_if::<ILEN, XLEN>;
+    @<b>|inst membus_core: membus_if::<ILEN, XLEN>;|
+    // #@@range_end(membus)
 
+    // #@@range_begin(connect)
     always_comb {
         membus.valid      = membus_core.valid;
         membus_core.ready = membus.ready;
@@ -28,6 +33,7 @@ module top #(
         membus_core.rvalid = membus.rvalid;
         membus_core.rdata  = membus.rdata;
     }
+    // #@@range_end(connect)
 
     inst mem: memory::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH> #(
         FILEPATH_IS_ENV: MEMORY_FILEPATH_IS_ENV,
@@ -38,9 +44,11 @@ module top #(
         membus  ,
     );
 
+    // #@@range_begin(core)
     inst c: core (
         clk                ,
         rst                ,
         membus: membus_core,
     );
+    // #@@range_end(core)
 }
