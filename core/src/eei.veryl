@@ -8,10 +8,8 @@ package eei {
     type Inst   = logic<ILEN>;
     type Addr   = logic<XLEN>;
 
-    // #@@range_begin(width)
     // メモリのデータ幅
     const MEM_DATA_WIDTH: u32 = 32;
     // メモリのアドレス幅
     const MEM_ADDR_WIDTH: u32 = 16;
-    // #@@range_end(width)
 }
