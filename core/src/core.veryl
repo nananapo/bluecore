@@ -201,6 +201,11 @@ module core (
     let exs_rs1_data: UIntX = if exs_rs1_addr == 0 ? 0 : regfile[exs_rs1_addr];
     let exs_rs2_data: UIntX = if exs_rs2_addr == 0 ? 0 : regfile[exs_rs2_addr];
 
+    // データハザード
+    var exs_mem_data_hazard: logic;
+    var exs_wb_data_hazard : logic;
+    let exs_data_hazard    : logic = exs_mem_data_hazard || exs_wb_data_hazard;
+
     // ALU
     var exs_op1       : UIntX;
     var exs_op2       : UIntX;
@@ -245,8 +250,8 @@ module core (
 
     always_comb {
         // EX -> MEM
-        exq_rready            = memq_wready;
-        memq_wvalid           = exq_rvalid;
+        exq_rready            = memq_wready && !exs_data_hazard;
+        memq_wvalid           = exq_rvalid && !exs_data_hazard;
         memq_wdata.addr       = exq_rdata.addr;
         memq_wdata.bits       = exq_rdata.bits;
         memq_wdata.ctrl       = exq_rdata.ctrl;
@@ -333,6 +338,7 @@ module core (
     always_comb {
         control_hazard         = mems_valid && (csru_raise_trap || mems_ctrl.is_jump || memq_rdata.br_taken);
         control_hazard_pc_next = if csru_raise_trap ? csru_trap_vector : memq_rdata.jump_addr;
+        exs_mem_data_hazard    = mems_valid && mems_ctrl.rwb_en && (mems_rd_addr == exs_rs1_addr || mems_rd_addr == exs_rs2_addr);
     }
 
     ///////////////////////////////// WB Stage /////////////////////////////////
@@ -360,6 +366,10 @@ module core (
     always_comb {
         // WB -> END
         wbq_rready = 1;
+    }
+
+    always_comb {
+        exs_wb_data_hazard = wbs_valid && wbs_ctrl.rwb_en && (wbs_rd_addr == exs_rs1_addr || wbs_rd_addr == exs_rs2_addr);
     }
 
     ///////////////////////////////// DEBUG /////////////////////////////////
@@ -390,6 +400,7 @@ module core (
                 $display("  op1     : %h", exs_op1);
                 $display("  op2     : %h", exs_op2);
                 $display("  alu     : %h", exs_alu_result);
+                $display("  dhazard : %b", exs_data_hazard);
                 if inst_is_br(exs_ctrl) {
                     $display("  br take : %b", exs_brunit_take);
                 }
