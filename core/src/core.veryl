@@ -213,6 +213,11 @@ module core (
         regfile[exs_rs2_addr]
     };
 
+    // データハザード
+    let exs_mem_data_hazard: logic = mems_valid && mems_ctrl.rwb_en && (mems_rd_addr == exs_rs1_addr || mems_rd_addr == exs_rs2_addr);
+    let exs_wb_data_hazard : logic = wbs_valid && wbs_ctrl.rwb_en && (wbs_rd_addr == exs_rs1_addr || wbs_rd_addr == exs_rs2_addr);
+    let exs_data_hazard    : logic = exs_mem_data_hazard || exs_wb_data_hazard;
+
     // ALU
     var exs_op1       : UIntX;
     var exs_op2       : UIntX;
@@ -257,8 +262,8 @@ module core (
 
     always_comb {
         // EX -> MEM
-        exq_rready            = memq_wready;
-        memq_wvalid           = exq_rvalid;
+        exq_rready            = memq_wready && !exs_data_hazard;
+        memq_wvalid           = exq_rvalid && !exs_data_hazard;
         memq_wdata.addr       = exq_rdata.addr;
         memq_wdata.bits       = exq_rdata.bits;
         memq_wdata.ctrl       = exq_rdata.ctrl;
@@ -412,6 +417,7 @@ module core (
                 $display("  op1     : %h", exs_op1);
                 $display("  op2     : %h", exs_op2);
                 $display("  alu     : %h", exs_alu_result);
+                $display("  dhazard : %b", exs_data_hazard);
                 if inst_is_br(exs_ctrl) {
                     $display("  br take : ", exs_brunit_take);
                 }
