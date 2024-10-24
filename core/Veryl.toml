@@ -3,5 +3,5 @@ name = "core"
 version = "0.1.0"
 [build]
 source = "src"
-@<b>|sourcemap_target = {type ="none"}|
+sourcemap_target = {type ="none"}
 target = {type = "directory", path = "target"}
