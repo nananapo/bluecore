@@ -2,5 +2,5 @@
 name = "core"
 version = "0.1.0"
 
-@<b>|[build]|
-@<b>|sourcemap_target = {type ="none"}|
+[build]
+sourcemap_target = {type ="none"}
