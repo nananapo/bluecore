@@ -4,8 +4,9 @@ module top #(
     param MEMORY_FILEPATH_IS_ENV: bit    = 1                 ,
     param MEMORY_FILEPATH       : string = "MEMORY_FILE_PATH",
 ) (
-    clk: input clock,
-    rst: input reset,
+    clk: input  clock,
+    rst: input  reset,
+    led: output UIntX,
     #[ifdef(TEST_MODE)]
     test_success: output bit,
 ) {
@@ -94,5 +95,6 @@ module top #(
         rst       ,
         i_membus  ,
         d_membus  ,
+        led       ,
     );
 }
