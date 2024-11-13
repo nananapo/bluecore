@@ -6,6 +6,7 @@ module core (
     rst     : input   reset                                    ,
     i_membus: modport membus_if::<ILEN, XLEN>::master          ,
     d_membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master,
+    led     : output  UIntX                                    ,
 ) {
 
     // ifのFIFOのデータ型
@@ -333,9 +334,10 @@ module core (
         } else {
             memq_rdata.rs1_data
         },
-        rdata      : csru_rdata                                                                                                                                          ,
-        raise_trap : csru_raise_trap                                                                                                                                     ,
-        trap_vector: csru_trap_vector                                                                                                                                    ,
+        rdata      : csru_rdata                                                                                                                                                 ,
+        raise_trap : csru_raise_trap                                                                                                                                            ,
+        trap_vector: csru_trap_vector                                                                                                                                           ,
+        led                                                                                                                                                                     ,
     );
 
     always_comb {
