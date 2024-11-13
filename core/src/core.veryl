@@ -1,12 +1,14 @@
 import eei::*;
 import corectrl::*;
 
+// #@@range_begin(port)
 module core (
     clk     : input   clock                                    ,
     rst     : input   reset                                    ,
     i_membus: modport membus_if::<ILEN, XLEN>::master          ,
     d_membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master,
-    led     : output  UIntX                                    ,
+    @<b>|led     : output  UIntX                                    ,|
+// #@@range_end(port)
 ) {
 
     // ifのFIFOのデータ型
@@ -305,6 +307,7 @@ module core (
     var csru_raise_trap : logic;
     var csru_trap_vector: Addr ;
 
+// #@@range_begin(inst)
     inst csru: csrunit (
         clk                            ,
         rst                            ,
@@ -321,8 +324,9 @@ module core (
         rdata      : csru_rdata      ,
         raise_trap : csru_raise_trap ,
         trap_vector: csru_trap_vector,
-        led                          ,
+        @<b>|led                          ,|
     );
+// #@@range_end(inst)
 
     always_comb {
         // MEM -> WB
