@@ -1,7 +1,6 @@
 import eei::*;
 import corectrl::*;
 
-// #@@range_begin(port)
 module csrunit (
     clk        : input  clock       ,
     rst        : input  reset       ,
@@ -14,17 +13,14 @@ module csrunit (
     rdata      : output UIntX       ,
     raise_trap : output logic       ,
     trap_vector: output Addr        ,
-    @<b>|led        : output UIntX       ,|
+    led        : output UIntX       ,
 ) {
-// #@@range_end(port)
 
     // wmasks
     const MTVEC_WMASK : UIntX = 'hffff_ffff_ffff_fffc;
     const MEPC_WMASK  : UIntX = 'hffff_ffff_ffff_fffc;
     const MCAUSE_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
-// #@@range_begin(wmask)
     const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
-// #@@range_end(wmask)
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
@@ -51,13 +47,12 @@ module csrunit (
     var wdata: UIntX; // write data
 
     always_comb {
-        // #@@range_begin(rdata_wmask)
         // read
         rdata = case csr_addr {
             CsrAddr::MTVEC : mtvec,
             CsrAddr::MEPC  : mepc,
             CsrAddr::MCAUSE: mcause,
-            @<b>|CsrAddr::LED   : led,|
+            CsrAddr::LED   : led,
             default        : 'x,
         };
         // write
@@ -65,10 +60,9 @@ module csrunit (
             CsrAddr::MTVEC : MTVEC_WMASK,
             CsrAddr::MEPC  : MEPC_WMASK,
             CsrAddr::MCAUSE: MCAUSE_WMASK,
-            @<b>|CsrAddr::LED   : LED_WMASK,|
+            CsrAddr::LED   : LED_WMASK,
             default        : 0,
         };
-        // #@@range_end(rdata_wmask)
         wdata = case ctrl.funct3[1:0] {
             2'b01  : rs1,
             2'b10  : rdata | rs1,
@@ -78,14 +72,12 @@ module csrunit (
     }
 
     always_ff {
-        // #@@range_begin(reset)
         if_reset {
             mtvec  = 0;
             mepc   = 0;
             mcause = 0;
-            @<b>|led    = 0;|
+            led    = 0;
         } else {
-        // #@@range_end(reset)
             if valid {
                 if raise_trap {
                     if raise_expt {
@@ -94,15 +86,13 @@ module csrunit (
                     }
                 } else {
                     if is_wsc {
-                        // #@@range_begin(write)
                         case csr_addr {
                             CsrAddr::MTVEC : mtvec  = wdata;
                             CsrAddr::MEPC  : mepc   = wdata;
                             CsrAddr::MCAUSE: mcause = wdata;
-                            @<b>|CsrAddr::LED   : led    = wdata;|
+                            CsrAddr::LED   : led    = wdata;
                             default        : {}
                         }
-                        // #@@range_end(write)
                     }
                 }
             }

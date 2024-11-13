@@ -31,14 +31,12 @@ package eei {
     const OP_SYSTEM   : logic<7> = 7'b1110011;
 
     // CSRのアドレス
-// #@@range_begin(addr)
     enum CsrAddr: logic<12> {
         MTVEC = 12'h305,
         MEPC = 12'h341,
         MCAUSE = 12'h342,
-        @<b>|LED = 12'h800,|
+        LED = 12'h800,
     }
-// #@@range_end(addr)
 
     enum CsrCause: UIntX {
         ENVIRONMENT_CALL_FROM_M_MODE = 11,
