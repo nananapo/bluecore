@@ -1,17 +1,15 @@
 import eei::*;
 
-// #@@range_begin(port)
 module top #(
     param MEMORY_FILEPATH_IS_ENV: bit    = 1                 ,
     param MEMORY_FILEPATH       : string = "MEMORY_FILE_PATH",
 ) (
     clk: input  clock,
     rst: input  reset,
-    @<b>|led: output UIntX,|
+    led: output UIntX,
     #[ifdef(TEST_MODE)]
     test_success: output bit,
 ) {
-// #@@range_end(port)
 
     // アドレスをメモリのデータ単位でのアドレスに変換する
     function addr_to_memaddr (
@@ -92,14 +90,11 @@ module top #(
         membus  ,
     );
 
-// #@@range_begin(inst)
     inst c: core (
         clk       ,
         rst       ,
         i_membus  ,
         d_membus  ,
-        @<b>|led       ,|
+        led       ,
     );
-// #@@range_end(inst)
-
 }
