@@ -13,12 +13,14 @@ module csrunit (
     rdata      : output UIntX       ,
     raise_trap : output logic       ,
     trap_vector: output Addr        ,
+    led        : output UIntX       ,
 ) {
 
     // wmasks
     const MTVEC_WMASK : UIntX = 'hffff_ffff_ffff_fffc;
     const MEPC_WMASK  : UIntX = 'hffff_ffff_ffff_fffc;
     const MCAUSE_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
+    const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
@@ -54,6 +56,7 @@ module csrunit (
             CsrAddr::MTVEC : mtvec,
             CsrAddr::MEPC  : mepc,
             CsrAddr::MCAUSE: mcause,
+            CsrAddr::LED   : led,
             default        : 'x,
         };
         // write
@@ -61,6 +64,7 @@ module csrunit (
             CsrAddr::MTVEC : MTVEC_WMASK,
             CsrAddr::MEPC  : MEPC_WMASK,
             CsrAddr::MCAUSE: MCAUSE_WMASK,
+            CsrAddr::LED   : LED_WMASK,
             default        : 0,
         };
         wdata = case ctrl.funct3[1:0] {
@@ -76,6 +80,7 @@ module csrunit (
             mtvec  = 0;
             mepc   = 0;
             mcause = 0;
+            led    = 0;
         } else {
             if valid {
                 if raise_trap {
@@ -87,6 +92,7 @@ module csrunit (
                             CsrAddr::MTVEC : mtvec  = wdata;
                             CsrAddr::MEPC  : mepc   = wdata;
                             CsrAddr::MCAUSE: mcause = wdata;
+                            CsrAddr::LED   : led    = wdata;
                             default        : {}
                         }
                     }
