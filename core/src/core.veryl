@@ -1,14 +1,12 @@
 import eei::*;
 import corectrl::*;
 
-// #@@range_begin(port)
 module core (
     clk     : input   clock                                    ,
     rst     : input   reset                                    ,
     i_membus: modport membus_if::<ILEN, XLEN>::master          ,
     d_membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master,
-    @<b>|led     : output  UIntX                                    ,|
-// #@@range_end(port)
+    led     : output  UIntX                                    ,
 ) {
 
     // ifのFIFOのデータ型
@@ -323,15 +321,24 @@ module core (
     var csru_raise_trap : logic;
     var csru_trap_vector: Addr ;
 
-// #@@range_begin(inst)
     inst csru: csrunit (
-        ...
-        rdata      : csru_rdata      ,
-        raise_trap : csru_raise_trap ,
-        trap_vector: csru_trap_vector,
-        @<b>|led                          ,|
+        clk                            ,
+        rst                            ,
+        valid   : mems_valid           ,
+        pc      : mems_pc              ,
+        ctrl    : mems_ctrl            ,
+        rd_addr : mems_rd_addr         ,
+        csr_addr: mems_inst_bits[31:20],
+        rs1     : if mems_ctrl.funct3[2] == 1 && mems_ctrl.funct3[1:0] != 0 {
+            {1'b0 repeat XLEN - $bits(memq_rdata.rs1_addr), memq_rdata.rs1_addr} // rs1を0で拡張する
+        } else {
+            memq_rdata.rs1_data
+        },
+        rdata      : csru_rdata                                                                                                                                                 ,
+        raise_trap : csru_raise_trap                                                                                                                                            ,
+        trap_vector: csru_trap_vector                                                                                                                                           ,
+        led                                                                                                                                                                     ,
     );
-// #@@range_end(inst)
 
     always_comb {
         // MEM -> WB
