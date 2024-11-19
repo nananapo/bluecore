@@ -1,0 +1,26 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW1NR-9C" pn="GW1NR-LV9QN88PC6/I5">gw1nr9c-004</Device>
+    <FileList>
+        <File path="src/alu.sv" type="file.verilog" enable="1"/>
+        <File path="src/brunit.sv" type="file.verilog" enable="1"/>
+        <File path="src/core.sv" type="file.verilog" enable="1"/>
+        <File path="src/corectrl.sv" type="file.verilog" enable="1"/>
+        <File path="src/csrunit.sv" type="file.verilog" enable="1"/>
+        <File path="src/eei.sv" type="file.verilog" enable="1"/>
+        <File path="src/fifo.sv" type="file.verilog" enable="1"/>
+        <File path="src/inst_decoder.sv" type="file.verilog" enable="1"/>
+        <File path="src/membus_if.sv" type="file.verilog" enable="1"/>
+        <File path="src/memory.sv" type="file.verilog" enable="1"/>
+        <File path="src/memunit.sv" type="file.verilog" enable="1"/>
+        <File path="src/test_linear_sec.sv" type="file.verilog" enable="1"/>
+        <File path="src/top.sv" type="file.verilog" enable="1"/>
+        <File path="src/top_tang.sv" type="file.verilog" enable="1"/>
+        <File path="src/util.sv" type="file.verilog" enable="1"/>
+        <File path="tangnano9k.cst" type="file.cst" enable="1"/>
+        <File path="timing.sdc" type="file.sdc" enable="1"/>
+    </FileList>
+</Project>
