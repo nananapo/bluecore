@@ -39,43 +39,43 @@ module inst_decoder (
         ctrl = {
             case op {
                 OP_LUI: {
-                    InstType::U, T, T, F, F, F, F, F
+                    InstType::U, T, T, F, F, F, F, F, F
                 },
                 OP_AUIPC: {
-                    InstType::U, T, F, F, F, F, F, F
+                    InstType::U, T, F, F, F, F, F, F, F
                 },
                 OP_JAL: {
-                    InstType::J, T, F, F, F, T, F, F
+                    InstType::J, T, F, F, F, F, T, F, F
                 },
                 OP_JALR: {
-                    InstType::I, T, F, F, F, T, F, F
+                    InstType::I, T, F, F, F, F, T, F, F
                 },
                 OP_BRANCH: {
-                    InstType::B, F, F, F, F, F, F, F
+                    InstType::B, F, F, F, F, F, F, F, F
                 },
                 OP_LOAD: {
-                    InstType::I, T, F, F, F, F, T, F
+                    InstType::I, T, F, F, F, F, F, T, F
                 },
                 OP_STORE: {
-                    InstType::S, F, F, F, F, F, F, F
+                    InstType::S, F, F, F, F, F, F, F, F
                 },
                 OP_OP: {
-                    InstType::R, T, F, T, F, F, F, F
+                    InstType::R, T, F, T, f7 == 7'b0000001, F, F, F, F
                 },
                 OP_OP_IMM: {
-                    InstType::I, T, F, T, F, F, F, F
+                    InstType::I, T, F, T, F, F, F, F, F
                 },
                 OP_OP_32: {
-                    InstType::R, T, F, T, T, F, F, F
+                    InstType::R, T, F, T, f7 == 7'b0000001, T, F, F, F
                 },
                 OP_OP_IMM_32: {
-                    InstType::I, T, F, T, T, F, F, F
+                    InstType::I, T, F, T, F, T, F, F, F
                 },
                 OP_SYSTEM: {
-                    InstType::I, T, F, F, F, F, F, T
+                    InstType::I, T, F, F, F, F, F, F, T
                 },
                 default: {
-                    InstType::X, F, F, F, F, F, F, F
+                    InstType::X, F, F, F, F, F, F, F, F
                 },
             }, f3, f7
         };
