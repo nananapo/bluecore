@@ -1,0 +1,48 @@
+import eei::*;
+
+module muldivunit (
+    clk   : input  clock   ,
+    rst   : input  reset   ,
+    ready : output logic   ,
+    valid : input  logic   ,
+    funct3: input  logic<3>,
+    op1   : input  UIntX   ,
+    op2   : input  UIntX   ,
+    rvalid: output logic   ,
+    result: output UIntX   ,
+) {
+
+    enum State {
+        Idle,
+        WaitValid,
+        Finish,
+    }
+
+    var state: State;
+
+    // saved_data
+    var funct3_saved: logic<3>;
+
+    always_comb {
+        ready  = state == State::Idle;
+        rvalid = state == State::Finish;
+    }
+
+    always_ff {
+        if_reset {
+            state        = State::Idle;
+            result       = 0;
+            funct3_saved = 0;
+        } else {
+            case state {
+                State::Idle: if ready && valid {
+                    state        = State::WaitValid;
+                    funct3_saved = funct3;
+                }
+                State::WaitValid: state = State::Finish;
+                State::Finish   : state = State::Idle;
+                default         : {}
+            }
+        }
+    }
+}

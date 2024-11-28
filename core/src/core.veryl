@@ -239,6 +239,58 @@ module core (
         result: exs_alu_result,
     );
 
+    let exs_muldiv_valid : logic = exs_valid && exs_ctrl.is_muldiv && !exs_data_hazard && !exs_muldiv_is_requested;
+    var exs_muldiv_ready : logic;
+    var exs_muldiv_rvalid: logic;
+    var exs_muldiv_result: UIntX;
+
+    inst mdu: muldivunit (
+        clk                      ,
+        rst                      ,
+        valid : exs_muldiv_valid ,
+        ready : exs_muldiv_ready ,
+        funct3: exs_ctrl.funct3  ,
+        op1   : exs_op1          ,
+        op2   : exs_op2          ,
+        rvalid: exs_muldiv_rvalid,
+        result: exs_muldiv_result,
+    );
+
+    var exs_muldiv_is_requested: logic;
+
+    always_ff {
+        if_reset {
+            exs_muldiv_is_requested = 0;
+        } else {
+            // 次のステージに遷移
+            if exq_rvalid && exq_rready {
+                exs_muldiv_is_requested = 0;
+            } else {
+                // muldivunitにリクエストしたか判定する
+                if exs_muldiv_valid && exs_muldiv_ready {
+                    exs_muldiv_is_requested = 1;
+                }
+            }
+        }
+    }
+
+    var exs_muldiv_rvalided: logic;
+    let exs_muldiv_stall   : logic = exs_ctrl.is_muldiv && !exs_muldiv_rvalid && !exs_muldiv_rvalided;
+
+    always_ff {
+        if_reset {
+            exs_muldiv_rvalided = 0;
+        } else {
+            // 次のステージに遷移
+            if exq_rvalid && exq_rready {
+                exs_muldiv_rvalided = 0;
+            } else {
+                // muldivunitの処理が完了していたら1にする
+                exs_muldiv_rvalided |= exs_muldiv_rvalid;
+            }
+        }
+    }
+
     var exs_brunit_take: logic;
 
     inst bru: brunit (
@@ -248,10 +300,12 @@ module core (
         take  : exs_brunit_take,
     );
 
+    let exs_stall: logic = exs_data_hazard || exs_muldiv_stall;
+
     always_comb {
         // EX -> MEM
-        exq_rready            = memq_wready && !exs_data_hazard;
-        memq_wvalid           = exq_rvalid && !exs_data_hazard;
+        exq_rready            = memq_wready && !exs_stall;
+        memq_wvalid           = exq_rvalid && !exs_stall;
         memq_wdata.addr       = exq_rdata.addr;
         memq_wdata.bits       = exq_rdata.bits;
         memq_wdata.ctrl       = exq_rdata.ctrl;
@@ -259,7 +313,7 @@ module core (
         memq_wdata.rs1_addr   = exs_rs1_addr;
         memq_wdata.rs1_data   = exs_rs1_data;
         memq_wdata.rs2_data   = exs_rs2_data;
-        memq_wdata.alu_result = exs_alu_result;
+        memq_wdata.alu_result = if exs_ctrl.is_muldiv ? exs_muldiv_result : exs_alu_result;
         memq_wdata.br_taken   = exs_ctrl.is_jump || inst_is_br(exs_ctrl) && exs_brunit_take;
         memq_wdata.jump_addr  = if inst_is_br(exs_ctrl) ? exs_pc + exs_imm : exs_alu_result & ~1;
     }
@@ -399,6 +453,7 @@ module core (
                 $display("  op2     : %h", exs_op2);
                 $display("  alu     : %h", exs_alu_result);
                 $display("  dhazard : %b", exs_data_hazard);
+                $display("  muldiv  : %b", exs_muldiv_stall);
                 if inst_is_br(exs_ctrl) {
                     $display("  br take : ", exs_brunit_take);
                 }
