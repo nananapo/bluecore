@@ -46,4 +46,11 @@ package corectrl {
     ) -> logic    {
         return ctrl.itype == InstType::B;
     }
+
+    // 命令がM拡張の命令かどうかを判定する
+    function inst_is_m (
+        ctrl: input InstCtrl,
+    ) -> logic    {
+        return ctrl.itype == InstType::R && ctrl.funct7 == 7'b0000001;
+    }
 }

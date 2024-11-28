@@ -182,6 +182,7 @@ module core (
 
     ///////////////////////////////// EX Stage /////////////////////////////////
 
+    var exs_is_new   : logic   ; // EX Stageに新しく供給されてからデータハザードが解決したクロックの間だけ1になる
     let exs_valid    : logic    = exq_rvalid;
     let exs_pc       : Addr     = exq_rdata.addr;
     let exs_inst_bits: Inst     = exq_rdata.bits;
@@ -238,11 +239,51 @@ module core (
         }
     }
 
+    always_ff {
+        if_reset {
+            exs_is_new = 0;
+        } else {
+            if exq_rvalid {
+                exs_is_new = exq_rready | exs_data_hazard;
+            } else {
+                exs_is_new = 1;
+            }
+        }
+    }
+
     inst alum: alu (
         ctrl  : exs_ctrl      ,
         op1   : exs_op1       ,
         op2   : exs_op2       ,
         result: exs_alu_result,
+    );
+
+    var exs_muldiv_rvalid  : logic;
+    var exs_muldiv_rvalided: logic;
+    var exs_muldiv_result  : UIntX;
+    let exs_muldiv_stall   : logic = inst_is_m(exs_ctrl) && !exs_muldiv_rvalided && !exs_muldiv_rvalid;
+
+    always_ff {
+        if_reset {
+            exs_muldiv_rvalided = 0;
+        } else {
+            if exq_rready {
+                exs_muldiv_rvalided = 0;
+            } else {
+                exs_muldiv_rvalided |= exs_muldiv_rvalid;
+            }
+        }
+    }
+
+    inst mdu: muldivunit (
+        clk                                                                       ,
+        rst                                                                       ,
+        valid : exs_valid && exs_is_new && !exs_data_hazard && inst_is_m(exs_ctrl),
+        funct3: exs_ctrl.funct3                                                   ,
+        op1   : exs_op1                                                           ,
+        op2   : exs_op2                                                           ,
+        rvalid: exs_muldiv_rvalid                                                 ,
+        result: exs_muldiv_result                                                 ,
     );
 
     var exs_brunit_take: logic;
@@ -254,10 +295,12 @@ module core (
         take  : exs_brunit_take,
     );
 
+    let exs_stall: logic = exs_data_hazard || exs_muldiv_stall;
+
     always_comb {
         // EX -> MEM
-        exq_rready            = memq_wready && !exs_data_hazard;
-        memq_wvalid           = exq_rvalid && !exs_data_hazard;
+        exq_rready            = memq_wready && !exs_stall;
+        memq_wvalid           = exq_rvalid && !exs_stall;
         memq_wdata.addr       = exq_rdata.addr;
         memq_wdata.bits       = exq_rdata.bits;
         memq_wdata.ctrl       = exq_rdata.ctrl;
@@ -265,9 +308,13 @@ module core (
         memq_wdata.rs1_addr   = exs_rs1_addr;
         memq_wdata.rs1_data   = exs_rs1_data;
         memq_wdata.rs2_data   = exs_rs2_data;
-        memq_wdata.alu_result = exs_alu_result;
-        memq_wdata.br_taken   = exs_ctrl.is_jump || inst_is_br(exs_ctrl) && exs_brunit_take;
-        memq_wdata.jump_addr  = if inst_is_br(exs_ctrl) {
+        memq_wdata.alu_result = if inst_is_m(exs_ctrl) {
+            exs_muldiv_result
+        } else {
+            exs_alu_result
+        };
+        memq_wdata.br_taken  = exs_ctrl.is_jump || inst_is_br(exs_ctrl) && exs_brunit_take;
+        memq_wdata.jump_addr = if inst_is_br(exs_ctrl) {
             exs_pc + exs_imm
         } else {
             exs_alu_result & ~1
@@ -413,6 +460,7 @@ module core (
                 $display("  op2     : %h", exs_op2);
                 $display("  alu     : %h", exs_alu_result);
                 $display("  dhazard : %b", exs_data_hazard);
+                $display("  muldiv  : %b", exs_muldiv_stall);
                 if inst_is_br(exs_ctrl) {
                     $display("  br take : ", exs_brunit_take);
                 }
