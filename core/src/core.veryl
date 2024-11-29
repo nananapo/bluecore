@@ -245,15 +245,16 @@ module core (
     var exs_muldiv_result: UIntX;
 
     inst mdu: muldivunit (
-        clk                      ,
-        rst                      ,
-        valid : exs_muldiv_valid ,
-        ready : exs_muldiv_ready ,
-        funct3: exs_ctrl.funct3  ,
-        op1   : exs_op1          ,
-        op2   : exs_op2          ,
-        rvalid: exs_muldiv_rvalid,
-        result: exs_muldiv_result,
+        clk                       ,
+        rst                       ,
+        valid  : exs_muldiv_valid ,
+        ready  : exs_muldiv_ready ,
+        funct3 : exs_ctrl.funct3  ,
+        is_op32: exs_ctrl.is_op32 ,
+        op1    : exs_op1          ,
+        op2    : exs_op2          ,
+        rvalid : exs_muldiv_rvalid,
+        result : exs_muldiv_result,
     );
 
     var exs_muldiv_is_requested: logic;
