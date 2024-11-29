@@ -40,14 +40,14 @@ module muldivunit (
     var mu_result: logic<MUL_WIDTH * 2>;
 
     let mu_op1: logic<MUL_WIDTH> = case funct3[1:0] {
-        2'b00, 2'b01: {op1[msb], op1}, // MUL, MULH
-        2'b11       : {1'b0, op1}, // MULHU
-        default     : 'x,
+        2'b00, 2'b01, 2'b10: {op1[msb], op1}, // MUL, MULH, MULHSU
+        2'b11              : {1'b0, op1}, // MULHU
+        default            : 'x,
     };
 
     let mu_op2: logic<MUL_WIDTH> = case funct3[1:0] {
         2'b00, 2'b01: {op2[msb], op2}, // MUL, MULH
-        2'b11       : {1'b0, op2}, // MULHU
+        2'b10, 2'b11: {1'b0, op2}, // MULHSU, MULHU
         default     : 'x,
     };
 
@@ -77,9 +77,9 @@ module muldivunit (
                 State::WaitValid: if is_mul && mu_rvalid {
                     state  = State::Finish;
                     result = case funct3_saved[1:0] {
-                        2'b00       : mu_result[XLEN - 1:0], // MUL
-                        2'b01, 2'b11: mu_result[XLEN * 2 - 1-:XLEN], // MULH, MULHU
-                        default     : 0,
+                        2'b00              : mu_result[XLEN - 1:0], // MUL
+                        2'b01, 2'b10, 2'b11: mu_result[XLEN * 2 - 1-:XLEN], // MULH, MULHSU, MULHU
+                        default            : 0,
                     };
                 }
                 State::Finish: state = State::Idle;
