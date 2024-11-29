@@ -461,6 +461,9 @@ module core (
                 $display("  alu     : %h", exs_alu_result);
                 $display("  dhazard : %b", exs_data_hazard);
                 $display("  muldiv  : %b", exs_muldiv_stall);
+                if inst_is_m(exs_ctrl) && exs_muldiv_rvalid {
+                    $display("  muldiv result : %h", exs_muldiv_result);
+                }
                 if inst_is_br(exs_ctrl) {
                     $display("  br take : ", exs_brunit_take);
                 }

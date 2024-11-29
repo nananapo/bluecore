@@ -34,17 +34,33 @@ module muldivunit (
     let req_valid: logic = state == State::Idle && valid;
 
     // multiply unit
-    var mu_rvalid   : logic      ;
-    var mu_result_hu: logic<XLEN>;
+    const MUL_WIDTH: u32 = XLEN + 1;
 
-    inst mu: mulunit::<XLEN> (
+    var mu_rvalid: logic               ;
+    var mu_result: logic<MUL_WIDTH * 2>;
+
+    let mu_op1: logic<MUL_WIDTH> = case funct3[1:0] {
+        2'b00, 2'b01: {op1[msb], op1}, // MUL, MULH
+        2'b11       : {1'b0, op1}, // MULHU
+        default     : 'x,
+    };
+
+    let mu_op2: logic<MUL_WIDTH> = case funct3[1:0] {
+        2'b00, 2'b01: {op2[msb], op2}, // MUL, MULH
+        2'b11       : {1'b0, op2}, // MULHU
+        default     : 'x,
+    };
+
+    inst mu: mulunit #(
+        WIDTH: MUL_WIDTH,
+    ) (
         clk                           ,
         rst                           ,
         valid    : req_valid && is_mul,
-        op1_input: op1                ,
-        op2_input: op2                ,
+        op1_input: mu_op1             ,
+        op2_input: mu_op2             ,
         rvalid   : mu_rvalid          ,
-        result_hu: mu_result_hu       ,
+        result   : mu_result          ,
     );
 
     always_ff {
@@ -61,8 +77,9 @@ module muldivunit (
                 State::WaitValid: if is_mul && mu_rvalid {
                     state  = State::Finish;
                     result = case funct3_saved[1:0] {
-                        2'b11  : mu_result_hu, // MULHU
-                        default: 0,
+                        2'b00       : mu_result[XLEN - 1:0], // MUL
+                        2'b01, 2'b11: mu_result[XLEN * 2 - 1-:XLEN], // MULH, MULHU
+                        default     : 0,
                     };
                 }
                 State::Finish: state = State::Idle;
@@ -72,55 +89,69 @@ module muldivunit (
     }
 }
 
-module mulunit::<WIDTH: const> (
-    clk      : input  clock       ,
-    rst      : input  reset       ,
-    valid    : input  logic       ,
-    op1_input: input  logic<WIDTH>,
-    op2_input: input  logic<WIDTH>,
-    rvalid   : output logic       ,
-    result_hu: output logic<WIDTH>,
+module mulunit #(
+    param WIDTH: u32 = 0,
+) (
+    clk      : input  clock           ,
+    rst      : input  reset           ,
+    valid    : input  logic           ,
+    op1_input: input  logic<WIDTH>    ,
+    op2_input: input  logic<WIDTH>    ,
+    rvalid   : output logic           ,
+    result   : output logic<WIDTH * 2>,
 ) {
     enum State {
         Idle,
+        Init,
         AddLoop,
         Finish,
     }
 
     var state: State;
 
+    var op1_sign: logic;
+    var op2_sign: logic;
+
     var op1u: logic<WIDTH * 2>;
     var op2u: logic<WIDTH * 2>;
 
     always_comb {
-        rvalid    = state == State::Finish;
-        result_hu = result[msb-:WIDTH];
+        rvalid = state == State::Finish;
     }
 
-    var result   : logic<WIDTH * 2>;
-    var add_count: logic<32>       ;
+    var add_count: logic<32>;
 
     always_ff {
         if_reset {
             state     = State::Idle;
             result    = 0;
             add_count = 0;
+            op1_sign  = 0;
+            op2_sign  = 0;
             op1u      = 0;
             op2u      = 0;
         } else {
             case state {
                 State::Idle: if valid {
-                    state     = State::AddLoop;
-                    result    = 0;
+                    state     = State::Init;
+                    result    = (1 << WIDTH) + ((op1_input[msb] * op2_input[msb]) << (WIDTH - 1) * 2);
                     add_count = 0;
-                    op1u      = {1'b0 repeat WIDTH, op1_input};
-                    op2u      = {1'b0 repeat WIDTH, op2_input};
+                    op1_sign  = op1_input[msb];
+                    op2_sign  = op2_input[msb];
+                    op1u      = {1'b0 repeat WIDTH + 1, op1_input[msb - 1:0]};
+                    op2u      = {1'b0 repeat WIDTH + 1, op2_input[msb - 1:0]};
                 }
+                State::Init: {
+                                 let x     : logic<WIDTH * 2> = {op1_sign * op2u[WIDTH - 2] repeat 2, op1_sign * op2u[WIDTH - 2:0], 1'b1 repeat WIDTH - 1};
+                                 let y     : logic<WIDTH * 2> = {op2_sign * op1u[WIDTH - 2] repeat 2, op2_sign * op1u[WIDTH - 2:0], 1'b1 repeat WIDTH - 1};
+                                 result += ~x + ~y;
+                                 state  =  State::AddLoop;
+                             }
                 State::AddLoop: {
                                     if op2u[add_count] {
                                         result += op1u;
                                     }
-                                    if add_count == WIDTH - 1 {
+                                    if add_count == WIDTH - 2 {
                                         state = State::Finish;
                                     }
                                     op1u      <<= 1;
