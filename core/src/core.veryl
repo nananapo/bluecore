@@ -276,14 +276,15 @@ module core (
     }
 
     inst mdu: muldivunit (
-        clk                                                                       ,
-        rst                                                                       ,
-        valid : exs_valid && exs_is_new && !exs_data_hazard && inst_is_m(exs_ctrl),
-        funct3: exs_ctrl.funct3                                                   ,
-        op1   : exs_op1                                                           ,
-        op2   : exs_op2                                                           ,
-        rvalid: exs_muldiv_rvalid                                                 ,
-        result: exs_muldiv_result                                                 ,
+        clk                                                                        ,
+        rst                                                                        ,
+        valid  : exs_valid && exs_is_new && !exs_data_hazard && inst_is_m(exs_ctrl),
+        funct3 : exs_ctrl.funct3                                                   ,
+        is_op32: exs_ctrl.is_op32                                                  ,
+        op1    : exs_op1                                                           ,
+        op2    : exs_op2                                                           ,
+        rvalid : exs_muldiv_rvalid                                                 ,
+        result : exs_muldiv_result                                                 ,
     );
 
     var exs_brunit_take: logic;

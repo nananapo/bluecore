@@ -1,14 +1,15 @@
 import eei::*;
 
 module muldivunit (
-    clk   : input  clock   ,
-    rst   : input  reset   ,
-    valid : input  logic   ,
-    funct3: input  logic<3>,
-    op1   : input  UIntX   ,
-    op2   : input  UIntX   ,
-    rvalid: output logic   ,
-    result: output UIntX   ,
+    clk    : input  clock   ,
+    rst    : input  reset   ,
+    valid  : input  logic   ,
+    funct3 : input  logic<3>,
+    is_op32: input  logic   ,
+    op1    : input  UIntX   ,
+    op2    : input  UIntX   ,
+    rvalid : output logic   ,
+    result : output UIntX   ,
 ) {
 
     enum State {
@@ -24,7 +25,8 @@ module muldivunit (
     }
 
     // saved data
-    var funct3_saved: logic<3>;
+    var funct3_saved : logic<3>;
+    var is_op32_saved: logic   ;
 
     let is_mul: logic = if state == State::Idle {
         !funct3[2]
@@ -39,16 +41,24 @@ module muldivunit (
     var mu_rvalid: logic               ;
     var mu_result: logic<MUL_WIDTH * 2>;
 
-    let mu_op1: logic<MUL_WIDTH> = case funct3[1:0] {
-        2'b00, 2'b01, 2'b10: {op1[msb], op1}, // MUL, MULH, MULHSU
-        2'b11              : {1'b0, op1}, // MULHU
-        default            : 'x,
+    let mu_op1: logic<MUL_WIDTH> = if is_op32 {
+        {op1[31] repeat MUL_WIDTH - 32, op1[31:0]} // MULW
+    } else {
+        case funct3[1:0] {
+            2'b00, 2'b01, 2'b10: {op1[msb], op1}, // MUL, MULH, MULHSU
+            2'b11              : {1'b0, op1}, // MULHU
+            default            : 'x,
+        }
     };
 
-    let mu_op2: logic<MUL_WIDTH> = case funct3[1:0] {
-        2'b00, 2'b01: {op2[msb], op2}, // MUL, MULH
-        2'b10, 2'b11: {1'b0, op2}, // MULHSU, MULHU
-        default     : 'x,
+    let mu_op2: logic<MUL_WIDTH> = if is_op32 {
+        {op2[31] repeat MUL_WIDTH - 32, op2[31:0]} // MULW
+    } else {
+        case funct3[1:0] {
+            2'b00, 2'b01: {op2[msb], op2}, // MUL, MULH
+            2'b10, 2'b11: {1'b0, op2}, // MULHSU, MULHU
+            default     : 'x,
+        }
     };
 
     inst mu: mulunit #(
@@ -65,21 +75,27 @@ module muldivunit (
 
     always_ff {
         if_reset {
-            state        = State::Idle;
-            result       = 0;
-            funct3_saved = 0;
+            state         = State::Idle;
+            result        = 0;
+            funct3_saved  = 0;
+            is_op32_saved = 0;
         } else {
             case state {
                 State::Idle: if valid {
-                    state        = State::WaitValid;
-                    funct3_saved = funct3;
+                    state         = State::WaitValid;
+                    funct3_saved  = funct3;
+                    is_op32_saved = is_op32;
                 }
                 State::WaitValid: if is_mul && mu_rvalid {
                     state  = State::Finish;
-                    result = case funct3_saved[1:0] {
-                        2'b00              : mu_result[XLEN - 1:0], // MUL
-                        2'b01, 2'b10, 2'b11: mu_result[XLEN * 2 - 1-:XLEN], // MULH, MULHSU, MULHU
-                        default            : 0,
+                    result = if is_op32_saved {
+                        {mu_result[31] repeat XLEN - 32, mu_result[31:0]}
+                    } else {
+                        case funct3_saved[1:0] {
+                            2'b00              : mu_result[XLEN - 1:0], // MUL
+                            2'b01, 2'b10, 2'b11: mu_result[XLEN * 2 - 1-:XLEN], // MULH, MULHSU, MULHU
+                            default            : 0,
+                        }
                     };
                 }
                 State::Finish: state = State::Idle;
