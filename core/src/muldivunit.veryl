@@ -73,6 +73,25 @@ module muldivunit (
         result   : mu_result          ,
     );
 
+    const DIV_WIDTH: u32 = XLEN;
+
+    var du_rvalid   : logic           ;
+    var du_quotient : logic<DIV_WIDTH>;
+    var du_remainder: logic<DIV_WIDTH>;
+
+    inst du: divunit #(
+        WIDTH: DIV_WIDTH,
+    ) (
+        clk                            ,
+        rst                            ,
+        valid    : req_valid && !is_mul,
+        dividend : op1                 ,
+        divisor  : op2                 ,
+        rvalid   : du_rvalid           ,
+        quotient : du_quotient         ,
+        remainder: du_remainder        ,
+    );
+
     always_ff {
         if_reset {
             state         = State::Idle;
@@ -96,6 +115,13 @@ module muldivunit (
                             2'b01, 2'b10, 2'b11: mu_result[XLEN * 2 - 1-:XLEN], // MULH, MULHSU, MULHU
                             default            : 0,
                         }
+                    };
+                } else if !is_mul && du_rvalid {
+                    state  = State::Finish;
+                    result = case funct3_saved[1:0] {
+                        2'b01  : du_quotient,
+                        2'b11  : du_remainder,
+                        default: 0,
                     };
                 }
                 State::Finish: state = State::Idle;
@@ -175,6 +201,79 @@ module mulunit #(
                                 }
                 State::Finish: state = State::Idle;
                 default      : {}
+            }
+        }
+    }
+}
+
+module divunit #(
+    param WIDTH: u32 = 0,
+) (
+    clk      : input  clock       ,
+    rst      : input  reset       ,
+    valid    : input  logic       ,
+    dividend : input  logic<WIDTH>,
+    divisor  : input  logic<WIDTH>,
+    rvalid   : output logic       ,
+    quotient : output logic<WIDTH>,
+    remainder: output logic<WIDTH>,
+) {
+    enum State {
+        Idle,
+        Check,
+        Loop,
+        Finish,
+    }
+
+    var state: State;
+
+    var dividend_saved: logic<WIDTH * 2>;
+    var divisor_saved : logic<WIDTH * 2>;
+    var sub_count     : logic<32>       ;
+
+    always_comb {
+        rvalid    = state == State::Finish;
+        remainder = dividend_saved[WIDTH - 1:0];
+    }
+
+    always_ff {
+        if_reset {
+            state          = State::Idle;
+            dividend_saved = 0;
+            divisor_saved  = 0;
+            quotient       = 0;
+            sub_count      = 0;
+        } else {
+            case state {
+                State::Idle: if valid {
+                    dividend_saved = {1'b0 repeat WIDTH, dividend};
+                    divisor_saved  = {1'b0, divisor, 1'b0 repeat WIDTH - 1};
+                    quotient       = 0;
+                    sub_count      = 0;
+                    state          = State::Check;
+                }
+                State::Check: {
+                                  if divisor_saved == 0 {
+                                      quotient = '1;
+                                      state    = State::Finish;
+                                  } else {
+                                      state = State::Loop;
+                                  }
+                              }
+                State::Loop: {
+                                 if dividend_saved >= divisor_saved {
+                                     dividend_saved -= divisor_saved;
+                                     quotient       =  (quotient << 1) + 1;
+                                 } else {
+                                     quotient <<= 1;
+                                 }
+                                 divisor_saved >>= 1;
+                                 sub_count     +=  1;
+                                 if sub_count == WIDTH - 1 {
+                                     state = State::Finish;
+                                 }
+                             }
+                State::Finish: state = State::Idle;
             }
         }
     }
