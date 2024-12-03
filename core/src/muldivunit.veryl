@@ -73,11 +73,23 @@ module muldivunit (
         result   : mu_result          ,
     );
 
-    const DIV_WIDTH: u32 = XLEN;
+    const DIV_WIDTH: u32 = XLEN + 1;
 
     var du_rvalid   : logic           ;
     var du_quotient : logic<DIV_WIDTH>;
     var du_remainder: logic<DIV_WIDTH>;
+
+    let du_dividend: logic<DIV_WIDTH> = case funct3[1:0] {
+        2'b00, 2'b10: {op1[msb], op1},
+        2'b01, 2'b11: {1'b0, op1},
+        default     : 'x,
+    };
+
+    let du_divisor: logic<DIV_WIDTH> = case funct3[1:0] {
+        2'b00, 2'b10: {op2[msb], op2},
+        2'b01, 2'b11: {1'b0, op2},
+        default     : 'x,
+    };
 
     inst du: divunit #(
         WIDTH: DIV_WIDTH,
@@ -85,8 +97,8 @@ module muldivunit (
         clk                            ,
         rst                            ,
         valid    : req_valid && !is_mul,
-        dividend : op1                 ,
-        divisor  : op2                 ,
+        dividend : du_dividend         ,
+        divisor  : du_divisor          ,
         rvalid   : du_rvalid           ,
         quotient : du_quotient         ,
         remainder: du_remainder        ,
@@ -119,9 +131,9 @@ module muldivunit (
                 } else if !is_mul && du_rvalid {
                     state  = State::Finish;
                     result = case funct3_saved[1:0] {
-                        2'b01  : du_quotient,
-                        2'b11  : du_remainder,
-                        default: 0,
+                        2'b00, 2'b01: du_quotient[XLEN - 1:0],
+                        2'b10, 2'b11: du_remainder[XLEN - 1:0],
+                        default     : 0,
                     };
                 }
                 State::Finish: state = State::Idle;
@@ -222,6 +234,7 @@ module divunit #(
         Idle,
         Check,
         Loop,
+        AdjustSign,
         Finish,
     }
 
@@ -229,7 +242,10 @@ module divunit #(
 
     var dividend_saved: logic<WIDTH * 2>;
     var divisor_saved : logic<WIDTH * 2>;
-    var sub_count     : logic<32>       ;
+
+    var quotient_sign : logic    ;
+    var remainder_sign: logic    ;
+    var sub_count     : logic<32>;
 
     always_comb {
         rvalid    = state == State::Finish;
@@ -241,21 +257,36 @@ module divunit #(
             state          = State::Idle;
             dividend_saved = 0;
             divisor_saved  = 0;
-            quotient       = 0;
+            quotient_sign  = 0;
+            remainder_sign = 0;
             sub_count      = 0;
+            quotient       = 0;
         } else {
             case state {
                 State::Idle: if valid {
-                    dividend_saved = {1'b0 repeat WIDTH, dividend};
-                    divisor_saved  = {1'b0, divisor, 1'b0 repeat WIDTH - 1};
-                    quotient       = 0;
-                    sub_count      = 0;
-                    state          = State::Check;
+                    quotient_sign  = dividend[msb] ^ divisor[msb];
+                    remainder_sign = dividend[msb];
+                    dividend_saved = {1'b0 repeat WIDTH, if dividend[msb] {
+                        ~dividend + 1
+                    } else {
+                        dividend
+                    }};
+                    divisor_saved = {1'b0, if divisor[msb] {
+                        ~divisor + 1
+                    } else {
+                        divisor
+                    }, 1'b0 repeat WIDTH - 1};
+                    quotient  = 0;
+                    sub_count = 0;
+                    state     = State::Check;
                 }
                 State::Check: {
                                   if divisor_saved == 0 {
                                       quotient = '1;
-                                      state    = State::Finish;
+                                      if remainder_sign {
+                                          dividend_saved = ~dividend_saved + 1;
+                                      }
+                                      state = State::Finish;
                                   } else {
                                       state = State::Loop;
                                   }
@@ -270,10 +301,20 @@ module divunit #(
                                  divisor_saved >>= 1;
                                  sub_count     +=  1;
                                  if sub_count == WIDTH - 1 {
-                                     state = State::Finish;
+                                     state = State::AdjustSign;
                                  }
                              }
+                State::AdjustSign: {
+                                       if quotient_sign {
+                                           quotient = ~quotient + 1;
+                                       }
+                                       if remainder_sign {
+                                           dividend_saved = ~dividend_saved + 1;
+                                       }
+                                       state = State::Finish;
+                                   }
                 State::Finish: state = State::Idle;
+                default      : {}
             }
         }
     }
