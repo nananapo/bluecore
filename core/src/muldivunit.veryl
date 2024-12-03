@@ -79,27 +79,33 @@ module muldivunit (
     var du_remainder: logic<DIV_WIDTH>;
 
     function generate_div_op (
-        funct3: input logic<3>   ,
-        value : input logic<XLEN>,
+        is_op32: input logic      ,
+        funct3 : input logic<3>   ,
+        value  : input logic<XLEN>,
     ) -> logic<DIV_WIDTH> {
         return case funct3[1:0] {
-            2'b00, 2'b10: abs::<DIV_WIDTH>(value), // DIV, REM
-            2'b01, 2'b11: value, // DIVU, REMU
+            2'b00, 2'b10: abs::<DIV_WIDTH>(if is_op32 ? sext::<32, DIV_WIDTH>(value[31:0]) : value), // DIV, REM
+            2'b01, 2'b11: if is_op32 ? {1'b0 repeat DIV_WIDTH - 32, value[31:0]} : value, // DIVU, REMU
             default     : 0,
         };
     }
 
-    let du_dividend: logic<DIV_WIDTH> = generate_div_op(funct3, op1);
-    let du_divisor : logic<DIV_WIDTH> = generate_div_op(funct3, op2);
+    let du_dividend: logic<DIV_WIDTH> = generate_div_op(is_op32, funct3, op1);
+    let du_divisor : logic<DIV_WIDTH> = generate_div_op(is_op32, funct3, op2);
 
     var du_signed_overflow: logic;
     var du_signed_divzero : logic;
     var du_signed_error   : logic;
 
     always_comb {
-        du_signed_overflow = !funct3[0] && op1[msb] == 1 && op1[msb - 1:0] == 0 && &op2;
-        du_signed_divzero  = !funct3[0] && op2 == 0;
-        du_signed_error    = du_signed_overflow || du_signed_divzero;
+        if is_op32 {
+            du_signed_overflow = !funct3[0] && op1[31] == 1 && op1[31:0] == 0 && &op2[31:0];
+            du_signed_divzero  = !funct3[0] && op2[31:0] == 0;
+        } else {
+            du_signed_overflow = !funct3[0] && op1[msb] == 1 && op1[msb - 1:0] == 0 && &op2;
+            du_signed_divzero  = !funct3[0] && op2 == 0;
+        }
+        du_signed_error = du_signed_overflow || du_signed_divzero;
     }
 
     inst du: divunit #(
@@ -163,14 +169,15 @@ module muldivunit (
                 } else if !is_mul && du_rvalid {
                     let quo_signed: logic<DIV_WIDTH> = if op1sign_saved != op2sign_saved ? ~du_quotient + 1 : du_quotient;
                     let rem_signed: logic<DIV_WIDTH> = if op1sign_saved == 1 ? ~du_remainder + 1 : du_remainder;
-                    result     = case funct3_saved[1:0] {
+                    let resultX   : UIntX            = case funct3_saved[1:0] {
                         2'b00  : quo_signed[XLEN - 1:0], // DIV
                         2'b01  : du_quotient[XLEN - 1:0], // DIVU
                         2'b10  : rem_signed[XLEN - 1:0], // REM
                         2'b11  : du_remainder[XLEN - 1:0], // REMU
                         default: 0,
                     };
-                    state = State::Finish;
+                    state  = State::Finish;
+                    result = if is_op32_saved ? sext::<32, 64>(resultX[31:0]) : resultX;
                 }
                 State::Finish: state = State::Idle;
                 default      : {}
