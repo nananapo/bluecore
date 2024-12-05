@@ -342,12 +342,23 @@ module core (
         memq_wdata.jump_addr  = if inst_is_br(exs_ctrl) ? exs_pc + exs_imm : exs_alu_result & ~1;
         // exception
         let instruction_address_misaligned: logic = memq_wdata.br_taken && memq_wdata.jump_addr[1:0] != 2'b00;
-        memq_wdata.expt                = exq_rdata.expt;
+        let loadstore_address_misaligned  : logic = inst_is_memop(exs_ctrl) && case exs_ctrl.funct3[1:0] {
+            2'b00  : 0, // B
+            2'b01  : exs_alu_result[0] != 1'b0, // H
+            2'b10  : exs_alu_result[1:0] != 2'b0, // W
+            2'b11  : exs_alu_result[2:0] != 3'b0, // D
+            default: 0,
+        };
+        memq_wdata.expt = exq_rdata.expt;
         if !memq_rdata.expt.valid {
             if instruction_address_misaligned {
                 memq_wdata.expt.valid = 1;
                 memq_wdata.expt.cause = CsrCause::INSTRUCTION_ADDRESS_MISALIGNED;
                 memq_wdata.expt.value = memq_wdata.jump_addr;
+            } else if loadstore_address_misaligned {
+                memq_wdata.expt.valid = 1;
+                memq_wdata.expt.cause = if exs_ctrl.is_load ? CsrCause::LOAD_ADDRESS_MISALIGNED : CsrCause::STORE_AMO_ADDRESS_MISALIGNED;
+                memq_wdata.expt.value = exs_alu_result;
             }
         }
     }
@@ -380,16 +391,16 @@ module core (
     var memu_stall: logic;
 
     inst memu: memunit (
-        clk                          ,
-        rst                          ,
-        valid : mems_valid           ,
-        is_new: mems_is_new          ,
-        ctrl  : mems_ctrl            ,
-        addr  : memq_rdata.alu_result,
-        rs2   : memq_rdata.rs2_data  ,
-        rdata : memu_rdata           ,
-        stall : memu_stall           ,
-        membus: d_membus             ,
+        clk                                   ,
+        rst                                   ,
+        valid : mems_valid && !mems_expt.valid,
+        is_new: mems_is_new                   ,
+        ctrl  : mems_ctrl                     ,
+        addr  : memq_rdata.alu_result         ,
+        rs2   : memq_rdata.rs2_data           ,
+        rdata : memu_rdata                    ,
+        stall : memu_stall                    ,
+        membus: d_membus                      ,
     );
 
     var csru_rdata      : UIntX;
