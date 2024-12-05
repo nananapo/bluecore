@@ -2,18 +2,19 @@ import eei::*;
 import corectrl::*;
 
 module csrunit (
-    clk        : input  clock       ,
-    rst        : input  reset       ,
-    valid      : input  logic       ,
-    pc         : input  Addr        ,
-    ctrl       : input  InstCtrl    ,
-    rd_addr    : input  logic   <5> ,
-    csr_addr   : input  logic   <12>,
-    rs1        : input  UIntX       ,
-    rdata      : output UIntX       ,
-    raise_trap : output logic       ,
-    trap_vector: output Addr        ,
-    led        : output UIntX       ,
+    clk        : input  clock            ,
+    rst        : input  reset            ,
+    valid      : input  logic            ,
+    pc         : input  Addr             ,
+    ctrl       : input  InstCtrl         ,
+    expt_info  : input  ExceptionInfo    ,
+    rd_addr    : input  logic        <5> ,
+    csr_addr   : input  logic        <12>,
+    rs1        : input  UIntX            ,
+    rdata      : output UIntX            ,
+    raise_trap : output logic            ,
+    trap_vector: output Addr             ,
+    led        : output UIntX            ,
 ) {
 
     // wmasks
@@ -24,8 +25,6 @@ module csrunit (
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
-    // ECALL命令かどうか
-    let is_ecall: logic = ctrl.is_csr && csr_addr == 0 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;
     // MRET命令かどうか
     let is_mret: logic = ctrl.is_csr && csr_addr == 12'b0011000_00010 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;
 
@@ -35,8 +34,8 @@ module csrunit (
     var mcause: UIntX;
 
     // Exception
-    let raise_expt: logic = valid && is_ecall;
-    let expt_cause: UIntX = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
+    let raise_expt: logic = valid && expt_info.valid;
+    let expt_cause: UIntX = expt_info.cause;
 
     // Trap
     assign raise_trap  = raise_expt || (valid && is_mret);
