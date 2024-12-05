@@ -27,6 +27,12 @@ package corectrl {
         funct7   : logic   <7>, // 命令のfunct7フィールド
     }
 
+    // 例外の情報を保存するための型
+    struct ExceptionInfo {
+        valid: logic   ,
+        cause: CsrCause,
+    }
+
     // 命令がメモリにアクセスする命令か判別する関数
     function inst_is_memop (
         ctrl: input InstCtrl,
