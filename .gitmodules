@@ -1,0 +1,3 @@
+[submodule "core/riscof/riscv-arch-test"]
+	path = core/riscof/riscv-arch-test
+	url = https://github.com/riscv-non-isa/riscv-arch-test
