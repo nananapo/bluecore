@@ -14,7 +14,7 @@ package eei {
     // メモリのデータ幅
     const MEM_DATA_WIDTH: u32 = 64;
     // メモリのアドレス幅
-    const MEM_ADDR_WIDTH: u32 = 16;
+    const MEM_ADDR_WIDTH: u32 = 20;
 
     // opcode
     const OP_LUI      : logic<7> = 7'b0110111;

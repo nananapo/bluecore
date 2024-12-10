@@ -28,7 +28,7 @@ module top #(
     // riscv-testsの終了を検知する
     #[ifdef(TEST_MODE)]
     always_ff {
-        let RISCVTESTS_TOHOST_ADDR: Addr = 'h1000 as Addr;
+        let RISCVTESTS_TOHOST_ADDR: Addr = 'h0000_0000_1000_0000 as Addr;
         if d_membus.valid && d_membus.ready && d_membus.wen == 1 && d_membus.addr == RISCVTESTS_TOHOST_ADDR && d_membus.wdata[lsb] == 1'b1 {
             test_success = d_membus.wdata == 1;
             if d_membus.wdata == 1 {
@@ -38,6 +38,14 @@ module top #(
                 $error  ("wdata : %h", d_membus.wdata);
             }
             $finish();
+        }
+
+        let SIGNATURE_ADDR: Addr = 64'h00000000_FFFFFF88 as Addr;
+        if d_membus.valid && d_membus.ready && d_membus.wen == 1 && d_membus.addr == SIGNATURE_ADDR {
+            $display("signature: %h", d_membus.wdata[31:0]);
+        }
+        if d_membus.valid && d_membus.ready && d_membus.wen == 1 {
+            $display("wen detect : %h <- %h", d_membus.addr, d_membus.wdata);
         }
     }
 
