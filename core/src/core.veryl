@@ -482,62 +482,88 @@ module core (
                 clock_count = clock_count + 1;
 
                 $display("");
-                $display("# %d", clock_count);
-
-                $display("IF ------");
-                $display("     pc : %h", if_pc);
-                $display(" is req : %b", if_is_requested);
-                $display(" pc req : %h", if_pc_requested);
-                $display("ID ------");
+                $display("clock,%d", clock_count);
+                // if
+                $display("if.membus.valid,b,%b", i_membus.valid);
+                if i_membus.valid {
+                    $display("if.addr,h,%b", i_membus.addr);
+                }
+                $display("if.membus.rvalid,b,%b", if_is_requested && i_membus.rvalid);
+                if if_is_requested && i_membus.rvalid {
+                    $display("if.membus.raddr,h,%b", if_pc_requested);
+                    $display("if.membus.rdata,h,%b", i_membus.rdata);
+                }
+                // id
+                $display("id.valid,b,%b", ids_valid);
                 if ids_valid {
-                    $display("  %h : %h", ids_pc, if_fifo_rdata.bits);
-                    $display("  itype : %b", ids_ctrl.itype);
-                    $display("  imm   : %h", ids_imm);
-                    $display("  expt  : %b", exq_wdata.expt.valid);
+                    $display("id.addr,h,%b", ids_pc);
+                    $display("id.inst,h,%b", if_fifo_rdata.bits);
+                    $display("id.itype,b,%b", ids_ctrl.itype);
+                    $display("id.imm,h,%b", ids_imm);
+                    $display("id.expt.valid,b,%b", exq_wdata.expt.valid);
                     if exq_wdata.expt.valid {
-                        $display("  cause : %d", exq_wdata.expt.cause);
-                        $display("  value : %d", exq_wdata.expt.value);
+                        $display("id.expt.cause,d,%b", exq_wdata.expt.cause);
+                        $display("id.expt.value,d,%b", exq_wdata.expt.value);
                     }
                 }
-                $display("EX -----");
+                // ex
+                $display("ex.valid,b,%b", exs_valid);
                 if exs_valid {
-                    $display("  %h : %h", exq_rdata.addr, exq_rdata.bits);
-                    $display("  expt    : %b", exq_rdata.expt.valid);
+                    $display("ex.addr,h,%b", exq_rdata.addr);
+                    $display("ex.inst,h,%b", exq_rdata.bits);
+                    $display("ex.expt.valid,b,%b", exq_rdata.expt.valid);
                     if exq_rdata.expt.valid {
-                        $display("  cause  : %d", exq_rdata.expt.cause);
-                        $display("  value  : %d", exq_rdata.expt.value);
+                        $display("ex.expt.cause,d,%b", exq_rdata.expt.cause);
+                        $display("ex.expt.value,d,%b", exq_rdata.expt.cause);
                     }
-                    $display("  op1     : %h", exs_op1);
-                    $display("  op2     : %h", exs_op2);
-                    $display("  alu     : %h", exs_alu_result);
-                    $display("  dhazard : %b", exs_data_hazard);
-                    $display("  muldiv  : %b", exs_muldiv_stall);
+                    $display("ex.op1,h,%b", exs_op1);
+                    $display("ex.op2,h,%b", exs_op2);
+                    $display("ex.alu,h,%b", exs_alu_result);
+                    $display("ex.dhazard,b,%b", exs_data_hazard);
+                    $display("ex.muldiv.stall,b,%b", exs_muldiv_stall);
                     if exs_ctrl.is_muldiv && exs_muldiv_rvalid {
-                        $display("  muldiv result : %h", exs_muldiv_result);
+                        $display("ex.muldiv.result,h,%b", exs_muldiv_result);
                     }
                     if inst_is_br(exs_ctrl) {
-                        $display("  br take : ", exs_brunit_take);
+                        $display("ex.br take,b,%b", exs_brunit_take);
                     }
                 }
-                $display("MEM -----");
+                // mem
+                $display("mem.valid,b,%b", mems_valid);
                 if mems_valid {
-                    $display("  %h : %h", memq_rdata.addr, memq_rdata.bits);
-                    $display("  mem stall : %b", memu_stall);
-                    $display("  mem rdata : %h", memu_rdata);
+                    $display("mem.addr,h,%b", memq_rdata.addr);
+                    $display("mem.inst,h,%b", memq_rdata.bits);
+                    $display("mem.stall,b,%b", memu_stall);
+                    if inst_is_memop(mems_ctrl) {
+                        $display("mem.is_load,b,%b", mems_ctrl.is_load);
+                        $display("mem.memaddr,h,%b", memq_rdata.alu_result);
+                        if mems_ctrl.is_load {
+                            if !memu_stall {
+                                $display("mem.rdata,h,%b", memu_rdata);
+                            }
+                        } else {
+                            $display("mem.wdata,h,%b", memq_rdata.rs2_data);
+                        }
+                    }
                     if mems_ctrl.is_csr || csru_raise_trap {
-                        $display("  csr rdata : %h", csru_rdata);
-                        $display("  csr trap  : %b", csru_raise_trap);
-                        $display("  csr vec   : %h", csru_trap_vector);
+                        $display("mem.csr.rdata,h,%b", csru_rdata);
+                        $display("mem.csr.trap,b,%b", csru_raise_trap);
+                        $display("mem.csr.vec,h,%b", csru_trap_vector);
                     }
                     if memq_rdata.br_taken {
-                        $display("  JUMP TO   : %h", memq_rdata.jump_addr);
+                        $display("mem.jump.addr,h,%b", memq_rdata.jump_addr);
                     }
                 }
-                $display("WB ----");
+                // wb
+                $display("wb.valid,b,%b", wbs_valid);
                 if wbs_valid {
-                    $display("  %h : %h", wbq_rdata.addr, wbq_rdata.bits);
+                    $display("wb.addr,h,%b", wbq_rdata.addr);
+                    $display("wb.inst,h,%b", wbq_rdata.bits);
+                    $display("wb.trap,b,%b", wbq_rdata.raise_trap);
                     if wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {
-                        $display("  reg[%d] <= %h", wbs_rd_addr, wbs_wb_data);
+                        $display("wb.rd.wen,b,%b", wbs_ctrl.rwb_en);
+                        $display("wb.rd.addr,d,%b", wbs_rd_addr);
+                        $display("wb.rd.data,h,%b", wbs_wb_data);
                     }
                 }
             }
