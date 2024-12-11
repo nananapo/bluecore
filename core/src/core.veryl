@@ -473,6 +473,63 @@ module core (
     ///////////////////////////////// DEBUG /////////////////////////////////
     #[ifdef(PRINT_DEBUG)]
     {
+        var gen_inst_id: u64;
+        var if_inst_id : u64;
+        var id_inst_id : u64;
+        var ex_inst_id : u64;
+        var mem_inst_id: u64;
+        var wb_inst_id : u64;
+
+        var if_fifo_wdata_inst_id: u64;
+        var if_fifo_rdata_inst_id: u64;
+
+        inst if_inst_id_fifo: fifo #(
+            DATA_TYPE: u64,
+            WIDTH    : 3  ,
+        ) (
+            clk                          ,
+            rst                          ,
+            flush : control_hazard       ,
+            wready: _                    ,
+            wvalid: if_fifo_wvalid       ,
+            wdata : if_fifo_wdata_inst_id,
+            rready: if_fifo_rready       ,
+            rvalid: _                    ,
+            rdata : if_fifo_rdata_inst_id,
+        );
+
+        always_comb {
+            id_inst_id = if_fifo_rdata_inst_id;
+        }
+
+        always_ff {
+            if_reset {
+                gen_inst_id           = 0;
+                if_inst_id            = 0;
+                ex_inst_id            = 0;
+                mem_inst_id           = 0;
+                wb_inst_id            = 0;
+                if_fifo_wdata_inst_id = 0;
+            } else {
+                if i_membus.ready && i_membus.valid {
+                    gen_inst_id = gen_inst_id + 1;
+                    if_inst_id  = gen_inst_id;
+                }
+                if if_is_requested && i_membus.rvalid {
+                    if_fifo_wdata_inst_id = if_inst_id;
+                }
+                if exq_wready && exq_wvalid {
+                    ex_inst_id = id_inst_id;
+                }
+                if memq_wready && memq_wvalid {
+                    mem_inst_id = ex_inst_id;
+                }
+                if wbq_wready && wbq_wvalid {
+                    wb_inst_id = mem_inst_id;
+                }
+            }
+        }
+
         var clock_count: u64;
 
         always_ff {
@@ -485,6 +542,11 @@ module core (
                 $display("clock,%d", clock_count);
                 // if
                 $display("if.membus.valid,b,%b", i_membus.valid);
+                if i_membus.ready && i_membus.valid {
+                    $display("if.inst_id,d,%b", gen_inst_id);
+                } else if if_is_requested {
+                    $display("if.inst_id,d,%b", if_inst_id);
+                }
                 if i_membus.valid {
                     $display("if.addr,h,%b", i_membus.addr);
                 }
@@ -496,6 +558,7 @@ module core (
                 // id
                 $display("id.valid,b,%b", ids_valid);
                 if ids_valid {
+                    $display("id.inst_id,d,%b", id_inst_id);
                     $display("id.addr,h,%b", ids_pc);
                     $display("id.inst,h,%b", if_fifo_rdata.bits);
                     $display("id.itype,b,%b", ids_ctrl.itype);
@@ -509,6 +572,7 @@ module core (
                 // ex
                 $display("ex.valid,b,%b", exs_valid);
                 if exs_valid {
+                    $display("ex.inst_id,d,%b", ex_inst_id);
                     $display("ex.addr,h,%b", exq_rdata.addr);
                     $display("ex.inst,h,%b", exq_rdata.bits);
                     $display("ex.expt.valid,b,%b", exq_rdata.expt.valid);
@@ -531,6 +595,7 @@ module core (
                 // mem
                 $display("mem.valid,b,%b", mems_valid);
                 if mems_valid {
+                    $display("mem.inst_id,d,%b", mem_inst_id);
                     $display("mem.addr,h,%b", memq_rdata.addr);
                     $display("mem.inst,h,%b", memq_rdata.bits);
                     $display("mem.stall,b,%b", memu_stall);
@@ -557,6 +622,7 @@ module core (
                 // wb
                 $display("wb.valid,b,%b", wbs_valid);
                 if wbs_valid {
+                    $display("wb.inst_id,d,%b", wb_inst_id);
                     $display("wb.addr,h,%b", wbq_rdata.addr);
                     $display("wb.inst,h,%b", wbq_rdata.bits);
                     $display("wb.trap,b,%b", wbq_rdata.raise_trap);
