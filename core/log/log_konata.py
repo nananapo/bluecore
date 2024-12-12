@@ -9,6 +9,7 @@ class Inst:
     def __init__(self):
         self.addr = None
         self.inst = None
+        self.last_stage = None
 
 def print_konata(data):
     global last_clock, stage_ids, inst_dict
@@ -51,6 +52,7 @@ def print_konata(data):
         # start stage
         if stage not in stage_ids or stage_ids[stage] != inst_id:
             print("S", inst_id, 0, stage, sep="\t")
+            inst.last_stage = stage
 
     # end stage
     for stage, old_inst_id in stage_ids.items():
@@ -59,6 +61,15 @@ def print_konata(data):
         print("E", old_inst_id, 0, stage, sep="\t")
         if stage == "wb":
             del inst_dict[old_inst_id]
+
+    # flush
+    if "flush" in data:
+        ids = list(inst_dict.keys())
+        for inst_id in ids:
+            inst = inst_dict[inst_id]
+            if inst.last_stage in data["flush"]:
+                print("R", inst_id, 0, 1, sep="\t")
+                del inst_dict[inst_id]
         
     stage_ids = new_ids
 

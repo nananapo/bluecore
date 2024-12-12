@@ -632,6 +632,12 @@ module core (
                         $display("wb.rd.data,h,%b", wbs_wb_data);
                     }
                 }
+                // flush
+                if control_hazard {
+                    $display("flush.if,b,1");
+                    $display("flush.id,b,1");
+                    $display("flush.ex,b,1");
+                }
             }
         }
     }
