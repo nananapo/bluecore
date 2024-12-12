@@ -3,10 +3,15 @@ import logutil
 
 last_clock = None
 stage_ids = dict()
-inst_ids = set()
+inst_dict = dict()
+
+class Inst:
+    def __init__(self):
+        self.addr = None
+        self.inst = None
 
 def print_konata(data):
-    global last_clock, stage_ids, inst_ids
+    global last_clock, stage_ids, inst_dict
 
     # print clock
     clock = data["clock"]
@@ -24,10 +29,24 @@ def print_konata(data):
         inst_id = subs["inst_id"].get_int_value()
 
         # register inst_id
-        if inst_id not in inst_ids:
+        if inst_id not in inst_dict:
             print("I", inst_id, inst_id, 0, sep="\t")
-            inst_ids.add(inst_id)
+            inst_dict[inst_id] = Inst()
         new_ids[stage] = inst_id
+
+        inst = inst_dict[inst_id]
+
+        # label inst_id
+        if inst.addr is None:
+            if "addr" in subs:
+                addr = str(subs["addr"])
+                inst.addr = addr
+                print("L", inst_id, 0, addr, sep="\t")
+        if inst.addr is not None and inst.inst is None:
+            if "inst" in subs:
+                bits = str(subs["inst"])
+                inst.inst = bits
+                print("L", inst_id, 0, ":" + bits, sep="\t")
 
         # start stage
         if stage not in stage_ids or stage_ids[stage] != inst_id:
