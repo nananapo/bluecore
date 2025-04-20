@@ -23,6 +23,7 @@ package corectrl {
         is_jump  : logic      , // ジャンプ命令である
         is_load  : logic      , // ロード命令である
         is_csr   : logic      , // CSR命令である
+        is_amo   : logic      , // AMO instruction
         funct3   : logic   <3>, // 命令のfunct3フィールド
         funct7   : logic   <7>, // 命令のfunct7フィールド
     }
@@ -38,7 +39,7 @@ package corectrl {
     function inst_is_memop (
         ctrl: input InstCtrl,
     ) -> logic {
-        return ctrl.itype == InstType::S || ctrl.is_load;
+        return ctrl.itype == InstType::S || ctrl.is_load || ctrl.is_amo;
     }
 
     // 命令がストア命令か判別する関数
