@@ -5,7 +5,7 @@ module core (
     clk     : input   clock                          ,
     rst     : input   reset                          ,
     i_membus: modport membus_if::<ILEN, XLEN>::master,
-    d_membus: modport Membus::master                 ,
+    d_membus: modport core_data_if::master           ,
     led     : output  UIntX                          ,
 ) {
 

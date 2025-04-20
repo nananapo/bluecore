@@ -1,0 +1,133 @@
+import eei::*;
+
+module amounit (
+    clk   : input   clock              ,
+    rst   : input   reset              ,
+    slave : modport core_data_if::slave,
+    master: modport Membus::master     ,
+) {
+
+    enum State {
+        Init,
+        WaitReady,
+        WaitValid,
+    }
+
+    var state      : State;
+    inst slave_saved: core_data_if;
+
+    // masterをリセットする
+    function reset_master () {
+        master.valid = 0;
+        master.addr  = 0;
+        master.wen   = 0;
+        master.wdata = 0;
+        master.wmask = 0;
+    }
+
+    // masterに要求を割り当てる
+    function assign_master (
+        addr : input Addr                   ,
+        wen  : input logic                  ,
+        wdata: input UIntX                  ,
+        wmask: input logic<$size(UIntX) / 8>,
+    ) {
+        master.valid = 1;
+        master.addr  = addr;
+        master.wen   = wen;
+        master.wdata = wdata;
+        master.wmask = wmask;
+    }
+
+    // 新しく要求を受け入れる
+    function accept_request_comb () {
+        if slave.ready && slave.valid {
+            assign_master(slave.addr, slave.wen, slave.wdata, slave.wmask);
+        }
+    }
+
+    // slaveに結果を割り当てる
+    always_comb {
+        slave.ready  = 0;
+        slave.rvalid = 0;
+        slave.rdata  = 0;
+
+        case state {
+            State::Init: {
+                slave.ready = 1;
+            }
+            State::WaitValid: {
+                slave.ready  = master.rvalid;
+                slave.rvalid = master.rvalid;
+                slave.rdata  = master.rdata;
+            }
+            default: {}
+        }
+    }
+
+    // masterに要求を割り当てる
+    always_comb {
+        reset_master();
+        case state {
+            State::Init     : accept_request_comb();
+            State::WaitReady: {
+                assign_master(slave_saved.addr, slave_saved.wen, slave_saved.wdata, slave_saved.wmask);
+            }
+            State::WaitValid: accept_request_comb();
+            default         : {}
+        }
+    }
+
+    // 新しく要求を受け入れる
+    function accept_request_ff () {
+        slave_saved.valid = slave.ready && slave.valid;
+        if slave.ready && slave.valid {
+            slave_saved.addr   = slave.addr;
+            slave_saved.wen    = slave.wen;
+            slave_saved.wdata  = slave.wdata;
+            slave_saved.wmask  = slave.wmask;
+            slave_saved.is_amo = slave.is_amo;
+            slave_saved.amoop  = slave.amoop;
+            slave_saved.aq     = slave.aq;
+            slave_saved.rl     = slave.rl;
+            slave_saved.funct3 = slave.funct3;
+            state              = if master.ready ? State::WaitValid : State::WaitReady;
+        } else {
+            state = State::Init;
+        }
+    }
+
+    function on_clock () {
+        case state {
+            State::Init     : accept_request_ff();
+            State::WaitReady: if master.ready {
+                state = State::WaitValid;
+            }
+            State::WaitValid: if master.rvalid {
+                accept_request_ff();
+            }
+            default: {}
+        }
+    }
+
+    function on_reset () {
+        state              = State::Init;
+        slave_saved.addr   = 0;
+        slave_saved.wen    = 0;
+        slave_saved.wdata  = 0;
+        slave_saved.wmask  = 0;
+        slave_saved.is_amo = 0;
+        slave_saved.amoop  = 0 as AMOOp;
+        slave_saved.aq     = 0;
+        slave_saved.rl     = 0;
+        slave_saved.funct3 = 0;
+    }
+
+    always_ff {
+        if_reset {
+            on_reset();
+        } else {
+            on_clock();
+        }
+    }
+}
