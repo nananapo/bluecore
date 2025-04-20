@@ -2,16 +2,16 @@ import eei::*;
 import corectrl::*;
 
 module memunit (
-    clk   : input   clock         ,
-    rst   : input   reset         ,
-    valid : input   logic         ,
-    is_new: input   logic         , // 命令が新しく供給されたかどうか
-    ctrl  : input   InstCtrl      , // 命令のInstCtrl
-    addr  : input   Addr          , // アクセスするアドレス
-    rs2   : input   UIntX         , // ストア命令で書き込むデータ
-    rdata : output  UIntX         , // ロード命令の結果 (stall = 0のときに有効)
-    stall : output  logic         , // メモリアクセス命令が完了していない
-    membus: modport Membus::master, // メモリとのinterface
+    clk   : input   clock               ,
+    rst   : input   reset               ,
+    valid : input   logic               ,
+    is_new: input   logic               , // 命令が新しく供給されたかどうか
+    ctrl  : input   InstCtrl            , // 命令のInstCtrl
+    addr  : input   Addr                , // アクセスするアドレス
+    rs2   : input   UIntX               , // ストア命令で書き込むデータ
+    rdata : output  UIntX               , // ロード命令の結果 (stall = 0のときに有効)
+    stall : output  logic               , // メモリアクセス命令が完了していない
+    membus: modport core_data_if::master, // メモリとのinterface
 ) {
 
     // memunitの状態を表す列挙型
@@ -23,10 +23,15 @@ module memunit (
 
     var state: State;
 
-    var req_wen  : logic                       ;
-    var req_addr : Addr                        ;
-    var req_wdata: logic<MEMBUS_DATA_WIDTH>    ;
-    var req_wmask: logic<MEMBUS_DATA_WIDTH / 8>;
+    var req_wen   : logic                       ;
+    var req_addr  : Addr                        ;
+    var req_wdata : logic<MEMBUS_DATA_WIDTH>    ;
+    var req_wmask : logic<MEMBUS_DATA_WIDTH / 8>;
+    var req_is_amo: logic                       ;
+    var req_amoop : AMOOp                       ;
+    var req_aq    : logic                       ;
+    var req_rl    : logic                       ;
+    var req_funct3: logic<3>                    ;
 
     const W   : u32                      = XLEN;
     let D   : logic<MEMBUS_DATA_WIDTH> = membus.rdata;
@@ -34,11 +39,16 @@ module memunit (
 
     always_comb {
         // メモリアクセス
-        membus.valid = state == State::WaitReady;
-        membus.addr  = req_addr;
-        membus.wen   = req_wen;
-        membus.wdata = req_wdata;
-        membus.wmask = req_wmask;
+        membus.valid  = state == State::WaitReady;
+        membus.addr   = req_addr;
+        membus.wen    = req_wen;
+        membus.wdata  = req_wdata;
+        membus.wmask  = req_wmask;
+        membus.is_amo = req_is_amo;
+        membus.amoop  = req_amoop;
+        membus.aq     = req_aq;
+        membus.rl     = req_rl;
+        membus.funct3 = req_funct3;
         // loadの結果
         rdata = case ctrl.funct3[1:0] {
             2'b00: case addr[2:0] {
@@ -78,11 +88,16 @@ module memunit (
 
     always_ff {
         if_reset {
-            state     = State::Init;
-            req_wen   = 0;
-            req_addr  = 0;
-            req_wdata = 0;
-            req_wmask = 0;
+            state      = State::Init;
+            req_wen    = 0;
+            req_addr   = 0;
+            req_wdata  = 0;
+            req_wmask  = 0;
+            req_is_amo = 0;
+            req_amoop  = 0 as AMOOp;
+            req_aq     = 0;
+            req_rl     = 0;
+            req_funct3 = 0;
         } else {
             if valid {
                 case state {
@@ -108,6 +123,11 @@ module memunit (
                             2'b11  : 8'b11111111,
                             default: 'x,
                         };
+                        req_is_amo = ctrl.is_amo;
+                        req_amoop  = ctrl.funct7[6:2] as AMOOp;
+                        req_aq     = ctrl.funct7[1];
+                        req_rl     = ctrl.funct7[0];
+                        req_funct3 = ctrl.funct3;
                     }
                     State::WaitReady: if membus.ready {
                         state = State::WaitValid;

@@ -1,0 +1,42 @@
+import eei::*;
+
+interface core_data_if {
+    var valid : logic                       ;
+    var ready : logic                       ;
+    var addr  : logic<XLEN>                 ;
+    var wen   : logic                       ;
+    var wdata : logic<MEMBUS_DATA_WIDTH>    ;
+    var wmask : logic<MEMBUS_DATA_WIDTH / 8>;
+    var rvalid: logic                       ;
+    var rdata : logic<MEMBUS_DATA_WIDTH>    ;
+
+    var is_amo: logic   ;
+    var aq    : logic   ;
+    var rl    : logic   ;
+    var amoop : AMOOp   ;
+    var funct3: logic<3>;
+
+    modport master {
+        valid : output,
+        ready : input ,
+        addr  : output,
+        wen   : output,
+        wdata : output,
+        wmask : output,
+        rvalid: input ,
+        rdata : input ,
+        is_amo: output,
+        aq    : output,
+        rl    : output,
+        amoop : output,
+        funct3: output,
+    }
+
+    modport slave {
+        ..converse(master)
+    }
+
+    modport all_input {
+        ..input
+    }
+}
