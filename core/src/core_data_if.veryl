@@ -17,26 +17,32 @@ interface core_data_if {
     var funct3: logic<3>;
 
     modport master {
-        valid : output,
-        ready : input ,
-        addr  : output,
-        wen   : output,
-        wdata : output,
-        wmask : output,
-        rvalid: input ,
-        rdata : input ,
-        is_amo: output,
-        aq    : output,
-        rl    : output,
-        amoop : output,
-        funct3: output,
+        valid   : output,
+        ready   : input ,
+        addr    : output,
+        wen     : output,
+        wdata   : output,
+        wmask   : output,
+        rvalid  : input ,
+        rdata   : input ,
+        is_amo  : output,
+        aq      : output,
+        rl      : output,
+        amoop   : output,
+        funct3  : output,
+        is_Zaamo: import,
     }
 
     modport slave {
+        is_Zaamo: import,
         ..converse(master)
     }
 
     modport all_input {
         ..input
+    }
+
+    function is_Zaamo () -> logic {
+        return is_amo && (amoop != AMOOp::LR && amoop != AMOOp::SC);
     }
 }
