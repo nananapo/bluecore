@@ -603,7 +603,7 @@ module core (
                     $display("mem.stall,b,%b", memu_stall);
                     if inst_is_memop(mems_ctrl) {
                         $display("mem.is_load,b,%b", mems_ctrl.is_load);
-                        $display("mem.memaddr,h,%b", memq_rdata.alu_result);
+                        $display("mem.memaddr,h,%b", memu_addr);
                         if mems_ctrl.is_load {
                             if !memu_stall {
                                 $display("mem.rdata,h,%b", memu_rdata);

@@ -9,25 +9,37 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
     var rdata : logic<DATA_WIDTH>    ;
 
     modport master {
-        valid : output,
-        ready : input ,
-        addr  : output,
-        wen   : output,
-        wdata : output,
-        wmask : output,
-        rvalid: input ,
-        rdata : input ,
+        valid       : output,
+        ready       : input ,
+        addr        : output,
+        wen         : output,
+        wdata       : output,
+        wmask       : output,
+        rvalid      : input ,
+        rdata       : input ,
+        wmask_expand: import,
     }
 
     modport slave {
-        valid : input ,
-        ready : output,
-        addr  : input ,
-        wen   : input ,
-        wdata : input ,
-        wmask : input ,
-        rvalid: output,
-        rdata : output,
+        valid       : input ,
+        ready       : output,
+        addr        : input ,
+        wen         : input ,
+        wdata       : input ,
+        wmask       : input ,
+        rvalid      : output,
+        rdata       : output,
+        wmask_expand: import,
+    }
+
+    // get expanded wmask
+    function wmask_expand () -> logic<DATA_WIDTH> {
+        var result: logic<DATA_WIDTH>;
+
+        for i: u32 in 0..DATA_WIDTH {
+            result[i] = wmask[i / 8];
+        }
+        return result;
     }
 
     modport all_input {
