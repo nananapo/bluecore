@@ -24,6 +24,7 @@ package corectrl {
         is_load  : logic      , // ロード命令である
         is_csr   : logic      , // CSR命令である
         is_amo   : logic      , // AMO instruction
+        is_rvc   : logic      , // RVC instruction
         funct3   : logic   <3>, // 命令のfunct3フィールド
         funct7   : logic   <7>, // 命令のfunct7フィールド
     }

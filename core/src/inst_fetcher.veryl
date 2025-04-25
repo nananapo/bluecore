@@ -36,8 +36,9 @@ module inst_fetcher (
     );
 
     struct issue_fifo_type {
-        addr: Addr,
-        bits: Inst,
+        addr  : Addr ,
+        bits  : Inst ,
+        is_rvc: logic,
     }
 
     var issue_fifo_flush : logic          ;
@@ -115,9 +116,10 @@ module inst_fetcher (
                     // offsetが6な32ビット命令の場合、
                     // 命令は{rdata_next[15:0], rdata[63:48}になる
                     if issue_is_rdata_saved {
-                        issue_fifo_wvalid     = 1;
-                        issue_fifo_wdata.addr = {issue_saved_addr[msb:3], offset};
-                        issue_fifo_wdata.bits = {rdata[15:0], issue_saved_bits};
+                        issue_fifo_wvalid       = 1;
+                        issue_fifo_wdata.addr   = {issue_saved_addr[msb:3], offset};
+                        issue_fifo_wdata.bits   = {rdata[15:0], issue_saved_bits};
+                        issue_fifo_wdata.is_rvc = 0;
                     } else {
                         // Read next 8 bytes
                         fetch_fifo_rready = 1;
@@ -132,6 +134,7 @@ module inst_fetcher (
                         4      : rdata[63:32],
                         default: 0,
                     };
+                    issue_fifo_wdata.is_rvc = 0;
                 }
             }
         }
@@ -144,6 +147,7 @@ module inst_fetcher (
         core_if.rvalid    = issue_fifo_rvalid;
         core_if.raddr     = issue_fifo_rdata.addr;
         core_if.rdata     = issue_fifo_rdata.bits;
+        core_if.is_rvc    = issue_fifo_rdata.is_rvc;
     }
 
     /*--------- fetch logic ----------*/

@@ -86,10 +86,11 @@ module core (
     var ids_imm       : UIntX   ;
 
     inst decoder: inst_decoder (
-        bits : ids_inst_bits ,
-        valid: ids_inst_valid,
-        ctrl : ids_ctrl      ,
-        imm  : ids_imm       ,
+        bits  : ids_inst_bits  ,
+        is_rvc: i_membus.is_rvc,
+        valid : ids_inst_valid ,
+        ctrl  : ids_ctrl       ,
+        imm   : ids_imm        ,
     );
 
     always_comb {
@@ -367,7 +368,7 @@ module core (
     let wbs_wb_data: UIntX    = if wbs_ctrl.is_lui ?
         wbs_imm
     : if wbs_ctrl.is_jump ?
-        wbs_pc + 4
+        wbs_pc + (if wbs_ctrl.is_rvc ? 2 : 4)
     : if wbs_ctrl.is_load || wbs_ctrl.is_amo ?
         wbq_rdata.mem_rdata
     : if wbs_ctrl.is_csr ?
