@@ -1,0 +1,23 @@
+import eei::*;
+
+interface core_inst_if {
+    var rvalid   : logic;
+    var rready   : logic;
+    var raddr    : Addr ;
+    var rdata    : Inst ;
+    var is_hazard: logic;
+    var next_pc  : Addr ;
+
+    modport master {
+        rvalid   : input ,
+        rready   : output,
+        raddr    : input ,
+        rdata    : input ,
+        is_hazard: output, // control hazard
+        next_pc  : output, // actual next pc
+    }
+
+    modport slave {
+        ..converse(master)
+    }
+}
