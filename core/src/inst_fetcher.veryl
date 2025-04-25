@@ -1,0 +1,173 @@
+import eei::*;
+
+module inst_fetcher (
+    clk    : input   clock              ,
+    rst    : input   reset              ,
+    core_if: modport core_inst_if::slave,
+    mem_if : modport Membus::master     ,
+) {
+    struct fetch_fifo_type {
+        addr: Addr                    ,
+        bits: logic<MEMBUS_DATA_WIDTH>,
+    }
+
+    var fetch_fifo_flush : logic          ;
+    var fetch_fifo_wvalid: logic          ;
+    var fetch_fifo_wready: logic          ;
+    var fetch_fifo_wdata : fetch_fifo_type;
+    var fetch_fifo_rdata : fetch_fifo_type;
+    var fetch_fifo_rready: logic          ;
+    var fetch_fifo_rvalid: logic          ;
+
+    inst fetch_fifo: fifo #(
+        DATA_TYPE: fetch_fifo_type,
+        WIDTH    : 3              ,
+    ) (
+        clk                          ,
+        rst                          ,
+        flush     : fetch_fifo_flush ,
+        wready    : _                ,
+        wready_two: fetch_fifo_wready,
+        wvalid    : fetch_fifo_wvalid,
+        wdata     : fetch_fifo_wdata ,
+        rready    : fetch_fifo_rready,
+        rvalid    : fetch_fifo_rvalid,
+        rdata     : fetch_fifo_rdata ,
+    );
+
+    struct issue_fifo_type {
+        addr: Addr,
+        bits: Inst,
+    }
+
+    var issue_fifo_flush : logic          ;
+    var issue_fifo_wvalid: logic          ;
+    var issue_fifo_wready: logic          ;
+    var issue_fifo_wdata : issue_fifo_type;
+    var issue_fifo_rdata : issue_fifo_type;
+    var issue_fifo_rready: logic          ;
+    var issue_fifo_rvalid: logic          ;
+
+    inst issue_fifo: fifo #(
+        DATA_TYPE: issue_fifo_type,
+        WIDTH    : 3              ,
+    ) (
+        clk                      ,
+        rst                      ,
+        flush : issue_fifo_flush ,
+        wready: issue_fifo_wready,
+        wvalid: issue_fifo_wvalid,
+        wdata : issue_fifo_wdata ,
+        rready: issue_fifo_rready,
+        rvalid: issue_fifo_rvalid,
+        rdata : issue_fifo_rdata ,
+    );
+
+    /*--------- issue logic ----------*/
+    var issue_pc_offset: logic<3>;
+
+    always_ff {
+        if_reset {
+            issue_pc_offset = 0;
+        } else {
+            if core_if.is_hazard {
+                issue_pc_offset = core_if.next_pc[2:0];
+            } else {
+                if issue_fifo_wready && issue_fifo_wvalid {
+                    issue_pc_offset += 4;
+                }
+            }
+        }
+    }
+
+    // fetch_fifo <-> issue_fifo
+    always_comb {
+        let raddr : Addr                     = fetch_fifo_rdata.addr;
+        let rdata : logic<MEMBUS_DATA_WIDTH> = fetch_fifo_rdata.bits;
+        let offset: logic<3>                 = issue_pc_offset;
+
+        fetch_fifo_rready = 0;
+        issue_fifo_wvalid = 0;
+        issue_fifo_wdata  = 0;
+
+        if !core_if.is_hazard && fetch_fifo_rvalid {
+            if issue_fifo_wready {
+                fetch_fifo_rready     = offset == 4;
+                issue_fifo_wvalid     = 1;
+                issue_fifo_wdata.addr = {raddr[msb:3], offset};
+                issue_fifo_wdata.bits = case offset {
+                    0      : rdata[31:0],
+                    4      : rdata[63:32],
+                    default: 0,
+                };
+            }
+        }
+    }
+
+    // issue_fifo <-> core
+    always_comb {
+        issue_fifo_flush  = core_if.is_hazard;
+        issue_fifo_rready = core_if.rready;
+        core_if.rvalid    = issue_fifo_rvalid;
+        core_if.raddr     = issue_fifo_rdata.addr;
+        core_if.rdata     = issue_fifo_rdata.bits;
+    }
+
+    /*--------- fetch logic ----------*/
+    var fetch_pc          : Addr ;
+    var fetch_requested   : logic;
+    var fetch_pc_requested: Addr ;
+
+    always_comb {
+        mem_if.valid = 0;
+        mem_if.addr  = 0;
+        mem_if.wen   = 0;
+        mem_if.wdata = 0;
+        mem_if.wmask = 0;
+        if !core_if.is_hazard {
+            mem_if.valid = fetch_fifo_wready;
+            if fetch_requested {
+                mem_if.valid = mem_if.valid && mem_if.rvalid;
+            }
+            mem_if.addr = fetch_pc;
+        }
+    }
+
+    // memory -> fetch_fifo
+    always_comb {
+        fetch_fifo_flush      = core_if.is_hazard;
+        fetch_fifo_wvalid     = fetch_requested && mem_if.rvalid;
+        fetch_fifo_wdata.addr = fetch_pc_requested;
+        fetch_fifo_wdata.bits = mem_if.rdata;
+    }
+
+    always_ff {
+        if_reset {
+            fetch_pc           = INITIAL_PC;
+            fetch_requested    = 0;
+            fetch_pc_requested = 0;
+        } else {
+            if core_if.is_hazard {
+                fetch_pc           = {core_if.next_pc[XLEN - 1:3], 3'b0};
+                fetch_requested    = 0;
+                fetch_pc_requested = 0;
+            } else {
+                if fetch_requested {
+                    if mem_if.rvalid {
+                        fetch_requested = mem_if.ready && mem_if.valid;
+                        if mem_if.ready && mem_if.valid {
+                            fetch_pc_requested =  fetch_pc;
+                            fetch_pc           += 8;
+                        }
+                    }
+                } else {
+                    if mem_if.ready && mem_if.valid {
+                        fetch_requested    =  1;
+                        fetch_pc_requested =  fetch_pc;
+                        fetch_pc           += 8;
+                    }
+                }
+            }
+        }
+    }
+}

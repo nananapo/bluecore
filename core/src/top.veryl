@@ -28,13 +28,14 @@ module top #(
     inst rom_membus     : membus_if::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH>;
     inst dbg_membus     : Membus;
 
-    inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
+    // 命令フェッチ用
+    inst i_membus     : Membus;
+    inst i_membus_core: core_inst_if;
     // ロードストア命令用
     inst d_membus     : Membus;
     inst d_membus_core: core_data_if;
 
-    var memarb_last_i    : logic;
-    var memarb_last_iaddr: Addr ;
+    var memarb_last_i: logic;
 
     // デバッグ用のIO
     always_ff {
@@ -69,12 +70,10 @@ module top #(
     // mmio_controllerへのメモリアクセスを調停する
     always_ff {
         if_reset {
-            memarb_last_i     = 0;
-            memarb_last_iaddr = 0;
+            memarb_last_i = 0;
         } else {
             if mmio_membus.ready {
-                memarb_last_i     = !d_membus.valid;
-                memarb_last_iaddr = i_membus.addr;
+                memarb_last_i = !d_membus.valid;
             }
         }
     }
@@ -82,7 +81,7 @@ module top #(
     always_comb {
         i_membus.ready  = mmio_membus.ready && !d_membus.valid;
         i_membus.rvalid = mmio_membus.rvalid && memarb_last_i;
-        i_membus.rdata  = if memarb_last_iaddr[2] == 0 ? mmio_membus.rdata[31:0] : mmio_membus.rdata[63:32];
+        i_membus.rdata  = mmio_membus.rdata;
 
         d_membus.ready  = mmio_membus.ready;
         d_membus.rvalid = mmio_membus.rvalid && !memarb_last_i;
@@ -161,10 +160,17 @@ module top #(
         master: d_membus     ,
     );
 
+    inst fetcher: inst_fetcher (
+        clk                   ,
+        rst                   ,
+        core_if: i_membus_core,
+        mem_if : i_membus     ,
+    );
+
     inst c: core (
         clk                    ,
         rst                    ,
-        i_membus               ,
+        i_membus: i_membus_core,
         d_membus: d_membus_core,
         led                    ,
     );

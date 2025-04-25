@@ -2,18 +2,12 @@ import eei::*;
 import corectrl::*;
 
 module core (
-    clk     : input   clock                          ,
-    rst     : input   reset                          ,
-    i_membus: modport membus_if::<ILEN, XLEN>::master,
-    d_membus: modport core_data_if::master           ,
-    led     : output  UIntX                          ,
+    clk     : input   clock               ,
+    rst     : input   reset               ,
+    i_membus: modport core_inst_if::master,
+    d_membus: modport core_data_if::master,
+    led     : output  UIntX               ,
 ) {
-
-    // ifのFIFOのデータ型
-    struct if_fifo_type {
-        addr: Addr,
-        bits: Inst,
-    }
 
     struct exq_type {
         addr: Addr         ,
@@ -48,15 +42,6 @@ module core (
         raise_trap: logic   ,
     }
 
-    // 命令メモリ -> IFのFIFO
-    var if_fifo_wready    : logic       ;
-    var if_fifo_wready_two: logic       ;
-    var if_fifo_wvalid    : logic       ;
-    var if_fifo_wdata     : if_fifo_type;
-    var if_fifo_rready    : logic       ;
-    var if_fifo_rvalid    : logic       ;
-    var if_fifo_rdata     : if_fifo_type;
-
     // ID -> EXのFIFO
     var exq_wready: logic   ;
     var exq_wvalid: logic   ;
@@ -81,91 +66,21 @@ module core (
     var wbq_rvalid: logic   ;
     var wbq_rdata : wbq_type;
 
-
     ///////////////////////////////// IF Stage /////////////////////////////////
-
-    var if_pc          : Addr ;
-    var if_is_requested: logic; // フェッチ中かどうか
-    var if_pc_requested: Addr ; // 要求したアドレス
-
-    let if_pc_next: Addr = if_pc + 4;
 
     var control_hazard        : logic;
     var control_hazard_pc_next: Addr ;
 
-    // フェッチした命令を格納するFIFO
-    inst if_fifo: fifo #(
-        DATA_TYPE: if_fifo_type,
-        WIDTH    : 3           ,
-    ) (
-        clk                           ,
-        rst                           ,
-        flush     : control_hazard    ,
-        wready    : if_fifo_wready    ,
-        wready_two: if_fifo_wready_two,
-        wvalid    : if_fifo_wvalid    ,
-        wdata     : if_fifo_wdata     ,
-        rready    : if_fifo_rready    ,
-        rvalid    : if_fifo_rvalid    ,
-        rdata     : if_fifo_rdata     ,
-    );
-
-    // 命令フェッチ処理
     always_comb {
-        // FIFOに2個以上空きがあるとき、命令をフェッチする
-        i_membus.valid = if_fifo_wready_two;
-        i_membus.addr  = if_pc;
-        i_membus.wen   = 0;
-        i_membus.wdata = 'x; // wdataは使用しない
-    }
-
-    always_ff {
-        if_reset {
-            if_pc           = INITIAL_PC;
-            if_is_requested = 0;
-            if_pc_requested = 0;
-            if_fifo_wvalid  = 0;
-            if_fifo_wdata   = 0;
-        } else {
-            if control_hazard {
-                if_pc           = control_hazard_pc_next;
-                if_is_requested = 0;
-                if_fifo_wvalid  = 0;
-            } else {
-                if if_is_requested {
-                    if i_membus.rvalid {
-                        if_is_requested = i_membus.ready && i_membus.valid;
-                        if i_membus.ready && i_membus.valid {
-                            if_pc           = if_pc_next;
-                            if_pc_requested = if_pc;
-                        }
-                    }
-                } else {
-                    if i_membus.ready && i_membus.valid {
-                        if_is_requested = 1;
-                        if_pc           = if_pc_next;
-                        if_pc_requested = if_pc;
-                    }
-                }
-                // IFのFIFOの制御
-                if if_is_requested && i_membus.rvalid {
-                    if_fifo_wvalid     = 1;
-                    if_fifo_wdata.addr = if_pc_requested;
-                    if_fifo_wdata.bits = i_membus.rdata;
-                } else {
-                    if if_fifo_wvalid && if_fifo_wready {
-                        if_fifo_wvalid = 0;
-                    }
-                }
-            }
-        }
+        i_membus.is_hazard = control_hazard;
+        i_membus.next_pc   = control_hazard_pc_next;
     }
 
     ///////////////////////////////// ID Stage /////////////////////////////////
 
-    let ids_valid     : logic    = if_fifo_rvalid;
-    let ids_pc        : Addr     = if_fifo_rdata.addr;
-    let ids_inst_bits : Inst     = if_fifo_rdata.bits;
+    let ids_valid     : logic    = i_membus.rvalid;
+    let ids_pc        : Addr     = i_membus.raddr;
+    let ids_inst_bits : Inst     = i_membus.rdata;
     var ids_inst_valid: logic   ;
     var ids_ctrl      : InstCtrl;
     var ids_imm       : UIntX   ;
@@ -179,12 +94,12 @@ module core (
 
     always_comb {
         // ID -> EX
-        if_fifo_rready = exq_wready;
-        exq_wvalid     = if_fifo_rvalid;
-        exq_wdata.addr = if_fifo_rdata.addr;
-        exq_wdata.bits = if_fifo_rdata.bits;
-        exq_wdata.ctrl = ids_ctrl;
-        exq_wdata.imm  = ids_imm;
+        i_membus.rready = exq_wready;
+        exq_wvalid      = i_membus.rvalid;
+        exq_wdata.addr  = i_membus.raddr;
+        exq_wdata.bits  = i_membus.rdata;
+        exq_wdata.ctrl  = ids_ctrl;
+        exq_wdata.imm   = ids_imm;
         // exception
         exq_wdata.expt = 0;
         if !ids_inst_valid {
@@ -476,49 +391,24 @@ module core (
     #[ifdef(PRINT_DEBUG)]
     {
         var gen_inst_id: u64;
-        var if_inst_id : u64;
         var id_inst_id : u64;
         var ex_inst_id : u64;
         var mem_inst_id: u64;
         var wb_inst_id : u64;
 
-        var if_fifo_wdata_inst_id: u64;
-        var if_fifo_rdata_inst_id: u64;
-
-        inst if_inst_id_fifo: fifo #(
-            DATA_TYPE: u64,
-            WIDTH    : 3  ,
-        ) (
-            clk                          ,
-            rst                          ,
-            flush : control_hazard       ,
-            wready: _                    ,
-            wvalid: if_fifo_wvalid       ,
-            wdata : if_fifo_wdata_inst_id,
-            rready: if_fifo_rready       ,
-            rvalid: _                    ,
-            rdata : if_fifo_rdata_inst_id,
-        );
-
         always_comb {
-            id_inst_id = if_fifo_rdata_inst_id;
+            id_inst_id = gen_inst_id;
         }
 
         always_ff {
             if_reset {
-                gen_inst_id           = 0;
-                if_inst_id            = 0;
-                ex_inst_id            = 0;
-                mem_inst_id           = 0;
-                wb_inst_id            = 0;
-                if_fifo_wdata_inst_id = 0;
+                gen_inst_id = 0;
+                ex_inst_id  = 0;
+                mem_inst_id = 0;
+                wb_inst_id  = 0;
             } else {
-                if i_membus.ready && i_membus.valid {
+                if i_membus.rready && i_membus.rvalid {
                     gen_inst_id = gen_inst_id + 1;
-                    if_inst_id  = gen_inst_id;
-                }
-                if if_is_requested && i_membus.rvalid {
-                    if_fifo_wdata_inst_id = if_inst_id;
                 }
                 if exq_wready && exq_wvalid {
                     ex_inst_id = id_inst_id;
@@ -542,27 +432,12 @@ module core (
 
                 $display("");
                 $display("clock,%d", clock_count);
-                // if
-                $display("if.membus.valid,b,%b", i_membus.valid);
-                if i_membus.ready && i_membus.valid {
-                    $display("if.inst_id,d,%b", gen_inst_id);
-                } else if if_is_requested {
-                    $display("if.inst_id,d,%b", if_inst_id);
-                }
-                if i_membus.valid {
-                    $display("if.addr,h,%b", i_membus.addr);
-                }
-                $display("if.membus.rvalid,b,%b", if_is_requested && i_membus.rvalid);
-                if if_is_requested && i_membus.rvalid {
-                    $display("if.membus.raddr,h,%b", if_pc_requested);
-                    $display("if.membus.rdata,h,%b", i_membus.rdata);
-                }
                 // id
                 $display("id.valid,b,%b", ids_valid);
                 if ids_valid {
                     $display("id.inst_id,d,%b", id_inst_id);
                     $display("id.addr,h,%b", ids_pc);
-                    $display("id.inst,h,%b", if_fifo_rdata.bits);
+                    $display("id.inst,h,%b", ids_inst_bits);
                     $display("id.itype,b,%b", ids_ctrl.itype);
                     $display("id.imm,h,%b", ids_imm);
                     $display("id.expt.valid,b,%b", exq_wdata.expt.valid);
