@@ -86,10 +86,11 @@ module core (
     var ids_imm       : UIntX   ;
 
     inst decoder: inst_decoder (
-        bits : ids_inst_bits ,
-        valid: ids_inst_valid,
-        ctrl : ids_ctrl      ,
-        imm  : ids_imm       ,
+        bits  : ids_inst_bits  ,
+        is_rvc: i_membus.is_rvc,
+        valid : ids_inst_valid ,
+        ctrl  : ids_ctrl       ,
+        imm   : ids_imm        ,
     );
 
     always_comb {
@@ -368,7 +369,7 @@ module core (
     let wbs_rd_addr: logic<5> = wbs_inst_bits[11:7];
     let wbs_wb_data: UIntX    = switch {
         wbs_ctrl.is_lui                    : wbs_imm,
-        wbs_ctrl.is_jump                   : wbs_pc + 4,
+        wbs_ctrl.is_jump                   : wbs_pc + (if wbs_ctrl.is_rvc ? 2 : 4),
         wbs_ctrl.is_load || wbs_ctrl.is_amo: wbq_rdata.mem_rdata,
         wbs_ctrl.is_csr                    : wbq_rdata.csr_rdata,
         default                            : wbq_rdata.alu_result

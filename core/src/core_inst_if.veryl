@@ -5,6 +5,7 @@ interface core_inst_if {
     var rready   : logic;
     var raddr    : Addr ;
     var rdata    : Inst ;
+    var is_rvc   : logic;
     var is_hazard: logic;
     var next_pc  : Addr ;
 
@@ -13,6 +14,7 @@ interface core_inst_if {
         rready   : output,
         raddr    : input ,
         rdata    : input ,
+        is_rvc   : input ,
         is_hazard: output, // control hazard
         next_pc  : output, // actual next pc
     }
