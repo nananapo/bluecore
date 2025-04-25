@@ -66,15 +66,34 @@ module inst_fetcher (
     /*--------- issue logic ----------*/
     var issue_pc_offset: logic<3>;
 
+    var issue_is_rdata_saved: logic    ;
+    var issue_saved_addr    : Addr     ;
+    var issue_saved_bits    : logic<16>; // rdata[63:48]
+
     always_ff {
         if_reset {
-            issue_pc_offset = 0;
+            issue_pc_offset      = 0;
+            issue_is_rdata_saved = 0;
+            issue_saved_addr     = 0;
+            issue_saved_bits     = 0;
         } else {
             if core_if.is_hazard {
-                issue_pc_offset = core_if.next_pc[2:0];
+                issue_pc_offset      = core_if.next_pc[2:0];
+                issue_is_rdata_saved = 0;
             } else {
-                if issue_fifo_wready && issue_fifo_wvalid {
-                    issue_pc_offset += 4;
+                // offsetが6な32ビット命令の場合、
+                // アドレスと上位16ビットを保存してFIFOを読み進める
+                if issue_pc_offset == 6 && !issue_is_rdata_saved {
+                    if fetch_fifo_rvalid {
+                        issue_is_rdata_saved = 1;
+                        issue_saved_addr     = fetch_fifo_rdata.addr;
+                        issue_saved_bits     = fetch_fifo_rdata.bits[63:48];
+                    }
+                } else {
+                    if issue_fifo_wready && issue_fifo_wvalid {
+                        issue_pc_offset      += 4;
+                        issue_is_rdata_saved =  0;
+                    }
                 }
             }
         }
@@ -92,14 +111,28 @@ module inst_fetcher (
 
         if !core_if.is_hazard && fetch_fifo_rvalid {
             if issue_fifo_wready {
-                fetch_fifo_rready     = offset == 4;
-                issue_fifo_wvalid     = 1;
-                issue_fifo_wdata.addr = {raddr[msb:3], offset};
-                issue_fifo_wdata.bits = case offset {
-                    0      : rdata[31:0],
-                    4      : rdata[63:32],
-                    default: 0,
-                };
+                if offset == 6 {
+                    // offsetが6な32ビット命令の場合、
+                    // 命令は{rdata_next[15:0], rdata[63:48}になる
+                    if issue_is_rdata_saved {
+                        issue_fifo_wvalid     = 1;
+                        issue_fifo_wdata.addr = {issue_saved_addr[msb:3], offset};
+                        issue_fifo_wdata.bits = {rdata[15:0], issue_saved_bits};
+                    } else {
+                        // Read next 8 bytes
+                        fetch_fifo_rready = 1;
+                    }
+                } else {
+                    fetch_fifo_rready     = offset == 4;
+                    issue_fifo_wvalid     = 1;
+                    issue_fifo_wdata.addr = {raddr[msb:3], offset};
+                    issue_fifo_wdata.bits = case offset {
+                        0      : rdata[31:0],
+                        2      : rdata[47:16],
+                        4      : rdata[63:32],
+                        default: 0,
+                    };
+                }
             }
         }
     }
