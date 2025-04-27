@@ -71,6 +71,24 @@ module inst_fetcher (
     var issue_saved_addr    : Addr     ;
     var issue_saved_bits    : logic<16>; // rdata[63:48]
 
+
+    // instruction converter
+    var rvcc_inst16: logic<16>;
+    var rvcc_is_rvc: logic    ;
+    var rvcc_inst32: Inst     ;
+
+    inst rvcc: rvc_converter (
+        inst16: case issue_pc_offset {
+            0      : fetch_fifo_rdata.bits[15:0],
+            2      : fetch_fifo_rdata.bits[31:16],
+            4      : fetch_fifo_rdata.bits[47:32],
+            6      : fetch_fifo_rdata.bits[63:48],
+            default: 0,
+        },
+        is_rvc: rvcc_is_rvc,
+        inst32: rvcc_inst32,
+    );
+
     always_ff {
         if_reset {
             issue_pc_offset      = 0;
@@ -84,7 +102,7 @@ module inst_fetcher (
             } else {
                 // offsetが6な32ビット命令の場合、
                 // アドレスと上位16ビットを保存してFIFOを読み進める
-                if issue_pc_offset == 6 && !issue_is_rdata_saved {
+                if issue_pc_offset == 6 && !rvcc_is_rvc && !issue_is_rdata_saved {
                     if fetch_fifo_rvalid {
                         issue_is_rdata_saved = 1;
                         issue_saved_addr     = fetch_fifo_rdata.addr;
@@ -92,7 +110,7 @@ module inst_fetcher (
                     }
                 } else {
                     if issue_fifo_wready && issue_fifo_wvalid {
-                        issue_pc_offset      += 4;
+                        issue_pc_offset      += if issue_is_rdata_saved || !rvcc_is_rvc ? 4 : 2;
                         issue_is_rdata_saved =  0;
                     }
                 }
@@ -121,20 +139,31 @@ module inst_fetcher (
                         issue_fifo_wdata.bits   = {rdata[15:0], issue_saved_bits};
                         issue_fifo_wdata.is_rvc = 0;
                     } else {
-                        // Read next 8 bytes
                         fetch_fifo_rready = 1;
+                        if rvcc_is_rvc {
+                            issue_fifo_wvalid       = 1;
+                            issue_fifo_wdata.addr   = {raddr[msb:3], offset};
+                            issue_fifo_wdata.is_rvc = 1;
+                            issue_fifo_wdata.bits   = rvcc_inst32;
+                        } else {
+                            // Read next 8 bytes
+                        }
                     }
                 } else {
-                    fetch_fifo_rready     = offset == 4;
+                    fetch_fifo_rready     = !rvcc_is_rvc && offset == 4;
                     issue_fifo_wvalid     = 1;
                     issue_fifo_wdata.addr = {raddr[msb:3], offset};
-                    issue_fifo_wdata.bits = case offset {
-                        0      : rdata[31:0],
-                        2      : rdata[47:16],
-                        4      : rdata[63:32],
-                        default: 0,
-                    };
-                    issue_fifo_wdata.is_rvc = 0;
+                    if rvcc_is_rvc {
+                        issue_fifo_wdata.bits = rvcc_inst32;
+                    } else {
+                        issue_fifo_wdata.bits = case offset {
+                            0      : rdata[31:0],
+                            2      : rdata[47:16],
+                            4      : rdata[63:32],
+                            default: 0,
+                        };
+                    }
+                    issue_fifo_wdata.is_rvc = rvcc_is_rvc;
                 }
             }
         }

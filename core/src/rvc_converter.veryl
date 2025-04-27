@@ -1,0 +1,119 @@
+import eei::*;
+import inst_gen_pkg::*;
+
+module rvc_converter (
+    inst16: input  logic<16>,
+    is_rvc: output logic    ,
+    inst32: output Inst, // expanded inst16
+) {
+    let rs1 : logic<5> = inst16[11:7];
+    let rs2 : logic<5> = inst16[6:2];
+    let rs1d: logic<5> = {2'b01, inst16[9:7]};
+    let rs2d: logic<5> = {2'b01, inst16[4:2]};
+
+    let c0_mem_w: logic<12> = {5'b0, inst16[5], inst16[12:10], inst16[6], 2'b0}; // C.LW, C.SW
+    let c0_mem_d: logic<12> = {4'b0, inst16[6:5], inst16[12:10], 3'b0}; // C.LD, C.SD
+
+    let imm_i    : logic<12> = {inst16[12] repeat 7, inst16[6:2]};
+    let imm_shamt: logic<6>  = {inst16[12], inst16[6:2]};
+    let imm_j    : logic<20> = {inst16[12] repeat 10, inst16[8], inst16[10:9], inst16[6], inst16[7], inst16[2], inst16[11], inst16[5:3]};
+    let imm_br   : logic<12> = {inst16[12] repeat 5, inst16[6:5], inst16[2], inst16[11:10], inst16[4:3]};
+
+    always_comb {
+        is_rvc = inst16[1:0] != 2'b11;
+        inst32 = {16'b0, inst16};
+
+        let funct3: logic<3> = inst16[15:13];
+        case inst16[1:0] { // opcode
+            2'b00: case funct3 { // C0
+                3'b000: if inst16 != 0 { // C.ADDI4SPN
+                    let nzuimm: logic<10> = {inst16[10:7], inst16[12:11], inst16[5], inst16[6], 2'b0};
+                    inst32 = addi(rs2d, 2, {2'b0, nzuimm});
+                }
+                3'b010: inst32 = load(rs2d, rs1d, c0_mem_w, 3'b010); // C.LW
+                3'b011: if XLEN >= 64 { // C.LD
+                    inst32 = load(rs2d, rs1d, c0_mem_d, 3'b011);
+                }
+                3'b110: inst32 = store(rs1d, rs2d, c0_mem_w, 3'b010); // C.SW
+                3'b111: if XLEN >= 64 { // C.SD
+                    inst32 = store(rs1d, rs2d, c0_mem_d, 3'b011);
+                }
+                default: {}
+            }
+            2'b01: case funct3 { // C1
+                3'b000: inst32 = addi(rs1, rs1, imm_i); // C.ADDI
+                3'b001: inst32 = if XLEN == 32 ? jal(1, imm_j) : addiw(rs1, rs1, imm_i); // C.JAL / C.ADDIW
+                3'b010: inst32 = addi(rs1, 0, imm_i); // C.LI
+                3'b011: if rs1 == 2 { // C.ADDI16SP
+                    let imm   : logic<10> = {inst16[12], inst16[4:3], inst16[5], inst16[2], inst16[6], 4'b0};
+                    inst32 = addi(2, 2, {imm[msb] repeat 2, imm});
+                } else { // C.LUI
+                    inst32 = lui(rs1, {imm_i[msb] repeat 8, imm_i});
+                }
+                3'b100: case inst16[11:10] { // funct2 or funct6[1:0]
+                    2'b00: if !(XLEN == 32 && imm_shamt[msb] == 1) {
+                        inst32 = srli(rs1d, rs1d, imm_shamt); // C.SRLI
+                    }
+                    2'b01: if !(XLEN == 32 && imm_shamt[msb] == 1) {
+                        inst32 = srai(rs1d, rs1d, imm_shamt); // C.SRAI
+                    }
+                    2'b10: inst32 = andi(rs1d, rs1d, imm_i); // C.ADNI
+                    2'b11: if inst16[12] == 0 {
+                        case inst16[6:5] {
+                            2'b00  : inst32 = sub(rs1d, rs1d, rs2d); // C.SUB
+                            2'b01  : inst32 = inst_xor(rs1d, rs1d, rs2d); // C.XOR
+                            2'b10  : inst32 = inst_or(rs1d, rs1d, rs2d); // C.OR
+                            2'b11  : inst32 = inst_and(rs1d, rs1d, rs2d); // C.AND
+                            default: {}
+                        }
+                    } else {
+                        if XLEN >= 64 {
+                            if inst16[6:5] == 2'b00 {
+                                inst32 = subw(rs1d, rs1d, rs2d); // C.SUBW
+                            } else if inst16[6:5] == 2'b01 {
+                                inst32 = addw(rs1d, rs1d, rs2d); // C.ADDW
+                            }
+                        }
+                    }
+                    default: {}
+                }
+                3'b101 : inst32 = jal(0, imm_j); // C.J
+                3'b110 : inst32 = beq(rs1d, 0, imm_br); // C.BEQZ
+                3'b111 : inst32 = bne(rs1d, 0, imm_br); // C.BNEZ
+                default: {}
+            }
+            2'b10: case funct3 { // C2
+                3'b000: if !(XLEN == 32 && imm_shamt[msb] == 1) {
+                    inst32 = slli(rs1, rs1, imm_shamt); // C.SLLI
+                }
+                3'b010: if rs1 != 0 { // C.LWSP
+                    let offset: logic<8> = {inst16[3:2], inst16[12], inst16[6:4], 2'b0};
+                    inst32 = load(rs1, 2, {4'b0, offset}, 3'b010);
+                }
+                3'b011: if XLEN >= 64 && rs1 != 0 { // C.LDSP
+                    let offset: logic<9> = {inst16[4:2], inst16[12], inst16[6:5], 3'b0};
+                    inst32 = load(rs1, 2, {3'b0, offset}, 3'b011);
+                }
+                3'b100: if inst16[12] == 0 {
+                    inst32 = if rs2 == 0 ? jalr(0, rs1, 0) : addi(rs1, rs2, 0); // C.JR / C.MV
+                } else {
+                    if rs2 == 0 {
+                        inst32 = if rs1 == 0 ? ebreak() : jalr(1, rs1, 0); // C.EBREAK : C.JALR
+                    } else {
+                        inst32 = add(rs1, rs1, rs2); // C.ADD
+                    }
+                }
+                3'b110: { // C.SWSP
+                    let offset: logic<8> = {inst16[8:7], inst16[12:9], 2'b0};
+                    inst32 = store(2, rs2, {4'b0, offset}, 3'b010);
+                }
+                3'b111: if XLEN >= 64 { // C.SDSP
+                    let offset: logic<9> = {inst16[9:7], inst16[12:10], 3'b0};
+                    inst32 = store(2, rs2, {3'b0, offset}, 3'b011);
+                }
+                default: {}
+            }
+            default: {}
+        }
+    }
+}
