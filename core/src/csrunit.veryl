@@ -38,11 +38,12 @@ module csrunit (
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
 
     // CSR
-    let misa  : UIntX = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
-    var mtvec : UIntX;
-    var mepc  : UIntX;
-    var mcause: UIntX;
-    var mtval : UIntX;
+    let misa   : UIntX = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
+    let mhartid: UIntX = 0;
+    var mtvec  : UIntX;
+    var mepc   : UIntX;
+    var mcause : UIntX;
+    var mtval  : UIntX;
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -68,14 +69,15 @@ module csrunit (
     always_comb {
         // read
         rdata = case csr_addr {
-            CsrAddr::MISA  : misa,
-            CsrAddr::MIMPID: MACHINE_IMPLEMENTATION_ID,
-            CsrAddr::MTVEC : mtvec,
-            CsrAddr::MEPC  : mepc,
-            CsrAddr::MCAUSE: mcause,
-            CsrAddr::MTVAL : mtval,
-            CsrAddr::LED   : led,
-            default        : 'x,
+            CsrAddr::MISA   : misa,
+            CsrAddr::MIMPID : MACHINE_IMPLEMENTATION_ID,
+            CsrAddr::MHARTID: mhartid,
+            CsrAddr::MTVEC  : mtvec,
+            CsrAddr::MEPC   : mepc,
+            CsrAddr::MCAUSE : mcause,
+            CsrAddr::MTVAL  : mtval,
+            CsrAddr::LED    : led,
+            default         : 'x,
         };
         // write
         wmask = case csr_addr {
