@@ -69,6 +69,7 @@ module csrunit (
         // read
         rdata = case csr_addr {
             CsrAddr::MISA  : misa,
+            CsrAddr::MIMPID: MACHINE_IMPLEMENTATION_ID,
             CsrAddr::MTVEC : mtvec,
             CsrAddr::MEPC  : mepc,
             CsrAddr::MCAUSE: mcause,
