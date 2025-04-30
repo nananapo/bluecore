@@ -20,11 +20,12 @@ module csrunit (
 ) {
 
     // wmasks
-    const MTVEC_WMASK : UIntX = 'hffff_ffff_ffff_fffc;
-    const MEPC_WMASK  : UIntX = 'hffff_ffff_ffff_fffe;
-    const MCAUSE_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
-    const MTVAL_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
-    const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
+    const MSTATUS_WMASK: UIntX = 'h0000_0000_0000_0000 as UIntX;
+    const MTVEC_WMASK  : UIntX = 'hffff_ffff_ffff_fffc;
+    const MEPC_WMASK   : UIntX = 'hffff_ffff_ffff_fffe;
+    const MCAUSE_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
+    const MTVAL_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
+    const LED_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
 
     var mode: PrivMode;
 
@@ -40,6 +41,7 @@ module csrunit (
     // CSR
     let misa   : UIntX = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
     let mhartid: UIntX = 0;
+    var mstatus: UIntX;
     var mtvec  : UIntX;
     var mepc   : UIntX;
     var mcause : UIntX;
@@ -72,6 +74,7 @@ module csrunit (
             CsrAddr::MISA   : misa,
             CsrAddr::MIMPID : MACHINE_IMPLEMENTATION_ID,
             CsrAddr::MHARTID: mhartid,
+            CsrAddr::MSTATUS: mstatus,
             CsrAddr::MTVEC  : mtvec,
             CsrAddr::MEPC   : mepc,
             CsrAddr::MCAUSE : mcause,
@@ -81,12 +84,13 @@ module csrunit (
         };
         // write
         wmask = case csr_addr {
-            CsrAddr::MTVEC : MTVEC_WMASK,
-            CsrAddr::MEPC  : MEPC_WMASK,
-            CsrAddr::MCAUSE: MCAUSE_WMASK,
-            CsrAddr::MTVAL : MTVAL_WMASK,
-            CsrAddr::LED   : LED_WMASK,
-            default        : 0,
+            CsrAddr::MSTATUS: MSTATUS_WMASK,
+            CsrAddr::MTVEC  : MTVEC_WMASK,
+            CsrAddr::MEPC   : MEPC_WMASK,
+            CsrAddr::MCAUSE : MCAUSE_WMASK,
+            CsrAddr::MTVAL  : MTVAL_WMASK,
+            CsrAddr::LED    : LED_WMASK,
+            default         : 0,
         };
         let wsource: UIntX = if ctrl.funct3[2] ? {1'b0 repeat XLEN - 5, rs1_addr} : rs1_data;
         wdata   = case ctrl.funct3[1:0] {
@@ -99,12 +103,13 @@ module csrunit (
 
     always_ff {
         if_reset {
-            mode   = PrivMode::M;
-            mtvec  = 0;
-            mepc   = 0;
-            mcause = 0;
-            mtval  = 0;
-            led    = 0;
+            mode    = PrivMode::M;
+            mstatus = 0;
+            mtvec   = 0;
+            mepc    = 0;
+            mcause  = 0;
+            mtval   = 0;
+            led     = 0;
         } else {
             if valid {
                 if raise_trap {
@@ -116,12 +121,13 @@ module csrunit (
                 } else {
                     if is_wsc {
                         case csr_addr {
-                            CsrAddr::MTVEC : mtvec  = wdata;
-                            CsrAddr::MEPC  : mepc   = wdata;
-                            CsrAddr::MCAUSE: mcause = wdata;
-                            CsrAddr::MTVAL : mtval  = wdata;
-                            CsrAddr::LED   : led    = wdata;
-                            default        : {}
+                            CsrAddr::MSTATUS: mstatus = wdata;
+                            CsrAddr::MTVEC  : mtvec   = wdata;
+                            CsrAddr::MEPC   : mepc    = wdata;
+                            CsrAddr::MCAUSE : mcause  = wdata;
+                            CsrAddr::MTVAL  : mtval   = wdata;
+                            CsrAddr::LED    : led     = wdata;
+                            default         : {}
                         }
                     }
                 }
