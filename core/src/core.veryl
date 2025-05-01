@@ -185,6 +185,7 @@ module core (
         // exception
         exq_wdata.expt.valid = ids_inst_bits == 32'h00000073; // ECALL
         exq_wdata.expt.cause = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
+        exq_wdata.expt.value = 0;
     }
 
     ///////////////////////////////// EX Stage /////////////////////////////////
@@ -457,6 +458,7 @@ module core (
                 $display("  expt  : %b", exq_wdata.expt.valid);
                 if exq_wdata.expt.valid {
                     $display("  cause : %d", exq_wdata.expt.cause);
+                    $display("  value : %d", exq_wdata.expt.value);
                 }
             }
             $display("EX -----");
@@ -465,6 +467,7 @@ module core (
                 $display("  expt    : %b", exq_rdata.expt.valid);
                 if exq_rdata.expt.valid {
                     $display("  cause  : %d", exq_rdata.expt.cause);
+                    $display("  value  : %d", exq_rdata.expt.value);
                 }
                 $display("  op1     : %h", exs_op1);
                 $display("  op2     : %h", exs_op2);
