@@ -22,12 +22,13 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK: UIntX = 'h0000_0000_0000_0000 as UIntX;
-    const MTVEC_WMASK  : UIntX = 'hffff_ffff_ffff_fffc;
-    const MEPC_WMASK   : UIntX = 'hffff_ffff_ffff_fffe;
-    const MCAUSE_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
-    const MTVAL_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
-    const LED_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
+    const MSTATUS_WMASK : UIntX = 'h0000_0000_0000_0000 as UIntX;
+    const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fffc;
+    const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
+    const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
+    const MCAUSE_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
+    const MTVAL_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
+    const LED_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
 
     var mode: PrivMode;
 
@@ -41,14 +42,15 @@ module csrunit (
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
 
     // CSR
-    let misa   : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
-    let mhartid: UIntX  = 0;
-    var mstatus: UIntX ;
-    var mtvec  : UIntX ;
-    var mcycle : UInt64;
-    var mepc   : UIntX ;
-    var mcause : UIntX ;
-    var mtval  : UIntX ;
+    let misa    : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
+    let mhartid : UIntX  = 0;
+    var mstatus : UIntX ;
+    var mtvec   : UIntX ;
+    var mcycle  : UInt64;
+    var mscratch: UIntX ;
+    var mepc    : UIntX ;
+    var mcause  : UIntX ;
+    var mtval   : UIntX ;
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -84,6 +86,7 @@ module csrunit (
             CsrAddr::MTVEC   : mtvec,
             CsrAddr::MCYCLE  : mcycle,
             CsrAddr::MINSTRET: minstret,
+            CsrAddr::MSCRATCH: mscratch,
             CsrAddr::MEPC    : mepc,
             CsrAddr::MCAUSE  : mcause,
             CsrAddr::MTVAL   : mtval,
@@ -92,13 +95,14 @@ module csrunit (
         };
         // write
         wmask = case csr_addr {
-            CsrAddr::MSTATUS: MSTATUS_WMASK,
-            CsrAddr::MTVEC  : MTVEC_WMASK,
-            CsrAddr::MEPC   : MEPC_WMASK,
-            CsrAddr::MCAUSE : MCAUSE_WMASK,
-            CsrAddr::MTVAL  : MTVAL_WMASK,
-            CsrAddr::LED    : LED_WMASK,
-            default         : 0,
+            CsrAddr::MSTATUS : MSTATUS_WMASK,
+            CsrAddr::MTVEC   : MTVEC_WMASK,
+            CsrAddr::MSCRATCH: MSCRATCH_WMASK,
+            CsrAddr::MEPC    : MEPC_WMASK,
+            CsrAddr::MCAUSE  : MCAUSE_WMASK,
+            CsrAddr::MTVAL   : MTVAL_WMASK,
+            CsrAddr::LED     : LED_WMASK,
+            default          : 0,
         };
         let wsource: UIntX = if ctrl.funct3[2] ? {1'b0 repeat XLEN - 5, rs1_addr} : rs1_data;
         wdata   = case ctrl.funct3[1:0] {
@@ -111,14 +115,15 @@ module csrunit (
 
     always_ff {
         if_reset {
-            mode    = PrivMode::M;
-            mstatus = 0;
-            mtvec   = 0;
-            mcycle  = 0;
-            mepc    = 0;
-            mcause  = 0;
-            mtval   = 0;
-            led     = 0;
+            mode     = PrivMode::M;
+            mstatus  = 0;
+            mtvec    = 0;
+            mscratch = 0;
+            mcycle   = 0;
+            mepc     = 0;
+            mcause   = 0;
+            mtval    = 0;
+            led      = 0;
         } else {
             mcycle += 1;
             if valid {
@@ -131,13 +136,14 @@ module csrunit (
                 } else {
                     if is_wsc {
                         case csr_addr {
-                            CsrAddr::MSTATUS: mstatus = wdata;
-                            CsrAddr::MTVEC  : mtvec   = wdata;
-                            CsrAddr::MEPC   : mepc    = wdata;
-                            CsrAddr::MCAUSE : mcause  = wdata;
-                            CsrAddr::MTVAL  : mtval   = wdata;
-                            CsrAddr::LED    : led     = wdata;
-                            default         : {}
+                            CsrAddr::MSTATUS : mstatus  = wdata;
+                            CsrAddr::MTVEC   : mtvec    = wdata;
+                            CsrAddr::MSCRATCH: mscratch = wdata;
+                            CsrAddr::MEPC    : mepc     = wdata;
+                            CsrAddr::MCAUSE  : mcause   = wdata;
+                            CsrAddr::MTVAL   : mtval    = wdata;
+                            CsrAddr::LED     : led      = wdata;
+                            default          : {}
                         }
                     }
                 }
