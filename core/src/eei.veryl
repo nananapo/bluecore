@@ -35,6 +35,7 @@ package eei {
         MTVEC = 12'h305,
         MEPC = 12'h341,
         MCAUSE = 12'h342,
+        MTVAL = 12'h343,
         LED = 12'h800,
     }
 
