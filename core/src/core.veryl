@@ -321,9 +321,11 @@ module core (
         membus: d_membus                      ,
     );
 
-    var csru_rdata      : UIntX;
-    var csru_raise_trap : logic;
-    var csru_trap_vector: Addr ;
+    var csru_rdata      : UIntX ;
+    var csru_raise_trap : logic ;
+    var csru_trap_vector: Addr  ;
+    var csru_trap_return: logic ;
+    var minstret        : UInt64;
 
     inst csru: csrunit (
         clk                               ,
@@ -340,6 +342,8 @@ module core (
         rdata      : csru_rdata           ,
         raise_trap : csru_raise_trap      ,
         trap_vector: csru_trap_vector     ,
+        trap_return: csru_trap_return     ,
+        minstret                          ,
         led                               ,
     );
 
@@ -354,7 +358,7 @@ module core (
         wbq_wdata.alu_result = memq_rdata.alu_result;
         wbq_wdata.mem_rdata  = memu_rdata;
         wbq_wdata.csr_rdata  = csru_rdata;
-        wbq_wdata.raise_trap = csru_raise_trap;
+        wbq_wdata.raise_trap = csru_raise_trap && !csru_trap_return;
     }
 
     ///////////////////////////////// WB Stage /////////////////////////////////
@@ -376,6 +380,16 @@ module core (
     :
         wbq_rdata.alu_result
     ;
+
+    always_ff {
+        if_reset {
+            minstret = 0;
+        } else {
+            if wbq_rvalid && wbq_rready && !wbq_rdata.raise_trap {
+                minstret += 1;
+            }
+        }
+    }
 
     always_ff {
         if wbs_valid && wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {
