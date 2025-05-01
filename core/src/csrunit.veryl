@@ -16,6 +16,8 @@ module csrunit (
     rdata      : output UIntX            ,
     raise_trap : output logic            ,
     trap_vector: output Addr             ,
+    trap_return: output logic            ,
+    minstret   : input  UInt64           ,
     led        : output UIntX            ,
 ) {
 
@@ -61,8 +63,11 @@ module csrunit (
         default                                    : 0
     };
 
+    // Trap Return
+    assign trap_return = valid && is_mret && !raise_expt;
+
     // Trap
-    assign raise_trap  = raise_expt || (valid && is_mret);
+    assign raise_trap  = raise_expt || trap_return;
     let trap_cause : UIntX = expt_cause;
     assign trap_vector = if raise_expt ? mtvec : mepc;
 
@@ -72,17 +77,18 @@ module csrunit (
     always_comb {
         // read
         rdata = case csr_addr {
-            CsrAddr::MISA   : misa,
-            CsrAddr::MIMPID : MACHINE_IMPLEMENTATION_ID,
-            CsrAddr::MHARTID: mhartid,
-            CsrAddr::MSTATUS: mstatus,
-            CsrAddr::MTVEC  : mtvec,
-            CsrAddr::MCYCLE : mcycle,
-            CsrAddr::MEPC   : mepc,
-            CsrAddr::MCAUSE : mcause,
-            CsrAddr::MTVAL  : mtval,
-            CsrAddr::LED    : led,
-            default         : 'x,
+            CsrAddr::MISA    : misa,
+            CsrAddr::MIMPID  : MACHINE_IMPLEMENTATION_ID,
+            CsrAddr::MHARTID : mhartid,
+            CsrAddr::MSTATUS : mstatus,
+            CsrAddr::MTVEC   : mtvec,
+            CsrAddr::MCYCLE  : mcycle,
+            CsrAddr::MINSTRET: minstret,
+            CsrAddr::MEPC    : mepc,
+            CsrAddr::MCAUSE  : mcause,
+            CsrAddr::MTVAL   : mtval,
+            CsrAddr::LED     : led,
+            default          : 'x,
         };
         // write
         wmask = case csr_addr {
