@@ -11,8 +11,9 @@ module aclint_memory (
     var mtimecmp0: UInt64;
 
     always_comb {
-        aclint.msip = msip0;
-        aclint.mtip = mtime >= mtimecmp0;
+        aclint.msip  = msip0;
+        aclint.mtip  = mtime >= mtimecmp0;
+        aclint.mtime = mtime;
     }
 
     assign membus.ready = 1;
