@@ -13,6 +13,7 @@ module csrunit (
     csr_addr   : input   logic           <12>,
     rs1_addr   : input   logic           <5> ,
     rs1_data   : input   UIntX               ,
+    can_intr   : input   logic               ,
     rdata      : output  UIntX               ,
     raise_trap : output  logic               ,
     trap_vector: output  Addr                ,
@@ -75,6 +76,11 @@ module csrunit (
     let mstatus_mpie: logic = mstatus[7];
     let mstatus_mie : logic = mstatus[3];
 
+    // Interrupt
+    let raise_interrupt : logic = valid && can_intr && mstatus_mie && (mip & mie) != 0;
+    let interrupt_cause : UIntX = CsrCause::MACHINE_SOFTWARE_INTERRUPT;
+    let interrupt_vector: Addr  = mtvec;
+
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
     let expt_cause: UIntX = switch {
@@ -89,12 +95,21 @@ module csrunit (
     };
 
     // Trap Return
-    assign trap_return = valid && is_mret && !raise_expt;
+    assign trap_return = valid && is_mret && !raise_expt && !raise_interrupt;
 
     // Trap
-    assign raise_trap  = raise_expt || trap_return;
-    let trap_cause : UIntX = expt_cause;
-    assign trap_vector = if raise_expt ? mtvec : mepc;
+    assign raise_trap = raise_expt || raise_interrupt || trap_return;
+    let trap_cause: UIntX = switch {
+        raise_expt     : expt_cause,
+        raise_interrupt: interrupt_cause,
+        default        : 0,
+    };
+    assign trap_vector = switch {
+        raise_expt     : mtvec,
+        raise_interrupt: interrupt_vector,
+        trap_return    : mepc,
+        default        : 0,
+    };
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
@@ -155,10 +170,12 @@ module csrunit (
             mcycle += 1;
             if valid {
                 if raise_trap {
-                    if raise_expt {
+                    if raise_expt || raise_interrupt {
                         mepc   = pc;
                         mcause = trap_cause;
-                        mtval  = expt_value;
+                        if raise_expt {
+                            mtval = expt_value;
+                        }
                         // save mstatus.mie to mstatus.mpie
                         // and set mstatus.mie = 0
                         mstatus[7] = mstatus[3];
