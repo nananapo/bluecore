@@ -140,6 +140,9 @@ module csrunit (
             CsrAddr::MCAUSE  : mcause,
             CsrAddr::MTVAL   : mtval,
             CsrAddr::LED     : led,
+            CsrAddr::CYCLE   : mcycle,
+            CsrAddr::TIME    : aclint.mtime,
+            CsrAddr::INSTRET : minstret,
             default          : 'x,
         };
         // write
