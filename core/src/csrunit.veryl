@@ -24,7 +24,7 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK : UIntX = 'h0000_0000_0000_0088 as UIntX;
+    const MSTATUS_WMASK : UIntX = 'h0000_0000_0020_0088 as UIntX;
     const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fffd;
     const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
