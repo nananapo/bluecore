@@ -60,7 +60,8 @@ module inst_decoder (
             OP_SYSTEM: f3 != 3'b000 && f3 != 3'b100 || // CSRR(W|S|C)[I]
              bits == 32'h00000073 || // ECALL
              bits == 32'h00100073 || // EBREAK
-             bits == 32'h30200073, //MRET
+             bits == 32'h30200073 || //MRET
+             bits == 32'h10500073, // WFI
             OP_MISC_MEM: T, // FENCE
             OP_AMO     : f3 == 3'b010 || f3 == 3'b011, // AMO
             default    : F,
