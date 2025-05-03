@@ -62,7 +62,7 @@ module csrunit (
         1'b0, // 0
         1'b0, // SEIP
         1'b0, // 0
-        1'b0, // MTIP
+        aclint.mtip, // MTIP
         1'b0, // 0
         1'b0, // STIP
         1'b0, // 0
@@ -77,9 +77,14 @@ module csrunit (
     let mstatus_mie : logic = mstatus[3];
 
     // Interrupt
-    let raise_interrupt : logic = valid && can_intr && mstatus_mie && (mip & mie) != 0;
-    let interrupt_cause : UIntX = CsrCause::MACHINE_SOFTWARE_INTERRUPT;
-    let interrupt_vector: Addr  = if mtvec[0] == 0 ? {mtvec[msb:2], 2'b0} : // Direct
+    let interrupt_pending: UIntX = mip & mie;
+    let raise_interrupt  : logic = valid && can_intr && mstatus_mie && interrupt_pending != 0;
+    let interrupt_cause  : UIntX = switch {
+        interrupt_pending[3]: CsrCause::MACHINE_SOFTWARE_INTERRUPT,
+        interrupt_pending[7]: CsrCause::MACHINE_TIMER_INTERRUPT,
+        default             : 0,
+    };
+    let interrupt_vector: Addr = if mtvec[0] == 0 ? {mtvec[msb:2], 2'b0} : // Direct
      {mtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}; // Vectored
 
     // Exception
