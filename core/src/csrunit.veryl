@@ -47,7 +47,7 @@ module csrunit (
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
 
     // CSR
-    let misa    : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
+    let misa    : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000100000001000100000101}; // U, M, I, C, A
     let mhartid : UIntX  = 0;
     var mstatus : UIntX ;
     var mtvec   : UIntX ;
@@ -169,7 +169,7 @@ module csrunit (
     always_ff {
         if_reset {
             mode     = PrivMode::M;
-            mstatus  = 0;
+            mstatus  = MSTATUS_UXL;
             mtvec    = 0;
             mie      = 0;
             mscratch = 0;

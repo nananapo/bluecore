@@ -15,6 +15,9 @@ package eei {
     // Machine Implementation ID
     const MACHINE_IMPLEMENTATION_ID: UIntX = 1;
 
+    // mstatus
+    const MSTATUS_UXL: UInt64 = 2 << 32;
+
     // メモリバスのデータ幅
     const MEMBUS_DATA_WIDTH: u32 = 64;
 
