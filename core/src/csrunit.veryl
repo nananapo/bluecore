@@ -29,6 +29,7 @@ module csrunit (
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
     const MCAUSE_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
+    const MIE_WMASK     : UIntX = 'h0000_0000_0000_0088 as UIntX;
     const LED_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
 
     var mode: PrivMode;
@@ -47,11 +48,28 @@ module csrunit (
     let mhartid : UIntX  = 0;
     var mstatus : UIntX ;
     var mtvec   : UIntX ;
+    var mie     : UIntX ;
     var mcycle  : UInt64;
     var mscratch: UIntX ;
     var mepc    : UIntX ;
     var mcause  : UIntX ;
     var mtval   : UIntX ;
+
+    let mip: UIntX = {
+        1'b0 repeat XLEN - 12, // 0, LCOFIP
+        1'b0, // MEIP
+        1'b0, // 0
+        1'b0, // SEIP
+        1'b0, // 0
+        1'b0, // MTIP
+        1'b0, // 0
+        1'b0, // STIP
+        1'b0, // 0
+        aclint.msip, // MSIP
+        1'b0, // 0
+        1'b0, // SSIP
+        1'b0, // 0
+    };
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -85,6 +103,8 @@ module csrunit (
             CsrAddr::MHARTID : mhartid,
             CsrAddr::MSTATUS : mstatus,
             CsrAddr::MTVEC   : mtvec,
+            CsrAddr::MIP     : mip,
+            CsrAddr::MIE     : mie,
             CsrAddr::MCYCLE  : mcycle,
             CsrAddr::MINSTRET: minstret,
             CsrAddr::MSCRATCH: mscratch,
@@ -98,6 +118,7 @@ module csrunit (
         wmask = case csr_addr {
             CsrAddr::MSTATUS : MSTATUS_WMASK,
             CsrAddr::MTVEC   : MTVEC_WMASK,
+            CsrAddr::MIE     : MIE_WMASK,
             CsrAddr::MSCRATCH: MSCRATCH_WMASK,
             CsrAddr::MEPC    : MEPC_WMASK,
             CsrAddr::MCAUSE  : MCAUSE_WMASK,
@@ -119,6 +140,7 @@ module csrunit (
             mode     = PrivMode::M;
             mstatus  = 0;
             mtvec    = 0;
+            mie      = 0;
             mscratch = 0;
             mcycle   = 0;
             mepc     = 0;
@@ -139,6 +161,7 @@ module csrunit (
                         case csr_addr {
                             CsrAddr::MSTATUS : mstatus  = wdata;
                             CsrAddr::MTVEC   : mtvec    = wdata;
+                            CsrAddr::MIE     : mie      = wdata;
                             CsrAddr::MSCRATCH: mscratch = wdata;
                             CsrAddr::MEPC    : mepc     = wdata;
                             CsrAddr::MCAUSE  : mcause   = wdata;
