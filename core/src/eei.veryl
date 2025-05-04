@@ -17,6 +17,7 @@ package eei {
 
     // mstatus
     const MSTATUS_UXL: UInt64 = 2 << 32;
+    const MSTATUS_SXL: UInt64 = 2 << 34;
 
     // メモリバスのデータ幅
     const MEMBUS_DATA_WIDTH: u32 = 64;

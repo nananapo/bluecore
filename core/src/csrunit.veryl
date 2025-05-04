@@ -55,7 +55,7 @@ module csrunit (
     let expt_trap_return_priv: logic = is_mret && mode <: PrivMode::M; // attempt to execute trap return instruction in low privilege level
 
     // CSR
-    let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000100000001000100000101}; // U, M, I, C, A
+    let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000101000001000100000101}; // U, S, M, I, C, A
     let mhartid   : UIntX  = 0;
     var mstatus   : UIntX ;
     var mtvec     : UIntX ;
@@ -193,7 +193,7 @@ module csrunit (
     always_ff {
         if_reset {
             mode       = PrivMode::M;
-            mstatus    = MSTATUS_UXL;
+            mstatus    = MSTATUS_SXL | MSTATUS_UXL;
             mtvec      = 0;
             mie        = 0;
             mcounteren = 0;
@@ -256,7 +256,7 @@ module csrunit (
         var result: UIntX;
         result = wdata;
         // MPP
-        if wdata[12:11] != PrivMode::M && wdata[12:11] != PrivMode::U {
+        if wdata[12:11] == 2'b10 {
             result[12:11] = mstatus[12:11];
         }
         return result;
