@@ -49,6 +49,8 @@ module csrunit (
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
     // MRET命令かどうか
     let is_mret: logic = inst_bits == 32'h30200073;
+    // SRET命令かどうか
+    let is_sret: logic = inst_bits == 32'h10200073;
     // WFI命令かどうか
     let is_wfi: logic = inst_bits == 32'h10500073;
 
@@ -67,7 +69,7 @@ module csrunit (
         CsrAddr::INSTRET: !scounteren[2],
         default         : 0,
     }); // attempt to access Zicntr CSR without permission
-    let expt_trap_return_priv: logic = is_mret && mode <: PrivMode::M; // attempt to execute trap return instruction in low privilege level
+    let expt_trap_return_priv: logic = (is_mret && mode <: PrivMode::M) || (is_sret && mode <: PrivMode::S); // attempt to execute trap return instruction in low privilege level
 
     // CSR
     let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000101000001000100000101}; // U, S, M, I, C, A
@@ -151,8 +153,9 @@ module csrunit (
     let expt_mode  : PrivMode = PrivMode::M;
 
     // Trap Return
-    assign trap_return      = valid && is_mret && !raise_expt && !raise_interrupt;
-    let trap_return_mode: PrivMode = mstatus_mpp;
+    assign trap_return        = valid && (is_mret || is_sret) && !raise_expt && !raise_interrupt;
+    let trap_return_mode  : PrivMode = if is_mret ? mstatus_mpp : mstatus_spp;
+    let trap_return_vector: Addr     = if is_mret ? mepc : sepc;
 
     // Trap
     assign raise_trap = raise_expt || raise_interrupt || trap_return;
@@ -164,7 +167,7 @@ module csrunit (
     assign trap_vector = switch {
         raise_expt     : expt_vector,
         raise_interrupt: interrupt_vector,
-        trap_return    : mepc,
+        trap_return    : trap_return_vector,
         default        : 0,
     };
     let trap_mode_next: PrivMode = switch {
@@ -288,12 +291,21 @@ module csrunit (
                             mstatus[8] = mode[0];
                         }
                     } else if trap_return {
-                        // set mstatus.mie = mstatus.mpie
-                        //     mstatus.mpie = 0
-                        mstatus[3] = mstatus[7];
-                        mstatus[7] = 0;
-                        // set mstatus.mpp = U (least privilege level)
-                        mstatus[12:11] = PrivMode::U;
+                        if is_mret {
+                            // set mstatus.mie = mstatus.mpie
+                            //     mstatus.mpie = 0
+                            mstatus[3] = mstatus[7];
+                            mstatus[7] = 0;
+                            // set mstatus.mpp = U (least privilege level)
+                            mstatus[12:11] = PrivMode::U;
+                        } else if is_sret {
+                            // set sstatus.sie = sstatus.spie
+                            //     sstatus.spie = 0
+                            mstatus[1] = mstatus[5];
+                            mstatus[5] = 0;
+                            // set sstatus.spp = U (least privilege level)
+                            mstatus[8] = 0;
+                        }
                     }
                     mode = trap_mode_next;
                 } else {
