@@ -257,18 +257,27 @@ module csrunit (
             if valid {
                 if raise_trap {
                     if raise_expt || raise_interrupt {
-                        mepc = if raise_expt ? pc : // exception
+                        let xepc: Addr = if raise_expt ? pc : // exception
                          if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt
-                        mcause = trap_cause;
-                        if raise_expt {
-                            mtval = expt_value;
+                        if trap_mode_next == PrivMode::M {
+                            mepc   = xepc;
+                            mcause = trap_cause;
+                            if raise_expt {
+                                mtval = expt_value;
+                            }
+                            // save mstatus.mie to mstatus.mpie
+                            // and set mstatus.mie = 0
+                            mstatus[7] = mstatus[3];
+                            mstatus[3] = 0;
+                            // save current privilege level to mstatus.mpp
+                            mstatus[12:11] = mode;
+                        } else {
+                            sepc   = xepc;
+                            scause = trap_cause;
+                            if raise_expt {
+                                stval = expt_value;
+                            }
                         }
-                        // save mstatus.mie to mstatus.mpie
-                        // and set mstatus.mie = 0
-                        mstatus[7] = mstatus[3];
-                        mstatus[3] = 0;
-                        // save current privilege level to mstatus.mpp
-                        mstatus[12:11] = mode;
                     } else if trap_return {
                         // set mstatus.mie = mstatus.mpie
                         //     mstatus.mpie = 0
