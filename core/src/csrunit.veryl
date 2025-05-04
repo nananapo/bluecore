@@ -25,7 +25,7 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK   : UIntX = 'h0000_0000_0020_19aa as UIntX;
+    const MSTATUS_WMASK   : UIntX = 'h0000_0000_0060_19aa as UIntX;
     const MTVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const MCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const MSCRATCH_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
@@ -69,7 +69,7 @@ module csrunit (
         CsrAddr::INSTRET: !scounteren[2],
         default         : 0,
     }); // attempt to access Zicntr CSR without permission
-    let expt_trap_return_priv: logic = (is_mret && mode <: PrivMode::M) || (is_sret && mode <: PrivMode::S); // attempt to execute trap return instruction in low privilege level
+    let expt_trap_return_priv: logic = (is_mret && mode <: PrivMode::M) || (is_sret && (mode <: PrivMode::S || (mode == PrivMode::S && mstatus_tsr))); // attempt to execute trap return instruction in low privilege level
 
     // CSR
     let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000101000001000100000101}; // U, S, M, I, C, A
@@ -101,6 +101,7 @@ module csrunit (
     };
 
     // mstatus bits
+    let mstatus_tsr : logic    = mstatus[22];
     let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;
     let mstatus_spp : PrivMode = if mstatus[8] ? PrivMode::S : PrivMode::U;
     let mstatus_mpie: logic    = mstatus[7];
