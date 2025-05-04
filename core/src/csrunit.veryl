@@ -33,8 +33,12 @@ module csrunit (
     const MCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_0088 as UIntX;
+    const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0000 as UIntX;
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const LED_WMASK       : UIntX = 'hffff_ffff_ffff_ffff;
+
+    // read masks
+    const SSTATUS_RMASK: UIntX = 'h8000_0003_018f_e762;
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
@@ -95,6 +99,7 @@ module csrunit (
     let mstatus_mie : logic    = mstatus[3];
 
     // Supervisor mode CSR
+    let sstatus   : UIntX  = mstatus & SSTATUS_RMASK;
     var scounteren: UInt32;
 
     // Interrupt
@@ -171,6 +176,7 @@ module csrunit (
             CsrAddr::MEPC      : mepc,
             CsrAddr::MCAUSE    : mcause,
             CsrAddr::MTVAL     : mtval,
+            CsrAddr::SSTATUS   : sstatus,
             CsrAddr::SCOUNTEREN: {1'b0 repeat XLEN - 32, scounteren},
             CsrAddr::LED       : led,
             CsrAddr::CYCLE     : mcycle,
@@ -188,6 +194,7 @@ module csrunit (
             CsrAddr::MEPC      : MEPC_WMASK,
             CsrAddr::MCAUSE    : MCAUSE_WMASK,
             CsrAddr::MTVAL     : MTVAL_WMASK,
+            CsrAddr::SSTATUS   : SSTATUS_WMASK,
             CsrAddr::SCOUNTEREN: SCOUNTEREN_WMASK,
             CsrAddr::LED       : LED_WMASK,
             default            : 0,
@@ -252,6 +259,7 @@ module csrunit (
                             CsrAddr::MEPC      : mepc       = wdata;
                             CsrAddr::MCAUSE    : mcause     = wdata;
                             CsrAddr::MTVAL     : mtval      = wdata;
+                            CsrAddr::SSTATUS   : mstatus    = validate_mstatus(mstatus, wdata | mstatus & ~SSTATUS_WMASK);
                             CsrAddr::SCOUNTEREN: scounteren = wdata[31:0];
                             CsrAddr::LED       : led        = wdata;
                             default            : {}
