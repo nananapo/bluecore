@@ -127,24 +127,38 @@ module csrunit (
     let sip       : UIntX  = mip & mideleg;
     var sie       : UIntX ;
 
-    // Interrupt
-    let interrupt_pending: UIntX = mip & mie;
-    let raise_interrupt  : logic = valid && can_intr && (mode != PrivMode::M || mstatus_mie) && interrupt_pending != 0;
-    let interrupt_cause  : UIntX = switch {
-        interrupt_pending[3]: CsrCause::MACHINE_SOFTWARE_INTERRUPT,
-        interrupt_pending[7]: CsrCause::MACHINE_TIMER_INTERRUPT,
-        interrupt_pending[9]: CsrCause::SUPERVISOR_EXTERNAL_INTERRUPT,
-        interrupt_pending[1]: CsrCause::SUPERVISOR_SOFTWARE_INTERRUPT,
-        interrupt_pending[5]: CsrCause::SUPERVISOR_TIMER_INTERRUPT,
-        default             : 0,
+    // Interrupt to M-mode
+    let interrupt_pending_mmode: UIntX = mip & mie & ~mideleg;
+    let raise_interrupt_mmode  : logic = (mode != PrivMode::M || mstatus_mie) && interrupt_pending_mmode != 0;
+    let interrupt_cause_mmode  : UIntX = switch {
+        interrupt_pending_mmode[3]: CsrCause::MACHINE_SOFTWARE_INTERRUPT,
+        interrupt_pending_mmode[7]: CsrCause::MACHINE_TIMER_INTERRUPT,
+        interrupt_pending_mmode[9]: CsrCause::SUPERVISOR_EXTERNAL_INTERRUPT,
+        interrupt_pending_mmode[1]: CsrCause::SUPERVISOR_SOFTWARE_INTERRUPT,
+        interrupt_pending_mmode[5]: CsrCause::SUPERVISOR_TIMER_INTERRUPT,
+        default                   : 0,
     };
-    let interrupt_xtvec : Addr = if interrupt_mode == PrivMode::M ? mtvec : stvec;
-    let interrupt_vector: Addr = if interrupt_xtvec[0] == 0 ?
+
+    // Interrupt to S-mode
+    let interrupt_pending_smode: UIntX = sip & sie;
+    let raise_interrupt_smode  : logic = (mode <: PrivMode::S || (mode == PrivMode::S && mstatus_sie)) && interrupt_pending_smode != 0;
+    let interrupt_cause_smode  : UIntX = switch {
+        interrupt_pending_smode[9]: CsrCause::SUPERVISOR_EXTERNAL_INTERRUPT,
+        interrupt_pending_smode[1]: CsrCause::SUPERVISOR_SOFTWARE_INTERRUPT,
+        interrupt_pending_smode[5]: CsrCause::SUPERVISOR_TIMER_INTERRUPT,
+        default                   : 0,
+    };
+
+    // Interrupt
+    let raise_interrupt : logic = valid && can_intr && (raise_interrupt_mmode || raise_interrupt_smode);
+    let interrupt_cause : UIntX = if raise_interrupt_mmode ? interrupt_cause_mmode : interrupt_cause_smode;
+    let interrupt_xtvec : Addr  = if interrupt_mode == PrivMode::M ? mtvec : stvec;
+    let interrupt_vector: Addr  = if interrupt_xtvec[0] == 0 ?
         {interrupt_xtvec[msb:2], 2'b0}
     : // Direct
         {interrupt_xtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}
     ; // Vectored
-    let interrupt_mode: PrivMode = PrivMode::M;
+    let interrupt_mode: PrivMode = if raise_interrupt_mmode ? PrivMode::M : PrivMode::S;
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv || expt_trap_return_priv);
@@ -163,7 +177,7 @@ module csrunit (
     };
     let expt_xtvec : Addr     = if expt_mode == PrivMode::M ? mtvec : stvec;
     let expt_vector: Addr     = {expt_xtvec[msb:2], 2'b0};
-    let expt_mode  : PrivMode = PrivMode::M;
+    let expt_mode  : PrivMode = if mode == PrivMode::M || !medeleg[expt_cause[5:0]] ? PrivMode::M : PrivMode::S;
 
     // Trap Return
     assign trap_return        = valid && (is_mret || is_sret) && !raise_expt && !raise_interrupt;
