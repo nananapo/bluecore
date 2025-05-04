@@ -33,6 +33,7 @@ module csrunit (
     const MCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_0088 as UIntX;
+    const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const LED_WMASK       : UIntX = 'hffff_ffff_ffff_ffff;
 
     // CSRR(W|S|C)[I]命令かどうか
@@ -46,12 +47,17 @@ module csrunit (
     let will_not_write_csr     : logic = (ctrl.funct3[1:0] == 2 || ctrl.funct3[1:0] == 3) && rs1_addr == 0; // set/clear with source = 0
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
     let expt_csr_priv_violation: logic = is_wsc && csr_addr[9:8] >: mode; // attempt to access CSR without privilege level
-    let expt_zicntr_priv       : logic = is_wsc && mode == PrivMode::U && case csr_addr {
+    let expt_zicntr_priv       : logic = is_wsc && (mode <= PrivMode::S && case csr_addr {
         CsrAddr::CYCLE  : !mcounteren[0],
         CsrAddr::TIME   : !mcounteren[1],
         CsrAddr::INSTRET: !mcounteren[2],
         default         : 0,
-    }; // attemp to access Zicntr CSR without permission
+    } || mode <= PrivMode::U && case csr_addr {
+        CsrAddr::CYCLE  : !scounteren[0],
+        CsrAddr::TIME   : !scounteren[1],
+        CsrAddr::INSTRET: !scounteren[2],
+        default         : 0,
+    }); // attempt to access Zicntr CSR without permission
     let expt_trap_return_priv: logic = is_mret && mode <: PrivMode::M; // attempt to execute trap return instruction in low privilege level
 
     // CSR
@@ -87,6 +93,9 @@ module csrunit (
     let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;
     let mstatus_mpie: logic    = mstatus[7];
     let mstatus_mie : logic    = mstatus[3];
+
+    // Supervisor mode CSR
+    var scounteren: UInt32;
 
     // Interrupt
     let interrupt_pending: UIntX = mip & mie;
@@ -162,6 +171,7 @@ module csrunit (
             CsrAddr::MEPC      : mepc,
             CsrAddr::MCAUSE    : mcause,
             CsrAddr::MTVAL     : mtval,
+            CsrAddr::SCOUNTEREN: {1'b0 repeat XLEN - 32, scounteren},
             CsrAddr::LED       : led,
             CsrAddr::CYCLE     : mcycle,
             CsrAddr::TIME      : aclint.mtime,
@@ -178,6 +188,7 @@ module csrunit (
             CsrAddr::MEPC      : MEPC_WMASK,
             CsrAddr::MCAUSE    : MCAUSE_WMASK,
             CsrAddr::MTVAL     : MTVAL_WMASK,
+            CsrAddr::SCOUNTEREN: SCOUNTEREN_WMASK,
             CsrAddr::LED       : LED_WMASK,
             default            : 0,
         };
@@ -202,6 +213,7 @@ module csrunit (
             mepc       = 0;
             mcause     = 0;
             mtval      = 0;
+            scounteren = 0;
             led        = 0;
         } else {
             mcycle += 1;
@@ -240,6 +252,7 @@ module csrunit (
                             CsrAddr::MEPC      : mepc       = wdata;
                             CsrAddr::MCAUSE    : mcause     = wdata;
                             CsrAddr::MTVAL     : mtval      = wdata;
+                            CsrAddr::SCOUNTEREN: scounteren = wdata[31:0];
                             CsrAddr::LED       : led        = wdata;
                             default            : {}
                         }
