@@ -111,9 +111,10 @@ module core (
             exq_wdata.expt.value = {1'b0 repeat XLEN - ILEN, ids_inst_bits};
         } else if ids_inst_bits == 32'h00000073 {
             // ECALL
-            exq_wdata.expt.valid = 1;
-            exq_wdata.expt.cause = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
-            exq_wdata.expt.value = 0;
+            exq_wdata.expt.valid      = 1;
+            exq_wdata.expt.cause      = CsrCause::ENVIRONMENT_CALL_FROM_U_MODE;
+            exq_wdata.expt.cause[1:0] = csru_priv_mode; // adjust mode
+            exq_wdata.expt.value      = 0;
         } else if ids_inst_bits == 32'h00100073 {
             // EBREAK
             exq_wdata.expt.valid = 1;
@@ -322,11 +323,12 @@ module core (
         membus: d_membus                      ,
     );
 
-    var csru_rdata      : UIntX ;
-    var csru_raise_trap : logic ;
-    var csru_trap_vector: Addr  ;
-    var csru_trap_return: logic ;
-    var minstret        : UInt64;
+    var csru_priv_mode  : PrivMode;
+    var csru_rdata      : UIntX   ;
+    var csru_raise_trap : logic   ;
+    var csru_trap_vector: Addr    ;
+    var csru_trap_return: logic   ;
+    var minstret        : UInt64  ;
 
     inst csru: csrunit (
         clk                               ,
@@ -342,6 +344,7 @@ module core (
         rs1_data   : memq_rdata.rs1_data  ,
         can_intr   : mems_is_new          ,
         rdata      : csru_rdata           ,
+        mode       : csru_priv_mode       ,
         raise_trap : csru_raise_trap      ,
         trap_vector: csru_trap_vector     ,
         trap_return: csru_trap_return     ,
