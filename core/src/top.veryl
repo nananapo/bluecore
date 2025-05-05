@@ -28,6 +28,7 @@ module top #(
     inst rom_membus     : membus_if::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH>;
     inst dbg_membus     : Membus;
     inst aclint_membus  : Membus;
+    inst ptw_membus     : Membus;
 
     inst aclint_core_bus: aclint_if;
 
@@ -39,6 +40,8 @@ module top #(
     inst d_membus_core: core_data_if;
 
     var memarb_last_i: logic;
+    let ptw_is_inst  : logic = (i_membus.ready && i_membus.valid) || // inst ack or
+     !(d_membus.ready && d_membus.valid) && memarb_last_i; // data not ack & last ack is inst
 
     // デバッグ用のIO
     always_ff {
@@ -70,39 +73,39 @@ module top #(
         }
     }
 
-    // mmio_controllerへのメモリアクセスを調停する
+    // ptwへのメモリアクセスを調停する
     always_ff {
         if_reset {
             memarb_last_i = 0;
         } else {
-            if mmio_membus.ready {
+            if ptw_membus.ready {
                 memarb_last_i = !d_membus.valid;
             }
         }
     }
 
     always_comb {
-        i_membus.ready  = mmio_membus.ready && !d_membus.valid;
-        i_membus.rvalid = mmio_membus.rvalid && memarb_last_i;
-        i_membus.rdata  = mmio_membus.rdata;
-        i_membus.expt   = mmio_membus.expt;
+        i_membus.ready  = ptw_membus.ready && !d_membus.valid;
+        i_membus.rvalid = ptw_membus.rvalid && memarb_last_i;
+        i_membus.rdata  = ptw_membus.rdata;
+        i_membus.expt   = ptw_membus.expt;
 
-        d_membus.ready  = mmio_membus.ready;
-        d_membus.rvalid = mmio_membus.rvalid && !memarb_last_i;
-        d_membus.rdata  = mmio_membus.rdata;
-        d_membus.expt   = mmio_membus.expt;
+        d_membus.ready  = ptw_membus.ready;
+        d_membus.rvalid = ptw_membus.rvalid && !memarb_last_i;
+        d_membus.rdata  = ptw_membus.rdata;
+        d_membus.expt   = ptw_membus.expt;
 
-        mmio_membus.valid = i_membus.valid | d_membus.valid;
+        ptw_membus.valid = i_membus.valid | d_membus.valid;
         if d_membus.valid {
-            mmio_membus.addr  = d_membus.addr;
-            mmio_membus.wen   = d_membus.wen;
-            mmio_membus.wdata = d_membus.wdata;
-            mmio_membus.wmask = d_membus.wmask;
+            ptw_membus.addr  = d_membus.addr;
+            ptw_membus.wen   = d_membus.wen;
+            ptw_membus.wdata = d_membus.wdata;
+            ptw_membus.wmask = d_membus.wmask;
         } else {
-            mmio_membus.addr  = i_membus.addr;
-            mmio_membus.wen   = 0; // 命令フェッチは常に読み込み
-            mmio_membus.wdata = 'x;
-            mmio_membus.wmask = 'x;
+            ptw_membus.addr  = i_membus.addr;
+            ptw_membus.wen   = 0; // 命令フェッチは常に読み込み
+            ptw_membus.wdata = 'x;
+            ptw_membus.wmask = 'x;
         }
     }
 
@@ -166,6 +169,16 @@ module top #(
         aclint_membus                 ,
     );
 
+    inst ptw_ctrl: ptw_ctrl_if;
+    inst paging_unit: ptw (
+        clk                 ,
+        rst                 ,
+        is_inst: ptw_is_inst,
+        slave  : ptw_membus ,
+        master : mmio_membus,
+        ctrl   : ptw_ctrl   ,
+    );
+
     inst amou: amounit (
         clk                  ,
         rst                  ,
@@ -187,5 +200,6 @@ module top #(
         d_membus: d_membus_core  ,
         led                      ,
         aclint  : aclint_core_bus,
+        ptw_ctrl                 ,
     );
 }

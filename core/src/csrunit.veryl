@@ -24,6 +24,7 @@ module csrunit (
     led        : output  UIntX                   ,
     aclint     : modport aclint_if::slave        ,
     membus     : modport core_data_if::master    ,
+    ptw_ctrl   : modport ptw_ctrl_if::master     ,
 ) {
 
     // wmasks
@@ -214,6 +215,16 @@ module csrunit (
         trap_return    : trap_return_mode,
         default        : PrivMode::U,
     };
+
+    // connect to ptw
+    always_comb {
+        ptw_ctrl.priv = mode;
+        ptw_ctrl.satp = satp;
+        ptw_ctrl.mxr  = mstatus_mxr;
+        ptw_ctrl.sum  = mstatus_sum;
+        ptw_ctrl.mprv = mstatus_mprv;
+        ptw_ctrl.mpp  = mstatus_mpp;
+    }
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data

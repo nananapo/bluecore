@@ -1,0 +1,37 @@
+import eei::*;
+
+interface ptw_ctrl_if {
+    var priv: PrivMode;
+    var satp: UIntX   ;
+    var mxr : logic   ;
+    var sum : logic   ;
+    var mprv: logic   ;
+    var mpp : PrivMode;
+
+    modport master {
+        priv: output,
+        satp: output,
+        mxr : output,
+        sum : output,
+        mprv: output,
+        mpp : output,
+    }
+
+    modport slave {
+        is_enabled: import,
+        ..converse(master)
+    }
+
+    function is_enabled (
+        is_inst: input logic,
+    ) -> logic {
+        if satp[msb-:4] == 0 {
+            return 0;
+        }
+        if is_inst {
+            return priv <= PrivMode::S;
+        } else {
+            return (if mprv ? mpp : priv) <= PrivMode::S;
+        }
+    }
+}

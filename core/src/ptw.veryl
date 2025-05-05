@@ -1,0 +1,127 @@
+import eei::*;
+
+module ptw (
+    clk    : input   clock             ,
+    rst    : input   reset             ,
+    is_inst: input   logic             ,
+    slave  : modport Membus::slave     ,
+    master : modport Membus::master    ,
+    ctrl   : modport ptw_ctrl_if::slave,
+) {
+    let paging_enabled: logic = ctrl.is_enabled(is_inst);
+
+    enum State {
+        IDLE,
+        EXECUTE_READY,
+        EXECUTE_VALID,
+    }
+
+    var state: State;
+
+    var physical_addr: Addr;
+
+    inst slave_saved: Membus;
+
+    function assign_master (
+        addr : input Addr                        ,
+        wen  : input logic                       ,
+        wdata: input logic<MEMBUS_DATA_WIDTH>    ,
+        wmask: input logic<MEMBUS_DATA_WIDTH / 8>,
+    ) {
+        master.valid = 1;
+        master.addr  = addr;
+        master.wen   = wen;
+        master.wdata = wdata;
+        master.wmask = wmask;
+    }
+
+    function accept_request_comb () {
+        if slave.ready && slave.valid && !paging_enabled {
+            assign_master(slave.addr, slave.wen, slave.wdata, slave.wmask);
+        }
+    }
+
+    always_comb {
+        master.valid = 0;
+        master.addr  = 0;
+        master.wen   = 0;
+        master.wdata = 0;
+        master.wmask = 0;
+
+        case state {
+            State::IDLE         : accept_request_comb();
+            State::EXECUTE_READY: assign_master      (physical_addr, slave_saved.wen, slave_saved.wdata, slave_saved.wmask);
+            State::EXECUTE_VALID: if master.rvalid {
+                accept_request_comb();
+            }
+            default: {}
+        }
+    }
+
+    always_comb {
+        slave.ready  = 0;
+        slave.rvalid = 0;
+        slave.rdata  = 0;
+        slave.expt   = 0;
+
+        case state {
+            State::IDLE         : slave.ready = 1;
+            State::EXECUTE_VALID: {
+                slave.ready  = master.rvalid;
+                slave.rvalid = master.rvalid;
+                slave.rdata  = master.rdata;
+                slave.expt   = master.expt;
+            }
+            default: {}
+        }
+    }
+
+    function accept_request_ff () {
+        slave_saved.valid = slave.ready && slave.valid;
+        if slave.ready && slave.valid {
+            slave_saved.addr  = slave.addr;
+            slave_saved.wen   = slave.wen;
+            slave_saved.wdata = slave.wdata;
+            slave_saved.wmask = slave.wmask;
+            if paging_enabled {
+                // TODO
+            } else {
+                state         = if master.ready ? State::EXECUTE_VALID : State::EXECUTE_READY;
+                physical_addr = slave.addr;
+            }
+        } else {
+            state = State::IDLE;
+        }
+    }
+
+    function on_clock () {
+        case state {
+            State::IDLE         : accept_request_ff();
+            State::EXECUTE_READY: if master.ready {
+                state = State::EXECUTE_VALID;
+            }
+            State::EXECUTE_VALID: if master.rvalid {
+                accept_request_ff();
+            }
+            default: {}
+        }
+    }
+
+    function on_reset () {
+        state             = State::IDLE;
+        physical_addr     = 0;
+        slave_saved.valid = 0;
+        slave_saved.addr  = 0;
+        slave_saved.wen   = 0;
+        slave_saved.wdata = 0;
+        slave_saved.wmask = 0;
+    }
+
+    always_ff {
+        if_reset {
+            on_reset();
+        } else {
+            on_clock();
+        }
+    }
+}

@@ -8,6 +8,7 @@ module core (
     d_membus: modport core_data_if::master,
     led     : output  UIntX               ,
     aclint  : modport aclint_if::slave    ,
+    ptw_ctrl: modport ptw_ctrl_if::master ,
 ) {
 
     struct exq_type {
@@ -358,6 +359,7 @@ module core (
         led                               ,
         aclint                            ,
         membus     : d_membus             ,
+        ptw_ctrl                          ,
     );
 
     always_comb {
