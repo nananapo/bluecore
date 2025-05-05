@@ -1,13 +1,14 @@
 import eei::*;
 
 interface core_inst_if {
-    var rvalid   : logic;
-    var rready   : logic;
-    var raddr    : Addr ;
-    var rdata    : Inst ;
-    var is_rvc   : logic;
-    var is_hazard: logic;
-    var next_pc  : Addr ;
+    var rvalid   : logic       ;
+    var rready   : logic       ;
+    var raddr    : Addr        ;
+    var rdata    : Inst        ;
+    var is_rvc   : logic       ;
+    var is_hazard: logic       ;
+    var next_pc  : Addr        ;
+    var expt     : MemException;
 
     modport master {
         rvalid   : input ,
@@ -17,6 +18,7 @@ interface core_inst_if {
         is_rvc   : input ,
         is_hazard: output, // control hazard
         next_pc  : output, // actual next pc
+        expt     : input ,
     }
 
     modport slave {
