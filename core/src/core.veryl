@@ -104,7 +104,12 @@ module core (
         exq_wdata.imm   = ids_imm;
         // exception
         exq_wdata.expt = 0;
-        if !ids_inst_valid {
+        if i_membus.expt.valid {
+            // fault
+            exq_wdata.expt.valid = 1;
+            exq_wdata.expt.cause = CsrCause::INSTRUCTION_PAGE_FAULT;
+            exq_wdata.expt.value = ids_pc;
+        } else if !ids_inst_valid {
             // illegal instruction
             exq_wdata.expt.valid = 1;
             exq_wdata.expt.cause = CsrCause::ILLEGAL_INSTRUCTION;
@@ -343,6 +348,7 @@ module core (
         rs1_addr   : memq_rdata.rs1_addr  ,
         rs1_data   : memq_rdata.rs1_data  ,
         can_intr   : mems_is_new          ,
+        mem_addr   : memu_addr            ,
         rdata      : csru_rdata           ,
         mode       : csru_priv_mode       ,
         raise_trap : csru_raise_trap      ,
@@ -351,6 +357,7 @@ module core (
         minstret                          ,
         led                               ,
         aclint                            ,
+        membus     : d_membus             ,
     );
 
     always_comb {

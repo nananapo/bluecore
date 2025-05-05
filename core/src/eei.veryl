@@ -44,6 +44,11 @@ package eei {
     // pc on reset
     const INITIAL_PC: Addr = MMAP_ROM_BEGIN;
 
+    struct MemException {
+        valid     : logic,
+        page_fault: logic,
+    }
+
     // opcode
     const OP_LUI      : logic<7> = 7'b0110111;
     const OP_AUIPC    : logic<7> = 7'b0010111;
@@ -131,6 +136,9 @@ package eei {
         STORE_AMO_ADDRESS_MISALIGNED = 6,
         ENVIRONMENT_CALL_FROM_U_MODE = 8,
         ENVIRONMENT_CALL_FROM_M_MODE = 11,
+        INSTRUCTION_PAGE_FAULT = 12,
+        LOAD_PAGE_FAULT = 13,
+        STORE_AMO_PAGE_FAULT = 15,
         SUPERVISOR_SOFTWARE_INTERRUPT = 'h8000_0000_0000_0001,
         MACHINE_SOFTWARE_INTERRUPT = 'h8000_0000_0000_0003,
         SUPERVISOR_TIMER_INTERRUPT = 'h8000_0000_0000_0005,

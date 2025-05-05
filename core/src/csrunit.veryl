@@ -2,26 +2,28 @@ import eei::*;
 import corectrl::*;
 
 module csrunit (
-    clk        : input   clock               ,
-    rst        : input   reset               ,
-    valid      : input   logic               ,
-    pc         : input   Addr                ,
-    inst_bits  : input   Inst                ,
-    ctrl       : input   InstCtrl            ,
-    expt_info  : input   ExceptionInfo       ,
-    rd_addr    : input   logic           <5> ,
-    csr_addr   : input   logic           <12>,
-    rs1_addr   : input   logic           <5> ,
-    rs1_data   : input   UIntX               ,
-    can_intr   : input   logic               ,
-    rdata      : output  UIntX               ,
-    mode       : output  PrivMode            ,
-    raise_trap : output  logic               ,
-    trap_vector: output  Addr                ,
-    trap_return: output  logic               ,
-    minstret   : input   UInt64              ,
-    led        : output  UIntX               ,
-    aclint     : modport aclint_if::slave    ,
+    clk        : input   clock                   ,
+    rst        : input   reset                   ,
+    valid      : input   logic                   ,
+    pc         : input   Addr                    ,
+    inst_bits  : input   Inst                    ,
+    ctrl       : input   InstCtrl                ,
+    expt_info  : input   ExceptionInfo           ,
+    rd_addr    : input   logic               <5> ,
+    csr_addr   : input   logic               <12>,
+    rs1_addr   : input   logic               <5> ,
+    rs1_data   : input   UIntX                   ,
+    can_intr   : input   logic                   ,
+    mem_addr   : input   Addr                    ,
+    rdata      : output  UIntX                   ,
+    mode       : output  PrivMode                ,
+    raise_trap : output  logic                   ,
+    trap_vector: output  Addr                    ,
+    trap_return: output  logic                   ,
+    minstret   : input   UInt64                  ,
+    led        : output  UIntX                   ,
+    aclint     : modport aclint_if::slave        ,
+    membus     : modport core_data_if::master    ,
 ) {
 
     // wmasks
@@ -74,6 +76,7 @@ module csrunit (
         default         : 0,
     }); // attempt to access Zicntr CSR without permission
     let expt_trap_return_priv: logic = (is_mret && mode <: PrivMode::M) || (is_sret && (mode <: PrivMode::S || (mode == PrivMode::S && mstatus_tsr))); // attempt to execute trap return instruction in low privilege level
+    let expt_memory_fault    : logic = membus.rvalid && membus.expt.valid;
 
     // CSR
     let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000101000001000100000101}; // U, S, M, I, C, A
@@ -161,19 +164,22 @@ module csrunit (
     let interrupt_mode: PrivMode = if raise_interrupt_mmode ? PrivMode::M : PrivMode::S;
 
     // Exception
-    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv || expt_trap_return_priv);
+    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv || expt_trap_return_priv || expt_memory_fault);
     let expt_cause: UIntX = switch {
         expt_info.valid        : expt_info.cause,
         expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,
         expt_csr_priv_violation: CsrCause::ILLEGAL_INSTRUCTION,
         expt_zicntr_priv       : CsrCause::ILLEGAL_INSTRUCTION,
         expt_trap_return_priv  : CsrCause::ILLEGAL_INSTRUCTION,
+        expt_memory_fault      : if ctrl.is_load ? CsrCause::LOAD_PAGE_FAULT : CsrCause::STORE_AMO_PAGE_FAULT,
         default                : 0,
     };
     let expt_value: UIntX = switch {
-        expt_info.valid                            : expt_info.value,
-        expt_cause == CsrCause::ILLEGAL_INSTRUCTION: {1'b0 repeat XLEN - $bits(Inst), inst_bits},
-        default                                    : 0
+        expt_info.valid                             : expt_info.value,
+        expt_cause == CsrCause::ILLEGAL_INSTRUCTION : {1'b0 repeat XLEN - $bits(Inst), inst_bits},
+        expt_cause == CsrCause::LOAD_PAGE_FAULT     : mem_addr,
+        expt_cause == CsrCause::STORE_AMO_PAGE_FAULT: mem_addr,
+        default                                     : 0
     };
     let expt_xtvec : Addr     = if expt_mode == PrivMode::M ? mtvec : stvec;
     let expt_vector: Addr     = {expt_xtvec[msb:2], 2'b0};

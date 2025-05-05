@@ -1,14 +1,15 @@
 import eei::*;
 
 interface core_data_if {
-    var valid : logic                       ;
-    var ready : logic                       ;
-    var addr  : logic<XLEN>                 ;
-    var wen   : logic                       ;
-    var wdata : logic<MEMBUS_DATA_WIDTH>    ;
-    var wmask : logic<MEMBUS_DATA_WIDTH / 8>;
-    var rvalid: logic                       ;
-    var rdata : logic<MEMBUS_DATA_WIDTH>    ;
+    var valid : logic                              ;
+    var ready : logic                              ;
+    var addr  : logic       <XLEN>                 ;
+    var wen   : logic                              ;
+    var wdata : logic       <MEMBUS_DATA_WIDTH>    ;
+    var wmask : logic       <MEMBUS_DATA_WIDTH / 8>;
+    var rvalid: logic                              ;
+    var rdata : logic       <MEMBUS_DATA_WIDTH>    ;
+    var expt  : MemException                       ;
 
     var is_amo: logic   ;
     var aq    : logic   ;
@@ -25,6 +26,7 @@ interface core_data_if {
         wmask   : output,
         rvalid  : input ,
         rdata   : input ,
+        expt    : input ,
         is_amo  : output,
         aq      : output,
         rl      : output,

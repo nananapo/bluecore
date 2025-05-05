@@ -117,6 +117,7 @@ module amounit (
         slave.ready  = 0;
         slave.rvalid = 0;
         slave.rdata  = 0;
+        slave.expt   = master.expt;
 
         case state {
             State::Init: {
@@ -144,6 +145,11 @@ module amounit (
             }
             default: {}
         }
+
+        if state != State::Init && master.expt.valid {
+            slave.ready  = 0;
+            slave.rvalid = 1;
+        }
     }
 
     // masterに要求を割り当てる
@@ -170,6 +176,10 @@ module amounit (
             }
             State::AMOStoreValid: accept_request_comb();
             default             : {}
+        }
+
+        if state != State::Init && master.expt.valid {
+            reset_master();
         }
     }
 
@@ -218,36 +228,40 @@ module amounit (
     }
 
     function on_clock () {
-        case state {
-            State::Init     : accept_request_ff();
-            State::WaitReady: if master.ready {
-                if slave_saved.is_amo && slave_saved.amoop == AMOOp::SC {
-                    state = State::SCSuccess;
-                } else {
-                    state = State::WaitValid;
+        if state != State::Init && master.expt.valid {
+            state = State::Init;
+        } else {
+            case state {
+                State::Init     : accept_request_ff();
+                State::WaitReady: if master.ready {
+                    if slave_saved.is_amo && slave_saved.amoop == AMOOp::SC {
+                        state = State::SCSuccess;
+                    } else {
+                        state = State::WaitValid;
+                    }
                 }
+                State::WaitValid: if master.rvalid {
+                    accept_request_ff();
+                }
+                State::SCSuccess: if master.rvalid {
+                    accept_request_ff();
+                }
+                State::SCFail      : accept_request_ff();
+                State::AMOLoadReady: if master.ready {
+                    state = State::AMOLoadValid;
+                }
+                State::AMOLoadValid: if master.rvalid {
+                    zaamo_fetched_data = master.rdata;
+                    state              = if slave.ready ? State::AMOStoreValid : State::AMOStoreReady;
+                }
+                State::AMOStoreReady: if master.ready {
+                    state = State::AMOStoreValid;
+                }
+                State::AMOStoreValid: if master.rvalid {
+                    accept_request_ff();
+                }
+                default: {}
             }
-            State::WaitValid: if master.rvalid {
-                accept_request_ff();
-            }
-            State::SCSuccess: if master.rvalid {
-                accept_request_ff();
-            }
-            State::SCFail      : accept_request_ff();
-            State::AMOLoadReady: if master.ready {
-                state = State::AMOLoadValid;
-            }
-            State::AMOLoadValid: if master.rvalid {
-                zaamo_fetched_data = master.rdata;
-                state              = if slave.ready ? State::AMOStoreValid : State::AMOStoreReady;
-            }
-            State::AMOStoreReady: if master.ready {
-                state = State::AMOStoreValid;
-            }
-            State::AMOStoreValid: if master.rvalid {
-                accept_request_ff();
-            }
-            default: {}
         }
     }
 

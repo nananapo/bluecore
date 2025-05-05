@@ -136,6 +136,7 @@ module mmio_controller (
         req_core.ready  = 0;
         req_core.rvalid = 0;
         req_core.rdata  = 0;
+        req_core.expt   = 0;
 
         if req_saved.valid {
             if is_requested {
