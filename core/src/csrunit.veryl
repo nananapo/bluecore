@@ -28,7 +28,7 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK   : UIntX = 'h0000_0000_006e_19aa as UIntX;
+    const MSTATUS_WMASK   : UIntX = 'h0000_0000_007e_19aa as UIntX;
     const MTVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const MEDELEG_WMASK   : UIntX = 'hffff_ffff_fffe_f7ff;
     const MIDELEG_WMASK   : UIntX = 'h0000_0000_0000_0222 as UIntX;
@@ -61,6 +61,8 @@ module csrunit (
     let is_sret: logic = inst_bits == 32'h10200073;
     // WFI命令かどうか
     let is_wfi: logic = inst_bits == 32'h10500073;
+    // SFENCE.VMAかどうか
+    let is_sfence_vma: logic = ctrl.is_csr && ctrl.funct7 == 7'b0001001 && ctrl.funct3 == 0 && rd_addr == 0;
 
     // Check CSR access
     let will_not_write_csr     : logic = (ctrl.funct3[1:0] == 2 || ctrl.funct3[1:0] == 3) && rs1_addr == 0; // set/clear with source = 0
@@ -79,6 +81,8 @@ module csrunit (
     }); // attempt to access Zicntr CSR without permission
     let expt_trap_return_priv: logic = (is_mret && mode <: PrivMode::M) || (is_sret && (mode <: PrivMode::S || (mode == PrivMode::S && mstatus_tsr))); // attempt to execute trap return instruction in low privilege level
     let expt_memory_fault    : logic = membus.rvalid && membus.expt.valid;
+    // attempt to access satp or execute sfence.vma in S-mode & mstatus.TVM = 1
+    let expt_tvm: logic = (is_sfence_vma && mode <: PrivMode::S) || (mstatus_tvm && mode == PrivMode::S && (is_wsc && csr_addr == CsrAddr::SATP || is_sfence_vma));
 
     // CSR
     let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000101000001000100000101}; // U, S, M, I, C, A
@@ -114,6 +118,7 @@ module csrunit (
 
     // mstatus bits
     let mstatus_tsr : logic    = mstatus[22];
+    let mstatus_tvm : logic    = mstatus[20];
     let mstatus_mxr : logic    = mstatus[19];
     let mstatus_sum : logic    = mstatus[18];
     let mstatus_mprv: logic    = mstatus[17];
@@ -170,7 +175,7 @@ module csrunit (
     let interrupt_mode: PrivMode = if raise_interrupt_mmode ? PrivMode::M : PrivMode::S;
 
     // Exception
-    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv || expt_trap_return_priv || expt_memory_fault);
+    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv || expt_trap_return_priv || expt_memory_fault || expt_tvm);
     let expt_cause: UIntX = switch {
         expt_info.valid        : expt_info.cause,
         expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,
@@ -178,6 +183,7 @@ module csrunit (
         expt_zicntr_priv       : CsrCause::ILLEGAL_INSTRUCTION,
         expt_trap_return_priv  : CsrCause::ILLEGAL_INSTRUCTION,
         expt_memory_fault      : if ctrl.is_load ? CsrCause::LOAD_PAGE_FAULT : CsrCause::STORE_AMO_PAGE_FAULT,
+        expt_tvm               : CsrCause::ILLEGAL_INSTRUCTION,
         default                : 0,
     };
     let expt_value: UIntX = switch {

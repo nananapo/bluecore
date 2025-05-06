@@ -62,7 +62,8 @@ module inst_decoder (
              bits == 32'h00100073 || // EBREAK
              bits == 32'h30200073 || //MRET
              bits == 32'h10200073 || //SRET
-             bits == 32'h10500073, // WFI
+             bits == 32'h10500073 || // WFI
+             f7 == 7'b0001001 && bits[11:7] == 0, // SFENCE.VMA
             OP_MISC_MEM: T, // FENCE
             OP_AMO     : f3 == 3'b010 || f3 == 3'b011, // AMO
             default    : F,
