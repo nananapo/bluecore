@@ -1,4 +1,5 @@
 import eei::*;
+import sv39util::*;
 
 module ptw (
     clk    : input   clock             ,
@@ -12,15 +13,26 @@ module ptw (
 
     enum State {
         IDLE,
+        WALK_READY,
+        WALK_VALID,
+        SET_AD,
         EXECUTE_READY,
         EXECUTE_VALID,
+        PAGE_FAULT,
     }
 
     var state: State;
 
-    var physical_addr: Addr;
+    var physical_addr: Addr    ;
+    var taddr        : Addr    ;
+    var level        : Level   ;
+    var wdata_ad     : logic<8>;
 
     inst slave_saved: Membus;
+
+    // page table entry
+    inst pte      : PTE39;
+    assign pte.value = master.rdata;
 
     function assign_master (
         addr : input Addr                        ,
@@ -49,8 +61,13 @@ module ptw (
         master.wmask = 0;
 
         case state {
-            State::IDLE         : accept_request_comb();
-            State::EXECUTE_READY: assign_master      (physical_addr, slave_saved.wen, slave_saved.wdata, slave_saved.wmask);
+            State::IDLE      : accept_request_comb();
+            State::WALK_READY: assign_master      (taddr, 0, 0, 0);
+            State::SET_AD    : assign_master      (taddr, 1, // wen = 1
+             {1'b0 repeat MEMBUS_DATA_WIDTH - 8, wdata_ad}, // wdata
+             {1'b0 repeat XLEN / 8 - 1, 1'b1} // wmask
+            );
+            State::EXECUTE_READY: assign_master(physical_addr, slave_saved.wen, slave_saved.wdata, slave_saved.wmask);
             State::EXECUTE_VALID: if master.rvalid {
                 accept_request_comb();
             }
@@ -72,6 +89,11 @@ module ptw (
                 slave.rdata  = master.rdata;
                 slave.expt   = master.expt;
             }
+            State::PAGE_FAULT: {
+                slave.rvalid          = 1;
+                slave.expt.valid      = 1;
+                slave.expt.page_fault = 1;
+            }
             default: {}
         }
     }
@@ -84,7 +106,9 @@ module ptw (
             slave_saved.wdata = slave.wdata;
             slave_saved.wmask = slave.wmask;
             if paging_enabled {
-                // TODO
+                state = if is_valid_vaddr(slave.addr) ? State::WALK_READY : State::PAGE_FAULT;
+                taddr = get_first_pte_address(ctrl.satp, slave.addr);
+                level = LEVELS - 1;
             } else {
                 state         = if master.ready ? State::EXECUTE_VALID : State::EXECUTE_READY;
                 physical_addr = slave.addr;
@@ -94,22 +118,77 @@ module ptw (
         }
     }
 
+    function check_permission (
+        req: modport Membus::all_input,
+    ) -> logic {
+        let priv: PrivMode = if is_inst || !ctrl.mprv ? ctrl.priv : ctrl.mpp;
+
+        // U-mode access with PTE.U=0
+        let u_u0: logic = priv == PrivMode::U && !pte.u();
+        // S-mode load/store with PTE.U=1 & sum=0
+        let sd_u1: logic = !is_inst && priv == PrivMode::S && pte.u() && !ctrl.sum;
+        // S-mode execute with PTE.U=1
+        let si_u1: logic = is_inst && priv == PrivMode::S && pte.u();
+
+        // execute without PTE.X
+        let x: logic = is_inst && !pte.x();
+        // write without PTE.W
+        let w: logic = !is_inst && req.wen && !pte.w();
+        // read without PTE.R (MXR)
+        let r: logic = !is_inst && !req.wen && !pte.r() && !(pte.x() && ctrl.mxr);
+
+        return !(u_u0 | sd_u1 | si_u1 | x | w | r);
+    }
+
     function on_clock () {
         case state {
-            State::IDLE         : accept_request_ff();
+            State::IDLE      : accept_request_ff();
+            State::WALK_READY: if master.ready {
+                state = State::WALK_VALID;
+            }
+            State::WALK_VALID: if master.rvalid {
+                if !pte.is_valid(level) {
+                    state = State::PAGE_FAULT;
+                } else {
+                    if pte.is_leaf() {
+                        if check_permission(slave_saved) {
+                            physical_addr = pte.get_physical_address(level, slave_saved.addr);
+                            if pte.need_update_ad(slave_saved.wen) {
+                                state    = State::SET_AD;
+                                wdata_ad = pte.get_updated_ad(slave_saved.wen);
+                            } else {
+                                state = State::EXECUTE_READY;
+                            }
+                        } else {
+                            state = State::PAGE_FAULT;
+                        }
+                    } else {
+                        // read next pte
+                        state = State::WALK_READY;
+                        taddr = pte.get_next_pte_addr(level, slave_saved.addr);
+                        level = level - 1;
+                    }
+                }
+            }
+            State::SET_AD: if master.ready {
+                state = State::EXECUTE_READY;
+            }
             State::EXECUTE_READY: if master.ready {
                 state = State::EXECUTE_VALID;
             }
             State::EXECUTE_VALID: if master.rvalid {
                 accept_request_ff();
             }
-            default: {}
+            State::PAGE_FAULT: state = State::IDLE;
+            default          : {}
         }
     }
 
     function on_reset () {
         state             = State::IDLE;
         physical_addr     = 0;
+        taddr             = 0;
+        level             = 0;
         slave_saved.valid = 0;
         slave_saved.addr  = 0;
         slave_saved.wen   = 0;

@@ -1,0 +1,133 @@
+import eei::*;
+import sv39util::*;
+
+interface PTE39 {
+    var value: UIntX;
+
+    function v () -> logic {
+        return value[0];
+    }
+
+    function r () -> logic {
+        return value[1];
+    }
+
+    function w () -> logic {
+        return value[2];
+    }
+
+    function x () -> logic {
+        return value[3];
+    }
+
+    function u () -> logic {
+        return value[4];
+    }
+
+    function a () -> logic {
+        return value[6];
+    }
+
+    function d () -> logic {
+        return value[7];
+    }
+
+    function reserved -> logic<10> {
+        return value[63:54];
+    }
+
+    function ppn2 () -> logic<26> {
+        return value[53:28];
+    }
+
+    function ppn1 () -> logic<9> {
+        return value[27:19];
+    }
+
+    function ppn0 () -> logic<9> {
+        return value[18:10];
+    }
+
+    function ppn () -> logic<44> {
+        return value[53:10];
+    }
+
+    // leaf PTEか判定する
+    function is_leaf () -> logic {
+        return r() || x();
+    }
+
+    // leaf PTEのとき、PPNがページサイズに整列されているかどうかを判定する
+    function is_ppn_aligned (
+        level: input Level,
+    ) -> logic {
+        return case level {
+            0      : 1,
+            1      : ppn0() == 0,
+            2      : ppn1() == 0 && ppn0() == 0,
+            default: 1,
+        };
+    }
+
+    // 有効なPTEか判定する
+    function is_valid (
+        level: input Level,
+    ) -> logic {
+        if !v() || reserved() != 0 || !r() && w() {
+            return 0;
+        }
+        if is_leaf() && !is_ppn_aligned(level) {
+            return 0;
+        }
+        if !is_leaf() && level == 0 {
+            return 0;
+        }
+        return 1;
+    }
+
+    // 次のlevelのPTEのアドレスを得る
+    function get_next_pte_addr (
+        level: input Level,
+        va   : input Addr ,
+    ) -> Addr {
+        return {1'b0 repeat XLEN - 44 - PAGESIZE, ppn(), 1'b0 repeat PAGESIZE} + // a
+         {1'b0 repeat XLEN - 9 - $clog2(PTESIZE), vpn(va, level - 1), 1'b0 repeat $clog2(PTESIZE)};
+    }
+
+    // PTEと仮想アドレスから物理アドレスを生成する
+    function get_physical_address (
+        level: input Level,
+        va   : input Addr ,
+    ) -> Addr {
+        return {
+            8'b0, ppn2(), case level {
+                0: {
+                    ppn1(), ppn0()
+                },
+                1: {
+                    ppn1(), vpn(va, 0)
+                },
+                2: {
+                    vpn(va, 1), vpn(va, 0)
+                },
+                default: 18'b0,
+            }, va[11:0]
+        };
+    }
+
+    // A、Dビットを更新する必要があるかを判定する
+    function need_update_ad (
+        wen: input logic,
+    ) -> logic {
+        return !a() || wen && !d();
+    }
+
+    // A, Dビットを更新したPTEの下位8ビットを生成する
+    function get_updated_ad (
+        wen: input logic,
+    ) -> logic<8> {
+        let a: logic<8> = 1 << 6;
+        let d: logic<8> = wen as u8 << 7;
+        return value[7:0] | a | d;
+    }
+}
