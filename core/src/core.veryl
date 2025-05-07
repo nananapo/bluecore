@@ -8,6 +8,7 @@ module core (
     d_membus: modport core_data_if::master,
     led     : output  UIntX               ,
     aclint  : modport aclint_if::slave    ,
+    irq     : modport irq_if::slave       ,
     ptw_ctrl: modport ptw_ctrl_if::master ,
 ) {
 
@@ -361,6 +362,7 @@ module core (
         minstret                          ,
         led                               ,
         aclint                            ,
+        irq                               ,
         membus     : d_membus             ,
         ptw_ctrl                          ,
     );

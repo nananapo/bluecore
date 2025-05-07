@@ -28,9 +28,11 @@ module top #(
     inst rom_membus     : membus_if::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH>;
     inst dbg_membus     : Membus;
     inst aclint_membus  : Membus;
+    inst plic_membus    : Membus;
     inst ptw_membus     : Membus;
 
     inst aclint_core_bus: aclint_if;
+    inst irq            : irq_if;
 
     // 命令フェッチ用
     inst i_membus     : Membus;
@@ -158,6 +160,14 @@ module top #(
         aclint: aclint_core_bus,
     );
 
+    inst plicm: plic_memory (
+        clk                         ,
+        rst                         ,
+        membus         : plic_membus,
+        irq                         ,
+        uart_rx_pending: 0          ,
+    );
+
     inst mmioc: mmio_controller (
         clk                           ,
         rst                           ,
@@ -167,6 +177,7 @@ module top #(
         rom_membus   : mmio_rom_membus,
         dbg_membus                    ,
         aclint_membus                 ,
+        plic_membus                   ,
     );
 
     inst ptw_ctrl: ptw_ctrl_if;
@@ -200,6 +211,7 @@ module top #(
         d_membus: d_membus_core  ,
         led                      ,
         aclint  : aclint_core_bus,
+        irq                      ,
         ptw_ctrl                 ,
     );
 }

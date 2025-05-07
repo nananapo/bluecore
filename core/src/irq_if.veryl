@@ -1,0 +1,12 @@
+interface irq_if {
+    var meip: logic;
+    var seip: logic;
+
+    modport master {
+        meip: output,
+        seip: output,
+    }
+    modport slave {
+        ..converse(master)
+    }
+}

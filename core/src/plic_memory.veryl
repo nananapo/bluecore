@@ -1,0 +1,91 @@
+import eei::*;
+
+module plic_memory (
+    clk            : input   clock                                      ,
+    rst            : input   reset                                      ,
+    membus         : modport membus_if::<MEMBUS_DATA_WIDTH, XLEN>::slave,
+    irq            : modport irq_if::master                             ,
+    uart_rx_pending: input   logic                                      ,
+) {
+
+    const SOURCE_UART_RX: UInt32 = 1;
+
+    var pending: UInt32;
+
+    var uart_rx_priority: UInt32;
+
+    // Context 0: M-mode
+    var enable0   : UInt32;
+    var threshold0: UInt32;
+    let claim0    : UInt32 = if pending[SOURCE_UART_RX] && enable0[SOURCE_UART_RX] && uart_rx_priority >: threshold0 ? 1 : 0;
+
+    // Context 1: S-mode
+    var enable1   : UInt32;
+    var threshold1: UInt32;
+    let claim1    : UInt32 = if pending[SOURCE_UART_RX] && enable1[SOURCE_UART_RX] && uart_rx_priority >: threshold1 ? 1 : 0;
+
+    always_comb {
+        irq.meip = claim0 != 0;
+        irq.seip = claim1 != 0;
+    }
+
+    var wmask_expand: logic<MEMBUS_DATA_WIDTH>;
+    always_comb {
+        for i: u32 in 0..MEMBUS_DATA_WIDTH {
+            wmask_expand[i] = membus.wmask[i / 8];
+        }
+    }
+
+    assign membus.ready = 1;
+
+    always_ff {
+        if_reset {
+            pending          = 0;
+            uart_rx_priority = 0;
+            enable0          = 0;
+            enable1          = 0;
+            threshold0       = 0;
+            threshold1       = 0;
+        } else {
+            membus.rvalid = membus.valid;
+            if membus.valid {
+                // 8 bytes aligned address
+                let addr: Addr = {membus.addr[XLEN - 1:3], 3'b0};
+                if membus.wen {
+                    let M: logic<MEMBUS_DATA_WIDTH> = wmask_expand & M;
+                    let D: logic<MEMBUS_DATA_WIDTH> = membus.wdata;
+                    case addr {
+                        MMAP_PLIC_PRIORITY_UART_RX: uart_rx_priority = D[31:0] | uart_rx_priority & ~M[31:0];
+                        MMAP_PLIC_ENABLE_0_BASE   : enable0          = D[31:0] | enable0 & ~M[31:0];
+                        MMAP_PLIC_ENABLE_1_BASE   : enable1          = D[31:0] | enable1 & ~M[31:0];
+                        MMAP_PLIC_THRESHOLD_0     : {
+                            threshold0 = D[31:0] | threshold0[31:0];
+                            if D[63:32] == SOURCE_UART_RX {
+                                pending = {30'b0, uart_rx_pending, 1'b0};
+                            }
+                        }
+                        MMAP_PLIC_THRESHOLD_1: {
+                            threshold1 = D[31:0] | threshold1[31:0];
+                            if D[63:32] == SOURCE_UART_RX {
+                                pending = {30'b0, uart_rx_pending, 1'b0};
+                            }
+                        }
+                        default: {}
+                    }
+                } else {
+                    membus.rdata = case addr {
+                        MMAP_PLIC_PRIORITY_UART_RX: {32'h0, uart_rx_priority},
+                        MMAP_PLIC_PENDING_BASE    : {32'h0, pending},
+                        MMAP_PLIC_ENABLE_0_BASE   : {32'h0, enable0},
+                        MMAP_PLIC_ENABLE_1_BASE   : {32'h0, enable1},
+                        MMAP_PLIC_THRESHOLD_0     : {claim0, threshold0},
+                        MMAP_PLIC_THRESHOLD_1     : {claim1, threshold1},
+                        default                   : 0,
+                    };
+                }
+            } else {
+                pending = pending | {30'b0, uart_rx_pending, 1'b0};
+            }
+        }
+    }
+}
