@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <verilated.h>
 #include "Vcore_top.h"
+#include <verilated_vcd_c.h>
 
 namespace fs = std::filesystem;
 
@@ -63,11 +64,22 @@ int main(int argc, char** argv) {
         setenv("MEMORY_FILE_PATH", original_env, 1);
     }
 
+    // trace
+    #ifdef TRACE
+    Verilated::traceEverOn(true);
+    VerilatedVcdC* tfp = new VerilatedVcdC;
+    dut->trace(tfp, 100);
+    tfp->open("sim.vcd");
+    #endif
+
     // loop
     dut->rst = 1;
     for (long long i=0; !Verilated::gotFinish() && (cycles == 0 || i / 2 < cycles); i++) {
         dut->clk = !dut->clk;
         dut->eval();
+        #ifdef TRACE
+        tfp->dump((int)i);
+        #endif
     }
 
     dut->final();
