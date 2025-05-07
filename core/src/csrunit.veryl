@@ -24,6 +24,7 @@ module csrunit (
     minstret   : input   UInt64                  ,
     led        : output  UIntX                   ,
     aclint     : modport aclint_if::slave        ,
+    irq        : modport irq_if::slave           ,
     membus     : modport core_data_if::master    ,
     ptw_ctrl   : modport ptw_ctrl_if::master     ,
 ) {
@@ -105,9 +106,9 @@ module csrunit (
     var mip_reg: UIntX;
     let mip    : UIntX = mip_reg | {
         1'b0 repeat XLEN - 12, // 0, LCOFIP
-        1'b0, // MEIP
+        irq.meip, // MEIP
         1'b0, // 0
-        1'b0, // SEIP
+        irq.seip, // SEIP
         1'b0, // 0
         aclint.mtip, // MTIP
         1'b0, // 0

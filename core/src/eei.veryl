@@ -41,6 +41,20 @@ package eei {
     const MMAP_ACLINT_SETSSIP : Addr = 'h8000 as Addr;
     const MMAP_ACLINT_END     : Addr = MMAP_ACLINT_BEGIN + 'hbfff as Addr;
 
+    // PLIC
+    // Context 0: M-mode
+    // Context 1: S-mode
+    const MMAP_PLIC_BEGIN           : Addr = 'hc00_0000 as Addr;
+    const MMAP_PLIC_PRIORITY_UART_RX: Addr = 4;
+    const MMAP_PLIC_PENDING_BASE    : Addr = 'h1000 as Addr;
+    const MMAP_PLIC_ENABLE_0_BASE   : Addr = 'h2000 as Addr;
+    const MMAP_PLIC_ENABLE_1_BASE   : Addr = 'h2080 as Addr;
+    const MMAP_PLIC_THRESHOLD_0     : Addr = 'h200000 as Addr;
+    const MMAP_PLIC_CLAIM_0         : Addr = 'h200004 as Addr;
+    const MMAP_PLIC_THRESHOLD_1     : Addr = 'h201000 as Addr;
+    const MMAP_PLIC_CLAIM_1         : Addr = 'h201004 as Addr;
+    const MMAP_PLIC_END             : Addr = MMAP_PLIC_BEGIN + 'h3ff_fffc as Addr;
+
     // pc on reset
     const INITIAL_PC: Addr = MMAP_ROM_BEGIN;
 

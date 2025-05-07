@@ -9,6 +9,7 @@ module mmio_controller (
     rom_membus   : modport Membus::master,
     dbg_membus   : modport Membus::master,
     aclint_membus: modport Membus::master,
+    plic_membus  : modport Membus::master,
 ) {
 
     enum Device {
@@ -17,6 +18,7 @@ module mmio_controller (
         ROM,
         DEBUG,
         ACLINT,
+        PLIC,
     }
 
     inst req_saved: Membus;
@@ -56,6 +58,9 @@ module mmio_controller (
         if MMAP_ACLINT_BEGIN <= addr && addr <= MMAP_ACLINT_END {
             return Device::ACLINT;
         }
+        if MMAP_PLIC_BEGIN <= addr && addr <= MMAP_PLIC_END {
+            return Device::PLIC;
+        }
         if addr >= MMAP_RAM_BEGIN {
             return Device::RAM;
         }
@@ -83,6 +88,10 @@ module mmio_controller (
                 aclint_membus      <> req;
                 aclint_membus.addr -= MMAP_ACLINT_BEGIN;
             }
+            Device::PLIC: {
+                plic_membus      <> req;
+                plic_membus.addr -= MMAP_PLIC_BEGIN;
+            }
             default: {}
         }
     }
@@ -99,6 +108,7 @@ module mmio_controller (
             Device::ROM   : req <> rom_membus;
             Device::DEBUG : req <> dbg_membus;
             Device::ACLINT: req <> aclint_membus;
+            Device::PLIC  : req <> plic_membus;
             default       : {}
         }
     }
@@ -112,6 +122,7 @@ module mmio_controller (
             Device::ROM   : return rom_membus.ready;
             Device::DEBUG : return dbg_membus.ready;
             Device::ACLINT: return aclint_membus.ready;
+            Device::PLIC  : return plic_membus.ready;
             default       : {}
         }
         return 1;
@@ -126,6 +137,7 @@ module mmio_controller (
             Device::ROM   : return rom_membus.rvalid;
             Device::DEBUG : return dbg_membus.rvalid;
             Device::ACLINT: return aclint_membus.rvalid;
+            Device::PLIC  : return plic_membus.rvalid;
             default       : {}
         }
         return 1;
