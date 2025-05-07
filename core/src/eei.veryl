@@ -45,8 +45,9 @@ package eei {
     const INITIAL_PC: Addr = MMAP_ROM_BEGIN;
 
     struct MemException {
-        valid     : logic,
-        page_fault: logic,
+        valid      : logic   ,
+        page_fault : logic   ,
+        addr_offset: logic<3>,
     }
 
     // opcode

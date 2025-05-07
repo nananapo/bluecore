@@ -138,10 +138,11 @@ module inst_fetcher (
                     // offsetが6な32ビット命令の場合、
                     // 命令は{rdata_next[15:0], rdata[63:48}になる
                     if issue_is_rdata_saved {
-                        issue_fifo_wvalid       = 1;
-                        issue_fifo_wdata.addr   = {issue_saved_addr[msb:3], offset};
-                        issue_fifo_wdata.bits   = {rdata[15:0], issue_saved_bits};
-                        issue_fifo_wdata.is_rvc = 0;
+                        issue_fifo_wvalid                 = 1;
+                        issue_fifo_wdata.addr             = {issue_saved_addr[msb:3], offset};
+                        issue_fifo_wdata.bits             = {rdata[15:0], issue_saved_bits};
+                        issue_fifo_wdata.is_rvc           = 0;
+                        issue_fifo_wdata.expt.addr_offset = 2;
                     } else {
                         fetch_fifo_rready = 1;
                         if rvcc_is_rvc || expt.valid {
