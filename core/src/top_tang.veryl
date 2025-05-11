@@ -15,10 +15,10 @@ module top_tang (
         MEMORY_FILEPATH_IS_ENV: 0 ,
         MEMORY_FILEPATH       : "",
     ) (
-        clk         ,
-        rst         ,
-        led: led_top,
+        clk  ,
+        rst  ,
         #[ifdef(TEST_MODE)]
-        test_success: _,
+        test_success: _      ,
+        led         : led_top,
     );
 }
