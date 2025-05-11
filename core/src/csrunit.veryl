@@ -80,8 +80,10 @@ module csrunit (
         } else {
             if valid {
                 if raise_trap {
-                    mepc   = pc;
-                    mcause = trap_cause;
+                    if raise_expt {
+                        mepc   = pc;
+                        mcause = trap_cause;
+                    }
                 } else {
                     if is_wsc {
                         case csr_addr {
