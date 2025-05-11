@@ -29,21 +29,21 @@ package corectrl {
     // 命令がメモリにアクセスする命令か判別する関数
     function inst_is_memop (
         ctrl: input InstCtrl,
-    ) -> logic    {
+    ) -> logic {
         return ctrl.itype == InstType::S || ctrl.is_load;
     }
 
     // 命令がストア命令か判別する関数
     function inst_is_store (
         ctrl: input InstCtrl,
-    ) -> logic    {
+    ) -> logic {
         return inst_is_memop(ctrl) && !ctrl.is_load;
     }
 
     // 命令が分岐命令かどうかを判定する
     function inst_is_br (
         ctrl: input InstCtrl,
-    ) -> logic    {
+    ) -> logic {
         return ctrl.itype == InstType::B;
     }
 }

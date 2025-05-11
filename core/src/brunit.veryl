@@ -5,7 +5,7 @@ module brunit (
     funct3: input  logic<3>,
     op1   : input  UIntX   ,
     op2   : input  UIntX   ,
-    take  : output logic   , // 分岐が成立するか否か
+    take  : output logic, // 分岐が成立するか否か
 ) {
     let beq : logic = op1 == op2;
     let blt : logic = $signed(op1) <: $signed(op2);
