@@ -45,7 +45,7 @@ module alu (
                 3'b010 : result = slt;
                 3'b011 : result = sltu;
                 3'b100 : result = op1 ^ op2;
-                3'b101 : result = if ctrl.funct7 == 0 ? sel_w(ctrl.is_op32, srl32, srl) : sel_w(ctrl.is_op32, sra32, sra);
+                3'b101 : result = if ctrl.funct7[5] == 0 ? sel_w(ctrl.is_op32, srl32, srl) : sel_w(ctrl.is_op32, sra32, sra);
                 3'b110 : result = op1 | op2;
                 3'b111 : result = op1 & op2;
                 default: result = 'x;
