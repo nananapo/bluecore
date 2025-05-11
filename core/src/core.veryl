@@ -46,12 +46,13 @@ module core (
     }
 
     // 命令メモリ -> IFのFIFO
-    var if_fifo_wready: logic       ;
-    var if_fifo_wvalid: logic       ;
-    var if_fifo_wdata : if_fifo_type;
-    var if_fifo_rready: logic       ;
-    var if_fifo_rvalid: logic       ;
-    var if_fifo_rdata : if_fifo_type;
+    var if_fifo_wready    : logic       ;
+    var if_fifo_wready_two: logic       ;
+    var if_fifo_wvalid    : logic       ;
+    var if_fifo_wdata     : if_fifo_type;
+    var if_fifo_rready    : logic       ;
+    var if_fifo_rvalid    : logic       ;
+    var if_fifo_rdata     : if_fifo_type;
 
     // ID -> EXのFIFO
     var exq_wready: logic   ;
@@ -94,21 +95,22 @@ module core (
         DATA_TYPE: if_fifo_type,
         WIDTH    : 3           ,
     ) (
-        clk                   ,
-        rst                   ,
-        flush : control_hazard,
-        wready: if_fifo_wready,
-        wvalid: if_fifo_wvalid,
-        wdata : if_fifo_wdata ,
-        rready: if_fifo_rready,
-        rvalid: if_fifo_rvalid,
-        rdata : if_fifo_rdata ,
+        clk                           ,
+        rst                           ,
+        flush     : control_hazard    ,
+        wready    : if_fifo_wready    ,
+        wready_two: if_fifo_wready_two,
+        wvalid    : if_fifo_wvalid    ,
+        wdata     : if_fifo_wdata     ,
+        rready    : if_fifo_rready    ,
+        rvalid    : if_fifo_rvalid    ,
+        rdata     : if_fifo_rdata     ,
     );
 
     // 命令フェッチ処理
     always_comb {
         // FIFOに2個以上空きがあるとき、命令をフェッチする
-        i_membus.valid = if_fifo.wready_two;
+        i_membus.valid = if_fifo_wready_two;
         i_membus.addr  = if_pc;
         i_membus.wen   = 0;
         i_membus.wdata = 'x; // wdataは使用しない

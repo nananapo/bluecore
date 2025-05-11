@@ -2,19 +2,17 @@ module fifo #(
     param DATA_TYPE: type = logic,
     param WIDTH    : u32  = 2    ,
 ) (
-    clk   : input  clock    ,
-    rst   : input  reset    ,
-    flush : input  logic    ,
-    wready: output logic    ,
-    wvalid: input  logic    ,
-    wdata : input  DATA_TYPE,
-    rready: input  logic    ,
-    rvalid: output logic    ,
-    rdata : output DATA_TYPE,
+    clk       : input  clock        ,
+    rst       : input  reset        ,
+    flush     : input  logic        ,
+    wready    : output logic        ,
+    wready_two: output logic     = _,
+    wvalid    : input  logic        ,
+    wdata     : input  DATA_TYPE    ,
+    rready    : input  logic        ,
+    rvalid    : output logic        ,
+    rdata     : output DATA_TYPE    ,
 ) {
-    // 2つ以上空きがあるかどうか
-    var wready_two: logic;
-
     if WIDTH == 1 :width_one {
         always_comb {
             wready     = !rvalid || rready;
