@@ -41,11 +41,7 @@ module csrunit (
     // Trap
     assign raise_trap  = raise_expt || (valid && is_mret);
     let trap_cause : UIntX = expt_cause;
-    assign trap_vector = if raise_expt {
-        mtvec
-    } else {
-        mepc
-    };
+    assign trap_vector = if raise_expt ? mtvec : mepc;
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data

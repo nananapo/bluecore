@@ -196,16 +196,8 @@ module core (
     let exs_rs2_addr: logic<5> = exs_inst_bits[24:20];
 
     // ソースレジスタのデータ
-    let exs_rs1_data: UIntX = if exs_rs1_addr == 0 {
-        0
-    } else {
-        regfile[exs_rs1_addr]
-    };
-    let exs_rs2_data: UIntX = if exs_rs2_addr == 0 {
-        0
-    } else {
-        regfile[exs_rs2_addr]
-    };
+    let exs_rs1_data: UIntX = if exs_rs1_addr == 0 ? 0 : regfile[exs_rs1_addr];
+    let exs_rs2_data: UIntX = if exs_rs2_addr == 0 ? 0 : regfile[exs_rs2_addr];
 
     // データハザード
     let exs_mem_data_hazard: logic = mems_valid && mems_ctrl.rwb_en && (mems_rd_addr == exs_rs1_addr || mems_rd_addr == exs_rs2_addr);
@@ -267,11 +259,7 @@ module core (
         memq_wdata.rs2_data   = exs_rs2_data;
         memq_wdata.alu_result = exs_alu_result;
         memq_wdata.br_taken   = exs_ctrl.is_jump || inst_is_br(exs_ctrl) && exs_brunit_take;
-        memq_wdata.jump_addr  = if inst_is_br(exs_ctrl) {
-            exs_pc + exs_imm
-        } else {
-            exs_alu_result & ~1
-        };
+        memq_wdata.jump_addr  = if inst_is_br(exs_ctrl) ? exs_pc + exs_imm : exs_alu_result & ~1;
     }
 
     ///////////////////////////////// MEM Stage /////////////////////////////////
@@ -283,11 +271,7 @@ module core (
     let mems_rd_addr  : logic   <5> = mems_inst_bits[11:7];
 
     assign control_hazard         = mems_valid && (csru_raise_trap || mems_ctrl.is_jump || memq_rdata.br_taken);
-    assign control_hazard_pc_next = if csru_raise_trap {
-        csru_trap_vector
-    } else {
-        memq_rdata.jump_addr
-    };
+    assign control_hazard_pc_next = if csru_raise_trap ? csru_trap_vector : memq_rdata.jump_addr;
 
     always_ff {
         if_reset {
@@ -329,15 +313,15 @@ module core (
         ctrl    : mems_ctrl            ,
         rd_addr : mems_rd_addr         ,
         csr_addr: mems_inst_bits[31:20],
-        rs1     : if mems_ctrl.funct3[2] == 1 && mems_ctrl.funct3[1:0] != 0 {
+        rs1     : if mems_ctrl.funct3[2] == 1 && mems_ctrl.funct3[1:0] != 0 ?
             {1'b0 repeat XLEN - $bits(memq_rdata.rs1_addr), memq_rdata.rs1_addr} // rs1を0で拡張する
-        } else {
+        :
             memq_rdata.rs1_data
-        },
-        rdata      : csru_rdata                                                                                                                                                 ,
-        raise_trap : csru_raise_trap                                                                                                                                            ,
-        trap_vector: csru_trap_vector                                                                                                                                           ,
-        led                                                                                                                                                                     ,
+        ,
+        rdata      : csru_rdata      ,
+        raise_trap : csru_raise_trap ,
+        trap_vector: csru_trap_vector,
+        led                          ,
     );
 
     always_comb {
@@ -361,17 +345,17 @@ module core (
     let wbs_imm      : UIntX    = wbq_rdata.imm;
 
     let wbs_rd_addr: logic<5> = wbs_inst_bits[11:7];
-    let wbs_wb_data: UIntX    = if wbs_ctrl.is_lui {
+    let wbs_wb_data: UIntX    = if wbs_ctrl.is_lui ?
         wbs_imm
-    } else if wbs_ctrl.is_jump {
+    : if wbs_ctrl.is_jump ?
         wbs_pc + 4
-    } else if wbs_ctrl.is_load {
+    : if wbs_ctrl.is_load ?
         wbq_rdata.mem_rdata
-    } else if wbs_ctrl.is_csr {
+    : if wbs_ctrl.is_csr ?
         wbq_rdata.csr_rdata
-    } else {
+    :
         wbq_rdata.alu_result
-    };
+    ;
 
     always_ff {
         if wbs_valid && wbs_ctrl.rwb_en {

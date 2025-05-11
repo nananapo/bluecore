@@ -13,7 +13,7 @@ module top #(
 
     // アドレスをメモリのデータ単位でのアドレスに変換する
     function addr_to_memaddr (
-        addr: input logic<XLEN>          ,
+        addr: input logic<XLEN>,
     ) -> logic<MEM_ADDR_WIDTH> {
         return addr[$clog2(MEM_DATA_WIDTH / 8)+:MEM_ADDR_WIDTH];
     }
@@ -57,11 +57,7 @@ module top #(
     always_comb {
         i_membus.ready  = membus.ready && !d_membus.valid;
         i_membus.rvalid = membus.rvalid && memarb_last_i;
-        i_membus.rdata  = if memarb_last_iaddr[2] == 0 {
-            membus.rdata[31:0]
-        } else {
-            membus.rdata[63:32]
-        };
+        i_membus.rdata  = if memarb_last_iaddr[2] == 0 ? membus.rdata[31:0] : membus.rdata[63:32];
 
         d_membus.ready  = membus.ready;
         d_membus.rvalid = membus.rvalid && !memarb_last_i;

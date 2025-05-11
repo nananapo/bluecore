@@ -40,20 +40,12 @@ module alu (
     always_comb {
         if ctrl.is_aluop {
             case ctrl.funct3 {
-                3'b000: result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 {
-                    sel_w(ctrl.is_op32, add32, add)
-                } else {
-                    sel_w(ctrl.is_op32, sub32, sub)
-                };
+                3'b000: result = if ctrl.itype == InstType::I | ctrl.funct7 == 0 ? sel_w(ctrl.is_op32, add32, add) : sel_w(ctrl.is_op32, sub32, sub);
                 3'b001: result = sel_w(ctrl.is_op32, sll32, sll);
                 3'b010: result = slt;
                 3'b011: result = sltu;
                 3'b100: result = op1 ^ op2;
-                3'b101: result = if ctrl.funct7 == 0 {
-                    sel_w(ctrl.is_op32, srl32, srl)
-                } else {
-                    sel_w(ctrl.is_op32, sra32, sra)
-                };
+                3'b101: result = if ctrl.funct7 == 0 ? sel_w(ctrl.is_op32, srl32, srl) : sel_w(ctrl.is_op32, sra32, sra);
                 3'b110 : result = op1 | op2;
                 3'b111 : result = op1 & op2;
                 default: result = 'x;
