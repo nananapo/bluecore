@@ -1,4 +1,4 @@
-module memory::<DATA_WIDTH: const, ADDR_WIDTH: const> #(
+module memory::<DATA_WIDTH: u32, ADDR_WIDTH: u32> #(
     param FILEPATH_IS_ENV: logic  = 0 , // FILEPATHが環境変数名かどうか
     param FILEPATH       : string = "", // メモリの初期化用ファイルのパス, または環境変数名
 ) (

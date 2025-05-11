@@ -1,4 +1,4 @@
-interface membus_if::<DATA_WIDTH: const, ADDR_WIDTH: const> {
+interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
     var valid : logic                ;
     var ready : logic                ;
     var addr  : logic<ADDR_WIDTH>    ;
