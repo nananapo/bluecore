@@ -23,6 +23,26 @@ module muldivunit (
     // saved_data
     var funct3_saved: logic<3>;
 
+    // multiply unit
+    const MUL_OP_WIDTH : u32 = XLEN;
+    const MUL_RES_WIDTH: u32 = MUL_OP_WIDTH * 2;
+
+    let is_mul   : logic                = if state == State::Idle ? !funct3[2] : !funct3_saved[2];
+    var mu_rvalid: logic               ;
+    var mu_result: logic<MUL_RES_WIDTH>;
+
+    inst mu: mulunit #(
+        WIDTH: MUL_OP_WIDTH,
+    ) (
+        clk                             ,
+        rst                             ,
+        valid : ready && valid && is_mul,
+        op1   : op1                     ,
+        op2   : op2                     ,
+        rvalid: mu_rvalid               ,
+        result: mu_result               ,
+    );
+
     always_comb {
         ready  = state == State::Idle;
         rvalid = state == State::Finish;
@@ -42,6 +62,66 @@ module muldivunit (
                 State::WaitValid: state = State::Finish;
                 State::Finish   : state = State::Idle;
                 default         : {}
+            }
+        }
+    }
+}
+
+module mulunit #(
+    param WIDTH: u32 = 0,
+) (
+    clk   : input  clock           ,
+    rst   : input  reset           ,
+    valid : input  logic           ,
+    op1   : input  logic<WIDTH>    ,
+    op2   : input  logic<WIDTH>    ,
+    rvalid: output logic           ,
+    result: output logic<WIDTH * 2>,
+) {
+    enum State {
+        Idle,
+        AddLoop,
+        Finish,
+    }
+
+    var state: State;
+
+    var op1zext: logic<WIDTH * 2>;
+    var op2zext: logic<WIDTH * 2>;
+
+    always_comb {
+        rvalid = state == State::Finish;
+    }
+
+    var add_count: u32;
+
+    always_ff {
+        if_reset {
+            state     = State::Idle;
+            result    = 0;
+            add_count = 0;
+            op1zext   = 0;
+            op2zext   = 0;
+        } else {
+            case state {
+                State::Idle: if valid {
+                    state     = State::AddLoop;
+                    result    = 0;
+                    add_count = 0;
+                    op1zext   = {1'b0 repeat WIDTH, op1};
+                    op2zext   = {1'b0 repeat WIDTH, op2};
+                }
+                State::AddLoop: if add_count == WIDTH {
+                    state = State::Finish;
+                } else {
+                    if op2zext[add_count] {
+                        result += op1zext;
+                    }
+                    op1zext   <<= 1;
+                    add_count +=  1;
+                }
+                State::Finish: state = State::Idle;
+                default      : {}
             }
         }
     }
