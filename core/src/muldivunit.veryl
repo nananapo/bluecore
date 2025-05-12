@@ -59,9 +59,15 @@ module muldivunit (
                     state        = State::WaitValid;
                     funct3_saved = funct3;
                 }
-                State::WaitValid: state = State::Finish;
-                State::Finish   : state = State::Idle;
-                default         : {}
+                State::WaitValid: if is_mul && mu_rvalid {
+                    state  = State::Finish;
+                    result = case funct3_saved[1:0] {
+                        2'b11  : mu_result[XLEN+:XLEN], // MULHU
+                        default: 0,
+                    };
+                }
+                State::Finish: state = State::Idle;
+                default      : {}
             }
         }
     }
