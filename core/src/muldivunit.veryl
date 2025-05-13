@@ -23,6 +23,7 @@ module muldivunit (
     // saved_data
     var funct3_saved: logic<3>;
 
+    // #@@range_begin(inst_mu)
     // multiply unit
     const MUL_OP_WIDTH : u32 = XLEN;
     const MUL_RES_WIDTH: u32 = MUL_OP_WIDTH * 2;
@@ -42,6 +43,7 @@ module muldivunit (
         rvalid: mu_rvalid               ,
         result: mu_result               ,
     );
+    // #@@range_end(inst_mu)
 
     always_comb {
         ready  = state == State::Idle;
@@ -67,6 +69,7 @@ module muldivunit (
     }
 }
 
+// #@@range_begin(mulunit)
 module mulunit #(
     param WIDTH: u32 = 0,
 ) (
@@ -126,3 +129,4 @@ module mulunit #(
         }
     }
 }
+// #@@range_end(mulunit)
