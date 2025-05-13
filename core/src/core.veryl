@@ -244,20 +244,18 @@ module core (
     var exs_muldiv_rvalid: logic;
     var exs_muldiv_result: UIntX;
 
-    // #@@range_begin(mdu)
     inst mdu: muldivunit (
         clk                       ,
         rst                       ,
         valid  : exs_muldiv_valid ,
         ready  : exs_muldiv_ready ,
         funct3 : exs_ctrl.funct3  ,
-        @<b>|is_op32: exs_ctrl.is_op32 ,|
+        is_op32: exs_ctrl.is_op32 ,
         op1    : exs_op1          ,
         op2    : exs_op2          ,
         rvalid : exs_muldiv_rvalid,
         result : exs_muldiv_result,
     );
-    // #@@range_end(mdu)
 
     var exs_muldiv_is_requested: logic;
 
