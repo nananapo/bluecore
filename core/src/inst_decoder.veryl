@@ -59,17 +59,15 @@ module inst_decoder (
                 OP_STORE: {
                     InstType::S, F, F, F, F, F, F, F, F
                 },
-    // #@@range_begin(ctrl)
-    OP_OP: {
-        InstType::R, T, F, T, @<b>|f7 == 7'b0000001,| F, F, F, F
-    },
-    OP_OP_IMM: {
-        InstType::I, T, F, T, @<b>|F,| F, F, F, F
-    },
-    OP_OP_32: {
-        InstType::R, T, F, T, @<b>|f7 == 7'b0000001,| T, F, F, F
-    },
-    // #@@range_end(ctrl)
+                OP_OP: {
+                    InstType::R, T, F, T, f7 == 7'b0000001, F, F, F, F
+                },
+                OP_OP_IMM: {
+                    InstType::I, T, F, T, F, F, F, F, F
+                },
+                OP_OP_32: {
+                    InstType::R, T, F, T, f7 == 7'b0000001, T, F, F, F
+                },
                 OP_OP_IMM_32: {
                     InstType::I, T, F, T, F, T, F, F, F
                 },
