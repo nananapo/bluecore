@@ -12,14 +12,13 @@ package corectrl {
         J = 6'b100000,
     }
 
-    // #@@range_begin(InstCtrl)
     // 制御に使うフラグ用の構造体
     struct InstCtrl {
         itype    : InstType   , // 命令の形式
         rwb_en   : logic      , // レジスタに書き込むかどうか
         is_lui   : logic      , // LUI命令である
         is_aluop : logic      , // ALUを利用する命令である
-        @<b>|is_muldiv: logic      , // M拡張の命令である|
+        is_muldiv: logic      , // M拡張の命令である
         is_op32  : logic      , // OP-32またはOP-IMM-32である
         is_jump  : logic      , // ジャンプ命令である
         is_load  : logic      , // ロード命令である
@@ -27,7 +26,6 @@ package corectrl {
         funct3   : logic   <3>, // 命令のfunct3フィールド
         funct7   : logic   <7>, // 命令のfunct7フィールド
     }
-    // #@@range_end(InstCtrl)
 
     // 命令がメモリにアクセスする命令か判別する関数
     function inst_is_memop (
