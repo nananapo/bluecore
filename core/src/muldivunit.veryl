@@ -71,7 +71,6 @@ module muldivunit (
     );
 
 
-    // #@@range_begin(du)
     // divider unit
     const DIV_WIDTH: u32 = XLEN;
 
@@ -91,7 +90,6 @@ module muldivunit (
         quotient : du_quotient              ,
         remainder: du_remainder             ,
     );
-    // #@@range_end(du)
 
     always_comb {
         ready  = state == State::Idle;
@@ -115,7 +113,6 @@ module muldivunit (
                     op1sign_saved = if is_op32 ? op1[31] : op1[msb];
                     op2sign_saved = if is_op32 ? op2[31] : op2[msb];
                 }
-                // #@@range_begin(wait_valid)
                 State::WaitValid: if is_mul && mu_rvalid {
                     let res_signed: logic<MUL_RES_WIDTH> = if op1sign_saved != op2sign_saved ? ~mu_result + 1 : mu_result;
                     let res_mulhsu: logic<MUL_RES_WIDTH> = if op1sign_saved == 1 ? ~mu_result + 1 : mu_result;
@@ -127,15 +124,14 @@ module muldivunit (
                         2'b11  : mu_result[XLEN+:XLEN], // MULHU
                         default: 0,
                     };
-                @<b>|} else if !is_mul && du_rvalid {|
-                    @<b>|result = case funct3_saved[1:0] {|
-                    @<b>|    2'b01  : du_quotient, // DIVU|
-                    @<b>|    2'b11  : du_remainder, // REMU|
-                    @<b>|    default: 0,|
-                    @<b>|};|
-                    @<b>|state = State::Finish;|
+                } else if !is_mul && du_rvalid {
+                    result = case funct3_saved[1:0] {
+                        2'b01  : du_quotient, // DIVU
+                        2'b11  : du_remainder, // REMU
+                        default: 0,
+                    };
+                    state = State::Finish;
                 }
-                // #@@range_end(wait_valid)
                 State::Finish: state = State::Idle;
                 default      : {}
             }
@@ -203,7 +199,6 @@ module mulunit #(
     }
 }
 
-// #@@range_begin(divunit)
 module divunit #(
     param WIDTH: u32 = 0,
 ) (
@@ -275,4 +270,3 @@ module divunit #(
         }
     }
 }
-// #@@range_end(divunit)
