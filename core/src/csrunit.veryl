@@ -21,7 +21,9 @@ module csrunit (
     const MTVEC_WMASK : UIntX = 'hffff_ffff_ffff_fffc;
     const MEPC_WMASK  : UIntX = 'hffff_ffff_ffff_fffc;
     const MCAUSE_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
+    // #@@range_begin(wmask)
     const MTVAL_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
+    // #@@range_end(wmask)
     const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
 
     // CSRR(W|S|C)[I]命令かどうか
@@ -30,15 +32,19 @@ module csrunit (
     let is_mret: logic = ctrl.is_csr && csr_addr == 12'b0011000_00010 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;
 
     // CSR
+    // #@@range_begin(reg)
     var mtvec : UIntX;
     var mepc  : UIntX;
     var mcause: UIntX;
-    var mtval : UIntX;
+    @<b>|var mtval : UIntX;|
+    // #@@range_end(reg)
 
     // Exception
-    let raise_expt: logic = valid && expt_info.valid;
-    let expt_cause: UIntX = expt_info.cause;
-    let expt_value: UIntX = expt_info.value;
+    // #@@range_begin(info)
+    let raise_expt : logic = valid && expt_info.valid;
+    let expt_cause : UIntX = expt_info.cause;
+    @<b>|let expt_value : UIntX = expt_info.value;|
+    // #@@range_end(info)
 
     // Trap
     assign raise_trap  = raise_expt || (valid && is_mret);
@@ -48,25 +54,21 @@ module csrunit (
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
 
+    // #@@range_begin(rw)
     always_comb {
         // read
         rdata = case csr_addr {
-            CsrAddr::MTVEC : mtvec,
-            CsrAddr::MEPC  : mepc,
-            CsrAddr::MCAUSE: mcause,
-            CsrAddr::MTVAL : mtval,
-            CsrAddr::LED   : led,
-            default        : 'x,
+            ...
+            @<b>|CsrAddr::MTVAL : mtval,|
+            ...
         };
         // write
         wmask = case csr_addr {
-            CsrAddr::MTVEC : MTVEC_WMASK,
-            CsrAddr::MEPC  : MEPC_WMASK,
-            CsrAddr::MCAUSE: MCAUSE_WMASK,
-            CsrAddr::MTVAL : MTVAL_WMASK,
-            CsrAddr::LED   : LED_WMASK,
-            default        : 0,
+            ...
+            @<b>|CsrAddr::MTVAL : MTVAL_WMASK,|
+            ...
         };
+    // #@@range_end(rw)
         wdata = case ctrl.funct3[1:0] {
             2'b01  : rs1,
             2'b10  : rdata | rs1,
@@ -75,33 +77,36 @@ module csrunit (
         } & wmask | (rdata & ~wmask);
     }
 
+    // #@@range_begin(reset)
     always_ff {
         if_reset {
             mtvec  = 0;
             mepc   = 0;
             mcause = 0;
-            mtval  = 0;
+            @<b>|mtval  = 0;|
             led    = 0;
+    // #@@range_end(reset)
         } else {
-            if valid {
-                if raise_trap {
-                    if raise_expt {
-                        mepc   = pc;
-                        mcause = trap_cause;
-                        mtval  = expt_value;
-                    }
-                } else {
-                    if is_wsc {
-                        case csr_addr {
-                            CsrAddr::MTVEC : mtvec  = wdata;
-                            CsrAddr::MEPC  : mepc   = wdata;
-                            CsrAddr::MCAUSE: mcause = wdata;
-                            CsrAddr::MTVAL : mtval  = wdata;
-                            CsrAddr::LED   : led    = wdata;
-                            default        : {}
-                        }
-                    }
-                }
+    // #@@range_begin(update)
+    if valid {
+        if raise_trap {
+            if raise_expt {
+                mepc   = pc;
+                mcause = trap_cause;
+                @<b>|mtval  = expt_value;|
+            }
+    // #@@range_end(update)
+    // #@@range_begin(write)
+    } else {
+        if is_wsc {
+            case csr_addr {
+                ...
+                @<b>|CsrAddr::MTVAL : mtval  = wdata;|
+                ...
+            }
+        }
+    }
+    // #@@range_end(write)
             }
         }
     }
