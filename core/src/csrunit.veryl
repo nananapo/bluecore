@@ -1,16 +1,14 @@
 import eei::*;
 import corectrl::*;
 
-// #@@range_begin(port)
 module csrunit (
     clk        : input  clock            ,
     rst        : input  reset            ,
     valid      : input  logic            ,
     pc         : input  Addr             ,
     ctrl       : input  InstCtrl         ,
-    @<b>|expt_info  : input  ExceptionInfo    ,|
+    expt_info  : input  ExceptionInfo    ,
     rd_addr    : input  logic        <5> ,
-// #@@range_end(port)
     csr_addr   : input  logic        <12>,
     rs1        : input  UIntX            ,
     rdata      : output UIntX            ,
@@ -25,12 +23,8 @@ module csrunit (
     const MCAUSE_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
     const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
 
-    // #@@range_begin(remove_ecall)
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
-    @<del>|// ECALL命令かどうか|
-    @<del>|let is_ecall: logic = ctrl.is_csr && csr_addr == 0 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;|
-    // #@@range_end(remove_ecall)
     // MRET命令かどうか
     let is_mret: logic = ctrl.is_csr && csr_addr == 12'b0011000_00010 && rs1[4:0] == 0 && ctrl.funct3 == 0 && rd_addr == 0;
 
@@ -39,11 +33,9 @@ module csrunit (
     var mepc  : UIntX;
     var mcause: UIntX;
 
-    // #@@range_begin(expt)
     // Exception
     let raise_expt: logic = valid && expt_info.valid;
     let expt_cause: UIntX = expt_info.cause;
-    // #@@range_end(expt)
 
     // Trap
     assign raise_trap  = raise_expt || (valid && is_mret);
