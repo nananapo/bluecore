@@ -1,12 +1,14 @@
 import eei::*;
 import corectrl::*;
 
+// #@@range_begin(port)
 module inst_decoder (
     bits : input  Inst    ,
-    valid: output logic   ,
+    @<b>|valid: output logic   ,|
     ctrl : output InstCtrl,
     imm  : output UIntX   ,
 ) {
+// #@@range_end(port)
     // 即値の生成
     let imm_i_g: logic<12> = bits[31:20];
     let imm_s_g: logic<12> = {bits[31:25], bits[11:7]};
@@ -28,41 +30,43 @@ module inst_decoder (
     const F: logic = 1'b0;
 
     always_comb {
-        valid = case op {
-            OP_LUI, OP_AUIPC, OP_JAL, OP_JALR: T,
-            OP_BRANCH                        : f3 != 3'b010 && f3 != 3'b011,
-            OP_LOAD                          : f3 != 3'b111,
-            OP_STORE                         : f3[2] == 1'b0,
-            OP_OP                            : case f7 {
-                7'b0000000                       : T, // RV32I
-                7'b0100000                       : f3 == 3'b000 || f3 == 3'b101, // SUB, SRA
-                7'b0000001                       : T, // RV32M
-                default                          : F,
-            },
-            OP_OP_IMM: case f3 {
-                3'b001   : f7[6:1] == 6'b000000, // SLLI (RV64I)
-                3'b101   : f7[6:1] == 6'b000000 || f7[6:1] == 6'b010000, // SRLI, SRAI (RV64I)
-                default  : T,
-            },
-            OP_OP_32  : case f7 {
-                7'b0000001: f3 == 3'b000 || f3[2] == 1'b1, // RV64M
-                7'b0000000: f3 == 3'b000 || f3 == 3'b001 || f3 == 3'b101, // ADDW, SLLW, SRLW
-                7'b0100000: f3 == 3'b000 || f3 == 3'b101, // SUBW, SRAW
-                default   : F,
-            },
-            OP_OP_IMM_32: case f3 {
-                3'b000      : T, // ADDIW
-                3'b001      : f7 == 7'b0000000, // SLLIW
-                3'b101      : f7 == 7'b0000000 || f7 == 7'b0100000, // SRLIW, SRAIW
-                default     : F,
-            },
-            OP_SYSTEM: f3 != 3'b000 && f3 != 3'b100 || // CSRR(W|S|C)[I]
-             bits == 32'h00000073 || // ECALL
-             bits == 32'h00100073 || // EBREAK
-             bits == 32'h30200073, //MRET
-            OP_MISC_MEM: T, // FENCE
-            default    : F,
-        };
+// #@@range_begin(valid)
+valid = case op {
+    OP_LUI, OP_AUIPC, OP_JAL, OP_JALR: T,
+    OP_BRANCH                        : f3 != 3'b010 && f3 != 3'b011,
+    OP_LOAD                          : f3 != 3'b111,
+    OP_STORE                         : f3[2] == 1'b0,
+    OP_OP                            : case f7 {
+        7'b0000000                       : T, // RV32I
+        7'b0100000                       : f3 == 3'b000 || f3 == 3'b101, // SUB, SRA
+        7'b0000001                       : T, // RV32M
+        default                          : F,
+    },
+    OP_OP_IMM: case f3 {
+        3'b001   : f7[6:1] == 6'b000000, // SLLI (RV64I)
+        3'b101   : f7[6:1] == 6'b000000 || f7[6:1] == 6'b010000, // SRLI, SRAI (RV64I)
+        default  : T,
+    },
+    OP_OP_32  : case f7 {
+        7'b0000001: f3 == 3'b000 || f3[2] == 1'b1, // RV64M
+        7'b0000000: f3 == 3'b000 || f3 == 3'b001 || f3 == 3'b101, // ADDW, SLLW, SRLW
+        7'b0100000: f3 == 3'b000 || f3 == 3'b101, // SUBW, SRAW
+        default   : F,
+    },
+    OP_OP_IMM_32: case f3 {
+        3'b000      : T, // ADDIW
+        3'b001      : f7 == 7'b0000000, // SLLIW
+        3'b101      : f7 == 7'b0000000 || f7 == 7'b0100000, // SRLIW, SRAIW
+        default     : F,
+    },
+    OP_SYSTEM: f3 != 3'b000 && f3 != 3'b100 || // CSRR(W|S|C)[I]
+     bits == 32'h00000073 || // ECALL
+     bits == 32'h00100073 || // EBREAK
+     bits == 32'h30200073, //MRET
+    OP_MISC_MEM: T, // FENCE
+    default    : F,
+};
+// #@@range_end(valid)
         imm = case op {
             OP_LUI, OP_AUIPC       : imm_u,
             OP_JAL                 : imm_j,
