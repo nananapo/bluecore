@@ -15,22 +15,26 @@ module core (
         bits: Inst,
     }
 
+    // #@@range_begin(exq_type)
     struct exq_type {
         addr: Addr         ,
         bits: Inst         ,
         ctrl: InstCtrl     ,
         imm : UIntX        ,
-        expt: ExceptionInfo,
+        @<b>|expt: ExceptionInfo,|
     }
+    // #@@range_end(exq_type)
 
+    // #@@range_begin(memq_type)
     struct memq_type {
         addr      : Addr            ,
         bits      : Inst            ,
         ctrl      : InstCtrl        ,
         imm       : UIntX           ,
-        expt      : ExceptionInfo   ,
+        @<b>|expt      : ExceptionInfo   ,|
         alu_result: UIntX           ,
         rs1_addr  : logic        <5>,
+    // #@@range_end(memq_type)
         rs1_data  : UIntX           ,
         rs2_data  : UIntX           ,
         br_taken  : logic           ,
@@ -174,6 +178,7 @@ module core (
         imm : ids_imm      ,
     );
 
+    // #@@range_begin(idex)
     always_comb {
         // ID -> EX
         if_fifo_rready = exq_wready;
@@ -182,10 +187,11 @@ module core (
         exq_wdata.bits = if_fifo_rdata.bits;
         exq_wdata.ctrl = ids_ctrl;
         exq_wdata.imm  = ids_imm;
-        // exception
-        exq_wdata.expt.valid = ids_inst_bits == 32'h00000073; // ECALL
-        exq_wdata.expt.cause = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
+        @<b>|// exception|
+        @<b>|exq_wdata.expt.valid = ids_inst_bits == 32'h00000073; // ECALL|
+        @<b>|exq_wdata.expt.cause = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;|
     }
+    // #@@range_end(idex)
 
     ///////////////////////////////// EX Stage /////////////////////////////////
 
@@ -308,31 +314,26 @@ module core (
 
     let exs_stall: logic = exs_data_hazard || exs_muldiv_stall;
 
+    // #@@range_begin(exmem)
     always_comb {
         // EX -> MEM
         exq_rready            = memq_wready && !exs_stall;
-        memq_wvalid           = exq_rvalid && !exs_stall;
-        memq_wdata.addr       = exq_rdata.addr;
-        memq_wdata.bits       = exq_rdata.bits;
-        memq_wdata.ctrl       = exq_rdata.ctrl;
-        memq_wdata.imm        = exq_rdata.imm;
-        memq_wdata.rs1_addr   = exs_rs1_addr;
-        memq_wdata.rs1_data   = exs_rs1_data;
-        memq_wdata.rs2_data   = exs_rs2_data;
-        memq_wdata.alu_result = if exs_ctrl.is_muldiv ? exs_muldiv_result : exs_alu_result;
-        memq_wdata.br_taken   = exs_ctrl.is_jump || inst_is_br(exs_ctrl) && exs_brunit_take;
+        ...
         memq_wdata.jump_addr  = if inst_is_br(exs_ctrl) ? exs_pc + exs_imm : exs_alu_result & ~1;
-        memq_wdata.expt       = exq_rdata.expt;
+        @<b>|memq_wdata.expt       = exq_rdata.expt;|
     }
+    // #@@range_end(exmem)
 
+    // #@@range_begin(memreg)
     ///////////////////////////////// MEM Stage /////////////////////////////////
     var mems_is_new   : logic           ;
     let mems_valid    : logic            = memq_rvalid;
     let mems_pc       : Addr             = memq_rdata.addr;
     let mems_inst_bits: Inst             = memq_rdata.bits;
     let mems_ctrl     : InstCtrl         = memq_rdata.ctrl;
-    let mems_expt     : ExceptionInfo    = memq_rdata.expt;
+    @<b>|let mems_expt     : ExceptionInfo    = memq_rdata.expt;|
     let mems_rd_addr  : logic        <5> = mems_inst_bits[11:7];
+    // #@@range_end(memreg)
 
     assign control_hazard         = mems_valid && (csru_raise_trap || mems_ctrl.is_jump || memq_rdata.br_taken);
     assign control_hazard_pc_next = if csru_raise_trap ? csru_trap_vector : memq_rdata.jump_addr;
@@ -369,14 +370,16 @@ module core (
     var csru_raise_trap : logic;
     var csru_trap_vector: Addr ;
 
+    // #@@range_begin(csru)
     inst csru: csrunit (
         clk                             ,
         rst                             ,
         valid    : mems_valid           ,
         pc       : mems_pc              ,
         ctrl     : mems_ctrl            ,
-        expt_info: mems_expt            ,
+        @<b>|expt_info: mems_expt            ,|
         rd_addr  : mems_rd_addr         ,
+    // #@@range_end(csru)
         csr_addr : mems_inst_bits[31:20],
         rs1      : if mems_ctrl.funct3[2] == 1 && mems_ctrl.funct3[1:0] != 0 ?
             {1'b0 repeat XLEN - $bits(memq_rdata.rs1_addr), memq_rdata.rs1_addr} // rs1を0で拡張する
