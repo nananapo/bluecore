@@ -1,14 +1,12 @@
 import eei::*;
 import corectrl::*;
 
-// #@@range_begin(port)
 module inst_decoder (
     bits : input  Inst    ,
-    @<b>|valid: output logic   ,|
+    valid: output logic   ,
     ctrl : output InstCtrl,
     imm  : output UIntX   ,
 ) {
-// #@@range_end(port)
     // 即値の生成
     let imm_i_g: logic<12> = bits[31:20];
     let imm_s_g: logic<12> = {bits[31:25], bits[11:7]};
@@ -30,7 +28,6 @@ module inst_decoder (
     const F: logic = 1'b0;
 
     always_comb {
-// #@@range_begin(valid)
         valid = case op {
             OP_LUI, OP_AUIPC, OP_JAL, OP_JALR: T,
             OP_BRANCH                        : f3 != 3'b010 && f3 != 3'b011,
@@ -66,7 +63,6 @@ module inst_decoder (
             OP_MISC_MEM: T, // FENCE
             default    : F,
         };
-// #@@range_end(valid)
         imm = case op {
             OP_LUI, OP_AUIPC       : imm_u,
             OP_JAL                 : imm_j,
