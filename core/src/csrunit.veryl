@@ -1,23 +1,25 @@
 import eei::*;
 import corectrl::*;
 
+// #@@range_begin(port)
 module csrunit (
     clk        : input  clock            ,
     rst        : input  reset            ,
     valid      : input  logic            ,
     pc         : input  Addr             ,
-    inst_bits  : input  Inst             ,
+    @<b>|inst_bits  : input  Inst             ,|
     ctrl       : input  InstCtrl         ,
     expt_info  : input  ExceptionInfo    ,
     rd_addr    : input  logic        <5> ,
     csr_addr   : input  logic        <12>,
-    rs1_addr   : input  logic        <5> ,
-    rs1_data   : input  UIntX            ,
+    @<b>|rs1_addr   : input  logic        <5> ,|
+    @<b>|rs1_data   : input  UIntX            ,|
     rdata      : output UIntX            ,
     raise_trap : output logic            ,
     trap_vector: output Addr             ,
     led        : output UIntX            ,
 ) {
+// #@@range_end(port)
 
     // wmasks
     const MTVEC_WMASK : UIntX = 'hffff_ffff_ffff_fffc;
@@ -26,6 +28,7 @@ module csrunit (
     const MTVAL_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
     const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
 
+    // #@@range_begin(check)
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
     // MRET命令かどうか
@@ -34,6 +37,8 @@ module csrunit (
     // Check CSR access
     let will_not_write_csr     : logic = (ctrl.funct3[1:0] == 2 || ctrl.funct3[1:0] == 3) && rs1_addr == 0; // set/clear with source = 0
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
+    // #@@range_end(check)
+
 
     // CSR
     var mtvec : UIntX;
@@ -42,17 +47,19 @@ module csrunit (
     var mtval : UIntX;
 
     // Exception
+    // #@@range_begin(expt)
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
-    let expt_cause: UIntX = switch {
-        expt_info.valid        : expt_info.cause,
-        expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,
-        default                : 0,
-    };
-    let expt_value: UIntX = switch {
-        expt_info.valid                            : expt_info.value,
-        expt_cause == CsrCause::ILLEGAL_INSTRUCTION: {1'b0 repeat XLEN - $bits(Inst), inst_bits},
-        default                                    : 0
-    };
+    let expt_cause: UIntX = @<b>|switch {|
+        @<b>|expt_info.valid        :| expt_info.cause@<b>|,|
+        @<b>|expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,|
+        @<b>|default                : 0,|
+    @<b>|}|;
+    let expt_value: UIntX = @<b>|switch {|
+        @<b>|expt_info.valid                            :| expt_info.value@<b>|,|
+        @<b>|expt_cause == CsrCause::ILLEGAL_INSTRUCTION: {1'b0 repeat XLEN - $bits(Inst), inst_bits},|
+        @<b>|default                                    : 0|
+    @<b>|}|;
+    // #@@range_end(expt)
 
     // Trap
     assign raise_trap  = raise_expt || (valid && is_mret);
@@ -81,13 +88,15 @@ module csrunit (
             CsrAddr::LED   : LED_WMASK,
             default        : 0,
         };
-        let wsource: UIntX = if ctrl.funct3[2] ? {1'b0 repeat XLEN - 5, rs1_addr} : rs1_data;
-        wdata   = case ctrl.funct3[1:0] {
-            2'b01  : wsource,
-            2'b10  : rdata | wsource,
-            2'b11  : rdata & ~wsource,
-            default: 'x,
-        } & wmask | (rdata & ~wmask);
+    // #@@range_begin(wdata)
+    @<b>|let wsource: UIntX = if ctrl.funct3[2] ? {1'b0 repeat XLEN - 5, rs1_addr} : rs1_data;|
+    wdata   = case ctrl.funct3[1:0] {
+        2'b01  : @<b>|wsource|,
+        2'b10  : rdata | @<b>|wsource|,
+        2'b11  : rdata & ~@<b>|wsource|,
+        default: 'x,
+    } & wmask | (rdata & ~wmask);
+    // #@@range_end(wdata)
     }
 
     always_ff {

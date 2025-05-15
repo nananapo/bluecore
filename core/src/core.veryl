@@ -37,16 +37,13 @@ module core (
         jump_addr : Addr            ,
     }
 
+    // #@@range_begin(wbq_type)
     struct wbq_type {
-        addr      : Addr    ,
-        bits      : Inst    ,
-        ctrl      : InstCtrl,
-        imm       : UIntX   ,
-        alu_result: UIntX   ,
-        mem_rdata : UIntX   ,
+        ...
         csr_rdata : UIntX   ,
-        raise_trap: logic   ,
+        @<b>|raise_trap: logic   ,|
     }
+    // #@@range_end(wbq_type)
 
     // 命令メモリ -> IFのFIFO
     var if_fifo_wready    : logic       ;
@@ -387,23 +384,25 @@ module core (
     var csru_raise_trap : logic;
     var csru_trap_vector: Addr ;
 
+    // #@@range_begin(csru)
     inst csru: csrunit (
         clk                               ,
         rst                               ,
         valid      : mems_valid           ,
         pc         : mems_pc              ,
-        inst_bits  : mems_inst_bits       ,
+        @<b>|inst_bits  : mems_inst_bits       ,|
         ctrl       : mems_ctrl            ,
         expt_info  : mems_expt            ,
         rd_addr    : mems_rd_addr         ,
-        csr_addr   : mems_inst_bits[31:20],
-        rs1_addr   : memq_rdata.rs1_addr  ,
-        rs1_data   : memq_rdata.rs1_data  ,
+        csr_addr   : @<b>|mems_inst_bits[31:20],|
+        @<b>|rs1_addr   : memq_rdata.rs1_addr  ,|
+        @<b>|rs1_data   : memq_rdata.rs1_data  ,|
         rdata      : csru_rdata           ,
         raise_trap : csru_raise_trap      ,
         trap_vector: csru_trap_vector     ,
         led                               ,
     );
+    // #@@range_end(csru)
 
     always_comb {
         // MEM -> WB
@@ -416,7 +415,9 @@ module core (
         wbq_wdata.alu_result = memq_rdata.alu_result;
         wbq_wdata.mem_rdata  = memu_rdata;
         wbq_wdata.csr_rdata  = csru_rdata;
-        wbq_wdata.raise_trap = csru_raise_trap;
+    // #@@range_begin(memwb)
+    wbq_wdata.raise_trap = csru_raise_trap;
+    // #@@range_end(memwb)
     }
 
     ///////////////////////////////// WB Stage /////////////////////////////////
@@ -439,11 +440,13 @@ module core (
         wbq_rdata.alu_result
     ;
 
+    // #@@range_begin(wb)
     always_ff {
         if wbs_valid && wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {
             regfile[wbs_rd_addr] = wbs_wb_data;
         }
     }
+    // #@@range_end(wb)
 
     always_comb {
         // WB -> END
