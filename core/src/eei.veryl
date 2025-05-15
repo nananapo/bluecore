@@ -39,8 +39,10 @@ package eei {
         LED = 12'h800,
     }
 
+    // #@@range_begin(CsrCause)
     enum CsrCause: UIntX {
         BREAKPOINT = 3,
         ENVIRONMENT_CALL_FROM_M_MODE = 11,
     }
+    // #@@range_end(CsrCause)
 }

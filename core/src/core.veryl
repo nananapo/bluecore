@@ -183,18 +183,20 @@ module core (
         exq_wdata.ctrl = ids_ctrl;
         exq_wdata.imm  = ids_imm;
         // exception
+        // #@@range_begin(idex)
         exq_wdata.expt = 0;
-        if ids_inst_bits == 32'h00000073 {
+        @<b>|if ids_inst_bits == 32'h00000073 {|
             // ECALL
-            exq_wdata.expt.valid = 1;
+            exq_wdata.expt.valid = @<b>|1;|
             exq_wdata.expt.cause = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
             exq_wdata.expt.value = 0;
-        } else if ids_inst_bits == 32'h00100073 {
-            // EBREAK
-            exq_wdata.expt.valid = 1;
-            exq_wdata.expt.cause = CsrCause::BREAKPOINT;
-            exq_wdata.expt.value = ids_pc;
-        }
+        @<b>|} else if ids_inst_bits == 32'h00100073 {|
+            @<b>|// EBREAK|
+            @<b>|exq_wdata.expt.valid = 1;|
+            @<b>|exq_wdata.expt.cause = CsrCause::BREAKPOINT;|
+            @<b>|exq_wdata.expt.value = ids_pc;|
+        @<b>|}|
+        // #@@range_end(idex)
     }
 
     ///////////////////////////////// EX Stage /////////////////////////////////
