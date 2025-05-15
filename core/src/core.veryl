@@ -45,6 +45,7 @@ module core (
         alu_result: UIntX   ,
         mem_rdata : UIntX   ,
         csr_rdata : UIntX   ,
+        raise_trap: logic   ,
     }
 
     // 命令メモリ -> IFのFIFO
@@ -387,23 +388,21 @@ module core (
     var csru_trap_vector: Addr ;
 
     inst csru: csrunit (
-        clk                             ,
-        rst                             ,
-        valid    : mems_valid           ,
-        pc       : mems_pc              ,
-        ctrl     : mems_ctrl            ,
-        expt_info: mems_expt            ,
-        rd_addr  : mems_rd_addr         ,
-        csr_addr : mems_inst_bits[31:20],
-        rs1      : if mems_ctrl.funct3[2] == 1 && mems_ctrl.funct3[1:0] != 0 ?
-            {1'b0 repeat XLEN - $bits(memq_rdata.rs1_addr), memq_rdata.rs1_addr} // rs1を0で拡張する
-        :
-            memq_rdata.rs1_data
-        ,
-        rdata      : csru_rdata      ,
-        raise_trap : csru_raise_trap ,
-        trap_vector: csru_trap_vector,
-        led                          ,
+        clk                               ,
+        rst                               ,
+        valid      : mems_valid           ,
+        pc         : mems_pc              ,
+        inst_bits  : mems_inst_bits       ,
+        ctrl       : mems_ctrl            ,
+        expt_info  : mems_expt            ,
+        rd_addr    : mems_rd_addr         ,
+        csr_addr   : mems_inst_bits[31:20],
+        rs1_addr   : memq_rdata.rs1_addr  ,
+        rs1_data   : memq_rdata.rs1_data  ,
+        rdata      : csru_rdata           ,
+        raise_trap : csru_raise_trap      ,
+        trap_vector: csru_trap_vector     ,
+        led                               ,
     );
 
     always_comb {
@@ -417,6 +416,7 @@ module core (
         wbq_wdata.alu_result = memq_rdata.alu_result;
         wbq_wdata.mem_rdata  = memu_rdata;
         wbq_wdata.csr_rdata  = csru_rdata;
+        wbq_wdata.raise_trap = csru_raise_trap;
     }
 
     ///////////////////////////////// WB Stage /////////////////////////////////
@@ -440,7 +440,7 @@ module core (
     ;
 
     always_ff {
-        if wbs_valid && wbs_ctrl.rwb_en {
+        if wbs_valid && wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {
             regfile[wbs_rd_addr] = wbs_wb_data;
         }
     }
@@ -514,7 +514,7 @@ module core (
             $display("WB ----");
             if wbs_valid {
                 $display("  %h : %h", wbq_rdata.addr, wbq_rdata.bits);
-                if wbs_ctrl.rwb_en {
+                if wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {
                     $display("  reg[%d] <= %h", wbs_rd_addr, wbs_wb_data);
                 }
             }
