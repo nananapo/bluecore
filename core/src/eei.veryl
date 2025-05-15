@@ -29,9 +29,7 @@ package eei {
     const OP_LOAD     : logic<7> = 7'b0000011;
     const OP_STORE    : logic<7> = 7'b0100011;
     const OP_SYSTEM   : logic<7> = 7'b1110011;
-    // #@@range_begin(op)
     const OP_MISC_MEM : logic<7> = 7'b0001111;
-    // #@@range_end(op)
 
     // CSRのアドレス
     enum CsrAddr: logic<12> {
@@ -42,11 +40,9 @@ package eei {
         LED = 12'h800,
     }
 
-    // #@@range_begin(CsrCause)
     enum CsrCause: UIntX {
         ILLEGAL_INSTRUCTION = 2,
         BREAKPOINT = 3,
         ENVIRONMENT_CALL_FROM_M_MODE = 11,
     }
-    // #@@range_end(CsrCause)
 }

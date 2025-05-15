@@ -162,21 +162,19 @@ module core (
 
     ///////////////////////////////// ID Stage /////////////////////////////////
 
-    // #@@range_begin(ids)
     let ids_valid     : logic    = if_fifo_rvalid;
     let ids_pc        : Addr     = if_fifo_rdata.addr;
     let ids_inst_bits : Inst     = if_fifo_rdata.bits;
-    @<b>|var ids_inst_valid: logic   ;|
+    var ids_inst_valid: logic   ;
     var ids_ctrl      : InstCtrl;
     var ids_imm       : UIntX   ;
 
     inst decoder: inst_decoder (
         bits : ids_inst_bits ,
-        @<b>|valid: ids_inst_valid,|
+        valid: ids_inst_valid,
         ctrl : ids_ctrl      ,
         imm  : ids_imm       ,
     );
-    // #@@range_end(ids)
 
     always_comb {
         // ID -> EX
@@ -187,15 +185,13 @@ module core (
         exq_wdata.ctrl = ids_ctrl;
         exq_wdata.imm  = ids_imm;
         // exception
-        // #@@range_begin(idex)
         exq_wdata.expt = 0;
-        @<b>|if !ids_inst_valid {|
-            @<b>|// illegal instruction|
-            @<b>|exq_wdata.expt.valid = 1;|
-            @<b>|exq_wdata.expt.cause = CsrCause::ILLEGAL_INSTRUCTION;|
-            @<b>|exq_wdata.expt.value = {1'b0 repeat XLEN - ILEN, ids_inst_bits};|
-        @<b>|} else| if ids_inst_bits == 32'h00000073 {
-        // #@@range_end(idex)
+        if !ids_inst_valid {
+            // illegal instruction
+            exq_wdata.expt.valid = 1;
+            exq_wdata.expt.cause = CsrCause::ILLEGAL_INSTRUCTION;
+            exq_wdata.expt.value = {1'b0 repeat XLEN - ILEN, ids_inst_bits};
+        } else if ids_inst_bits == 32'h00000073 {
             // ECALL
             exq_wdata.expt.valid = 1;
             exq_wdata.expt.cause = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
