@@ -28,13 +28,11 @@ package corectrl {
     }
 
     // 例外の情報を保存するための型
-    // #@@range_begin(ExceptionInfo)
     struct ExceptionInfo {
         valid: logic   ,
         cause: CsrCause,
-        @<b>|value: UIntX   ,|
+        value: UIntX   ,
     }
-    // #@@range_end(ExceptionInfo)
 
     // 命令がメモリにアクセスする命令か判別する関数
     function inst_is_memop (

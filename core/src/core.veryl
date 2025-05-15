@@ -182,12 +182,10 @@ module core (
         exq_wdata.bits = if_fifo_rdata.bits;
         exq_wdata.ctrl = ids_ctrl;
         exq_wdata.imm  = ids_imm;
-        // #@@range_begin(idex)
         // exception
         exq_wdata.expt.valid = ids_inst_bits == 32'h00000073; // ECALL
         exq_wdata.expt.cause = CsrCause::ENVIRONMENT_CALL_FROM_M_MODE;
-        @<b>|exq_wdata.expt.value = 0;|
-        // #@@range_end(idex)
+        exq_wdata.expt.value = 0;
     }
 
     ///////////////////////////////// EX Stage /////////////////////////////////
