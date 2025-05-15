@@ -40,14 +40,12 @@ package eei {
         LED = 12'h800,
     }
 
-    // #@@range_begin(CsrCause)
     enum CsrCause: UIntX {
         INSTRUCTION_ADDRESS_MISALIGNED = 0,
         ILLEGAL_INSTRUCTION = 2,
         BREAKPOINT = 3,
-        @<b>|LOAD_ADDRESS_MISALIGNED = 4,|
-        @<b>|STORE_AMO_ADDRESS_MISALIGNED = 6,|
+        LOAD_ADDRESS_MISALIGNED = 4,
+        STORE_AMO_ADDRESS_MISALIGNED = 6,
         ENVIRONMENT_CALL_FROM_M_MODE = 11,
     }
-    // #@@range_end(CsrCause)
 }
