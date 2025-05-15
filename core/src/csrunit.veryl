@@ -68,7 +68,7 @@ module csrunit (
             2'b10  : rdata | rs1,
             2'b11  : rdata & ~rs1,
             default: 'x,
-        } & wmask;
+        } & wmask | (rdata & ~wmask);
     }
 
     always_ff {
