@@ -1,13 +1,15 @@
 import eei::*;
 
 module mmio_controller (
-    clk     : input   clock        ,
-    rst     : input   reset        ,
-    req_core: modport Membus::slave,
+    clk       : input   clock         ,
+    rst       : input   reset         ,
+    req_core  : modport Membus::slave ,
+    ram_membus: modport Membus::master,
 ) {
 
     enum Device {
         UNKNOWN,
+        RAM,
     }
 
     inst req_saved: Membus;
@@ -27,19 +29,32 @@ module mmio_controller (
     }
 
     // すべてのデバイスのmasterをリセットする
-    function reset_all_device_masters () {}
+    function reset_all_device_masters () {
+        reset_membus_master(ram_membus);
+    }
 
     // アドレスからデバイスを取得する
     function get_device (
         addr: input Addr,
     ) -> Device {
+        if addr >= MMAP_RAM_BEGIN {
+            return Device::RAM;
+        }
         return Device::UNKNOWN;
     }
 
     // デバイスのmasterにreqの情報を割り当てる
     function assign_device_master (
         req: modport Membus::all_input,
-    ) {}
+    ) {
+        case get_device(req.addr) {
+            Device::RAM: {
+                ram_membus      <> req;
+                ram_membus.addr -= MMAP_RAM_BEGIN;
+            }
+            default: {}
+        }
+    }
 
     // デバイスのrvalid、rdataをreqに割り当てる
     function assign_device_slave (
@@ -48,12 +63,20 @@ module mmio_controller (
     ) {
         req.rvalid = 1;
         req.rdata  = 0;
+        case device {
+            Device::RAM: req <> ram_membus;
+            default    : {}
+        }
     }
 
     // デバイスのreadyを取得する
     function get_device_ready (
         device: input Device,
     ) -> logic {
+        case device {
+            Device::RAM: return ram_membus.ready;
+            default    : {}
+        }
         return 1;
     }
 
@@ -61,6 +84,10 @@ module mmio_controller (
     function get_device_rvalid (
         device: input Device,
     ) -> logic {
+        case device {
+            Device::RAM: return ram_membus.rvalid;
+            default    : {}
+        }
         return 1;
     }
 

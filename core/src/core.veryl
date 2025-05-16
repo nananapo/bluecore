@@ -121,7 +121,7 @@ module core (
 
     always_ff {
         if_reset {
-            if_pc           = 0;
+            if_pc           = INITIAL_PC;
             if_is_requested = 0;
             if_pc_requested = 0;
             if_fifo_wvalid  = 0;

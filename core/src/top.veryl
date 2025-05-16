@@ -19,7 +19,10 @@ module top #(
         return addr[$clog2(DATA_WIDTH / 8)+:ADDR_WIDTH];
     }
 
-    inst membus  : membus_if::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>;
+    inst mmio_membus    : Membus;
+    inst mmio_ram_membus: Membus;
+    inst ram_membus     : membus_if::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>;
+
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     inst d_membus: Membus; // ロードストア命令用
 
@@ -29,7 +32,7 @@ module top #(
     // riscv-testsの終了を検知する
     #[ifdef(TEST_MODE)]
     always_ff {
-        let RISCVTESTS_TOHOST_ADDR: Addr = 'h1000 as Addr;
+        let RISCVTESTS_TOHOST_ADDR: Addr = MMAP_RAM_BEGIN + 'h1000 as Addr;
         if d_membus.valid && d_membus.ready && d_membus.wen == 1 && d_membus.addr == RISCVTESTS_TOHOST_ADDR && d_membus.wdata[lsb] == 1'b1 {
             test_success = d_membus.wdata == 1;
             if d_membus.wdata == 1 {
@@ -42,13 +45,13 @@ module top #(
         }
     }
 
-    // メモリアクセスを調停する
+    // mmio_controllerへのメモリアクセスを調停する
     always_ff {
         if_reset {
             memarb_last_i     = 0;
             memarb_last_iaddr = 0;
         } else {
-            if membus.ready {
+            if mmio_membus.ready {
                 memarb_last_i     = !d_membus.valid;
                 memarb_last_iaddr = i_membus.addr;
             }
@@ -56,35 +59,54 @@ module top #(
     }
 
     always_comb {
-        i_membus.ready  = membus.ready && !d_membus.valid;
-        i_membus.rvalid = membus.rvalid && memarb_last_i;
-        i_membus.rdata  = if memarb_last_iaddr[2] == 0 ? membus.rdata[31:0] : membus.rdata[63:32];
+        i_membus.ready  = mmio_membus.ready && !d_membus.valid;
+        i_membus.rvalid = mmio_membus.rvalid && memarb_last_i;
+        i_membus.rdata  = if memarb_last_iaddr[2] == 0 ? mmio_membus.rdata[31:0] : mmio_membus.rdata[63:32];
 
-        d_membus.ready  = membus.ready;
-        d_membus.rvalid = membus.rvalid && !memarb_last_i;
-        d_membus.rdata  = membus.rdata;
+        d_membus.ready  = mmio_membus.ready;
+        d_membus.rvalid = mmio_membus.rvalid && !memarb_last_i;
+        d_membus.rdata  = mmio_membus.rdata;
 
-        membus.valid = i_membus.valid | d_membus.valid;
+        mmio_membus.valid = i_membus.valid | d_membus.valid;
         if d_membus.valid {
-            membus.addr  = addr_to_memaddr::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>(d_membus.addr);
-            membus.wen   = d_membus.wen;
-            membus.wdata = d_membus.wdata;
-            membus.wmask = d_membus.wmask;
+            mmio_membus.addr  = d_membus.addr;
+            mmio_membus.wen   = d_membus.wen;
+            mmio_membus.wdata = d_membus.wdata;
+            mmio_membus.wmask = d_membus.wmask;
         } else {
-            membus.addr  = addr_to_memaddr::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>(i_membus.addr);
-            membus.wen   = 0; // 命令フェッチは常に読み込み
-            membus.wdata = 'x;
-            membus.wmask = 'x;
+            mmio_membus.addr  = i_membus.addr;
+            mmio_membus.wen   = 0; // 命令フェッチは常に読み込み
+            mmio_membus.wdata = 'x;
+            mmio_membus.wmask = 'x;
         }
+    }
+
+    always_comb {
+        // mmio <> RAM
+        ram_membus.valid       = mmio_ram_membus.valid;
+        mmio_ram_membus.ready  = ram_membus.ready;
+        ram_membus.addr        = addr_to_memaddr::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>(mmio_ram_membus.addr);
+        ram_membus.wen         = mmio_ram_membus.wen;
+        ram_membus.wdata       = mmio_ram_membus.wdata;
+        ram_membus.wmask       = mmio_ram_membus.wmask;
+        mmio_ram_membus.rvalid = ram_membus.rvalid;
+        mmio_ram_membus.rdata  = ram_membus.rdata;
     }
 
     inst ram: memory::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH> #(
         FILEPATH_IS_ENV: RAM_FILEPATH_IS_ENV,
         FILEPATH       : RAM_FILEPATH       ,
     ) (
-        clk     ,
-        rst     ,
-        membus  ,
+        clk               ,
+        rst               ,
+        membus: ram_membus,
+    );
+
+    inst mmioc: mmio_controller (
+        clk                        ,
+        rst                        ,
+        req_core  : mmio_membus    ,
+        ram_membus: mmio_ram_membus,
     );
 
     inst c: core (
