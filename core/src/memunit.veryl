@@ -2,16 +2,16 @@ import eei::*;
 import corectrl::*;
 
 module memunit (
-    clk   : input   clock                                    ,
-    rst   : input   reset                                    ,
-    valid : input   logic                                    ,
-    is_new: input   logic                                    , // 命令が新しく供給されたかどうか
-    ctrl  : input   InstCtrl                                 , // 命令のInstCtrl
-    addr  : input   Addr                                     , // アクセスするアドレス
-    rs2   : input   UIntX                                    , // ストア命令で書き込むデータ
-    rdata : output  UIntX                                    , // ロード命令の結果 (stall = 0のときに有効)
-    stall : output  logic                                    , // メモリアクセス命令が完了していない
-    membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master, // メモリとのinterface
+    clk   : input   clock         ,
+    rst   : input   reset         ,
+    valid : input   logic         ,
+    is_new: input   logic         , // 命令が新しく供給されたかどうか
+    ctrl  : input   InstCtrl      , // 命令のInstCtrl
+    addr  : input   Addr          , // アクセスするアドレス
+    rs2   : input   UIntX         , // ストア命令で書き込むデータ
+    rdata : output  UIntX         , // ロード命令の結果 (stall = 0のときに有効)
+    stall : output  logic         , // メモリアクセス命令が完了していない
+    membus: modport Membus::master, // メモリとのinterface
 ) {
 
     // memunitの状態を表す列挙型
@@ -23,14 +23,14 @@ module memunit (
 
     var state: State;
 
-    var req_wen  : logic                    ;
-    var req_addr : Addr                     ;
-    var req_wdata: logic<MEM_DATA_WIDTH>    ;
-    var req_wmask: logic<MEM_DATA_WIDTH / 8>;
+    var req_wen  : logic                       ;
+    var req_addr : Addr                        ;
+    var req_wdata: logic<MEMBUS_DATA_WIDTH>    ;
+    var req_wmask: logic<MEMBUS_DATA_WIDTH / 8>;
 
-    const W   : u32                   = XLEN;
-    let D   : logic<MEM_DATA_WIDTH> = membus.rdata;
-    let sext: logic                 = ctrl.funct3[2] == 1'b0;
+    const W   : u32                      = XLEN;
+    let D   : logic<MEMBUS_DATA_WIDTH> = membus.rdata;
+    let sext: logic                    = ctrl.funct3[2] == 1'b0;
 
     always_comb {
         // メモリアクセス
