@@ -29,6 +29,28 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
         rvalid: output,
         rdata : output,
     }
+
+    modport all_input {
+        ..input
+    }
+
+    modport response {
+        rvalid: output,
+        rdata : output,
+    }
+
+    modport slave_output {
+        ready: output,
+        ..same(response)
+    }
+
+    modport master_output {
+        valid: output,
+        addr : output,
+        wen  : output,
+        wdata: output,
+        wmask: output,
+    }
 }
 
 alias interface Membus = membus_if::<eei::MEMBUS_DATA_WIDTH, eei::XLEN>;
