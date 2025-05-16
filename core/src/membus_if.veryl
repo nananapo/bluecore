@@ -25,6 +25,28 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
         ..converse(master)
     }
 
+    modport all_input {
+        ..input
+    }
+
+    modport response {
+        rvalid: output,
+        rdata : output,
+    }
+
+    modport slave_output {
+        ready: output,
+        ..same(response)
+    }
+
+    modport master_output {
+        valid: output,
+        addr : output,
+        wen  : output,
+        wdata: output,
+        wmask: output,
+    }
+
     // get DATA_WIDTH-bit expanded wmask
     function wmask_expand () -> logic<DATA_WIDTH> {
         var result: logic<DATA_WIDTH>;
