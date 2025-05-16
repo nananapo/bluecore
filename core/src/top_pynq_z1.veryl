@@ -1,7 +1,7 @@
 import eei::*;
 
 module top_pynq_z1 #(
-    param MEMORY_FILEPATH: string = "",
+    param RAM_FILEPATH: string = "",
 ) (
     clk: input  clock   ,
     rst: input  reset   ,
@@ -15,8 +15,8 @@ module top_pynq_z1 #(
     }
 
     inst t: top #(
-        MEMORY_FILEPATH_IS_ENV: 0              ,
-        MEMORY_FILEPATH       : MEMORY_FILEPATH,
+        RAM_FILEPATH_IS_ENV: 0           ,
+        RAM_FILEPATH       : RAM_FILEPATH,
     ) (
         clk  ,
         rst  ,

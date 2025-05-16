@@ -2,11 +2,11 @@ import eei::*;
 import corectrl::*;
 
 module core (
-    clk     : input   clock                                    ,
-    rst     : input   reset                                    ,
-    i_membus: modport membus_if::<ILEN, XLEN>::master          ,
-    d_membus: modport membus_if::<MEM_DATA_WIDTH, XLEN>::master,
-    led     : output  UIntX                                    ,
+    clk     : input   clock                          ,
+    rst     : input   reset                          ,
+    i_membus: modport membus_if::<ILEN, XLEN>::master,
+    d_membus: modport Membus::master                 ,
+    led     : output  UIntX                          ,
 ) {
 
     // ifのFIFOのデータ型

@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
 
     if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << " MEMORY_FILE_PATH [CYCLE]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " RAM_FILE_PATH [CYCLE]" << std::endl;
         return 1;
     }
 
@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
     }
 
     // 環境変数でメモリの初期化用ファイルを指定する
-    const char* original_env = getenv("MEMORY_FILE_PATH");
-    setenv("MEMORY_FILE_PATH", memory_file_path.c_str(), 1);
+    const char* original_env = getenv("RAM_FILE_PATH");
+    setenv("RAM_FILE_PATH", memory_file_path.c_str(), 1);
 
     // top
     Vcore_top *dut = new Vcore_top();
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 
     // 環境変数を元に戻す
     if (original_env != nullptr){
-        setenv("MEMORY_FILE_PATH", original_env, 1);
+        setenv("RAM_FILE_PATH", original_env, 1);
     }
 
     // trace

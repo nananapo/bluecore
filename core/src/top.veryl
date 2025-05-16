@@ -1,26 +1,27 @@
 import eei::*;
 
 module top #(
-    param MEMORY_FILEPATH_IS_ENV: bit    = 1                 ,
-    param MEMORY_FILEPATH       : string = "MEMORY_FILE_PATH",
+    param RAM_FILEPATH_IS_ENV: bit    = 1              ,
+    param RAM_FILEPATH       : string = "RAM_FILE_PATH",
 ) (
-    clk: input clock,
-    rst: input reset,
+    clk          : input clock,
+    rst          : input reset,
+    MMAP_DBG_ADDR: input Addr ,
     #[ifdef(TEST_MODE)]
     test_success: output bit  ,
     led         : output UIntX,
 ) {
 
-    // アドレスをメモリのデータ単位でのアドレスに変換する
-    function addr_to_memaddr (
+    // アドレスをデータ単位でのアドレスに変換する
+    function addr_to_memaddr::<DATA_WIDTH: u32, ADDR_WIDTH: u32> (
         addr: input logic<XLEN>,
-    ) -> logic<MEM_ADDR_WIDTH> {
-        return addr[$clog2(MEM_DATA_WIDTH / 8)+:MEM_ADDR_WIDTH];
+    ) -> logic<ADDR_WIDTH> {
+        return addr[$clog2(DATA_WIDTH / 8)+:ADDR_WIDTH];
     }
 
-    inst membus  : membus_if::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH>;
+    inst membus  : membus_if::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>;
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
-    inst d_membus: membus_if::<MEM_DATA_WIDTH, XLEN>; // ロードストア命令用
+    inst d_membus: Membus; // ロードストア命令用
 
     var memarb_last_i    : logic;
     var memarb_last_iaddr: Addr ;
@@ -65,21 +66,21 @@ module top #(
 
         membus.valid = i_membus.valid | d_membus.valid;
         if d_membus.valid {
-            membus.addr  = addr_to_memaddr(d_membus.addr);
+            membus.addr  = addr_to_memaddr::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>(d_membus.addr);
             membus.wen   = d_membus.wen;
             membus.wdata = d_membus.wdata;
             membus.wmask = d_membus.wmask;
         } else {
-            membus.addr  = addr_to_memaddr(i_membus.addr);
+            membus.addr  = addr_to_memaddr::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>(i_membus.addr);
             membus.wen   = 0; // 命令フェッチは常に読み込み
             membus.wdata = 'x;
             membus.wmask = 'x;
         }
     }
 
-    inst mem: memory::<MEM_DATA_WIDTH, MEM_ADDR_WIDTH> #(
-        FILEPATH_IS_ENV: MEMORY_FILEPATH_IS_ENV,
-        FILEPATH       : MEMORY_FILEPATH       ,
+    inst ram: memory::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH> #(
+        FILEPATH_IS_ENV: RAM_FILEPATH_IS_ENV,
+        FILEPATH       : RAM_FILEPATH       ,
     ) (
         clk     ,
         rst     ,

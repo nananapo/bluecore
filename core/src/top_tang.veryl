@@ -12,8 +12,8 @@ module top_tang (
     }
 
     inst t: top #(
-        MEMORY_FILEPATH_IS_ENV: 0 ,
-        MEMORY_FILEPATH       : "",
+        RAM_FILEPATH_IS_ENV: 0 ,
+        RAM_FILEPATH       : "",
     ) (
         clk  ,
         rst  ,
