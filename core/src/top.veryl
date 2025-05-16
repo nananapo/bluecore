@@ -26,6 +26,7 @@ module top #(
     inst mmio_rom_membus: Membus;
     inst ram_membus     : membus_if::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>;
     inst rom_membus     : membus_if::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH>;
+    inst dbg_membus     : Membus;
 
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     inst d_membus: Membus; // ロードストア命令用
@@ -33,19 +34,28 @@ module top #(
     var memarb_last_i    : logic;
     var memarb_last_iaddr: Addr ;
 
-    // riscv-testsの終了を検知する
-    #[ifdef(TEST_MODE)]
+    // デバッグ用のIO
     always_ff {
-        let RISCVTESTS_TOHOST_ADDR: Addr = MMAP_RAM_BEGIN + 'h1000 as Addr;
-        if d_membus.valid && d_membus.ready && d_membus.wen == 1 && d_membus.addr == RISCVTESTS_TOHOST_ADDR && d_membus.wdata[lsb] == 1'b1 {
-            test_success = d_membus.wdata == 1;
-            if d_membus.wdata == 1 {
-                $display("riscv-tests success!");
-            } else {
-                $display("riscv-tests failed!");
-                $error  ("wdata : %h", d_membus.wdata);
+        dbg_membus.ready  = 1;
+        dbg_membus.rvalid = dbg_membus.valid;
+        if dbg_membus.valid {
+            if dbg_membus.wen {
+                if dbg_membus.wdata[MEMBUS_DATA_WIDTH - 1-:20] == 20'h01010 {
+                    $write("%c", dbg_membus.wdata[7:0]);
+                } else if dbg_membus.wdata[lsb] == 1'b1 {
+                    #[ifdef(TEST_MODE)]
+                    {
+                        test_success = dbg_membus.wdata == 1;
+                    }
+                    if dbg_membus.wdata == 1 {
+                        $display("test success!");
+                    } else {
+                        $display("test failed!");
+                        $error  ("wdata : %h", dbg_membus.wdata);
+                    }
+                    $finish();
+                }
             }
-            $finish();
         }
     }
 
@@ -130,9 +140,11 @@ module top #(
     inst mmioc: mmio_controller (
         clk                        ,
         rst                        ,
+        DBG_ADDR  : MMAP_DBG_ADDR  ,
         req_core  : mmio_membus    ,
         ram_membus: mmio_ram_membus,
         rom_membus: mmio_rom_membus,
+        dbg_membus                 ,
     );
 
     inst c: core (

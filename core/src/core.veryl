@@ -471,71 +471,74 @@ module core (
     }
 
     ///////////////////////////////// DEBUG /////////////////////////////////
-    var clock_count: u64;
+    #[ifdef(PRINT_DEBUG)]
+    {
+        var clock_count: u64;
 
-    always_ff {
-        if_reset {
-            clock_count = 1;
-        } else {
-            clock_count = clock_count + 1;
+        always_ff {
+            if_reset {
+                clock_count = 1;
+            } else {
+                clock_count = clock_count + 1;
 
-            $display("");
-            $display("# %d", clock_count);
+                $display("");
+                $display("# %d", clock_count);
 
-            $display("IF ------");
-            $display("     pc : %h", if_pc);
-            $display(" is req : %b", if_is_requested);
-            $display(" pc req : %h", if_pc_requested);
-            $display("ID ------");
-            if ids_valid {
-                $display("  %h : %h", ids_pc, if_fifo_rdata.bits);
-                $display("  itype : %b", ids_ctrl.itype);
-                $display("  imm   : %h", ids_imm);
-                $display("  expt  : %b", exq_wdata.expt.valid);
-                if exq_wdata.expt.valid {
-                    $display("  cause : %d", exq_wdata.expt.cause);
-                    $display("  value : %d", exq_wdata.expt.value);
+                $display("IF ------");
+                $display("     pc : %h", if_pc);
+                $display(" is req : %b", if_is_requested);
+                $display(" pc req : %h", if_pc_requested);
+                $display("ID ------");
+                if ids_valid {
+                    $display("  %h : %h", ids_pc, if_fifo_rdata.bits);
+                    $display("  itype : %b", ids_ctrl.itype);
+                    $display("  imm   : %h", ids_imm);
+                    $display("  expt  : %b", exq_wdata.expt.valid);
+                    if exq_wdata.expt.valid {
+                        $display("  cause : %d", exq_wdata.expt.cause);
+                        $display("  value : %d", exq_wdata.expt.value);
+                    }
                 }
-            }
-            $display("EX -----");
-            if exs_valid {
-                $display("  %h : %h", exq_rdata.addr, exq_rdata.bits);
-                $display("  expt    : %b", exq_rdata.expt.valid);
-                if exq_rdata.expt.valid {
-                    $display("  cause  : %d", exq_rdata.expt.cause);
-                    $display("  value  : %d", exq_rdata.expt.value);
+                $display("EX -----");
+                if exs_valid {
+                    $display("  %h : %h", exq_rdata.addr, exq_rdata.bits);
+                    $display("  expt    : %b", exq_rdata.expt.valid);
+                    if exq_rdata.expt.valid {
+                        $display("  cause  : %d", exq_rdata.expt.cause);
+                        $display("  value  : %d", exq_rdata.expt.value);
+                    }
+                    $display("  op1     : %h", exs_op1);
+                    $display("  op2     : %h", exs_op2);
+                    $display("  alu     : %h", exs_alu_result);
+                    $display("  dhazard : %b", exs_data_hazard);
+                    $display("  muldiv  : %b", exs_muldiv_stall);
+                    if exs_ctrl.is_muldiv && exs_muldiv_rvalid {
+                        $display("  muldiv result : %h", exs_muldiv_result);
+                    }
+                    if inst_is_br(exs_ctrl) {
+                        $display("  br take : ", exs_brunit_take);
+                    }
                 }
-                $display("  op1     : %h", exs_op1);
-                $display("  op2     : %h", exs_op2);
-                $display("  alu     : %h", exs_alu_result);
-                $display("  dhazard : %b", exs_data_hazard);
-                $display("  muldiv  : %b", exs_muldiv_stall);
-                if exs_ctrl.is_muldiv && exs_muldiv_rvalid {
-                    $display("  muldiv result : %h", exs_muldiv_result);
+                $display("MEM -----");
+                if mems_valid {
+                    $display("  %h : %h", memq_rdata.addr, memq_rdata.bits);
+                    $display("  mem stall : %b", memu_stall);
+                    $display("  mem rdata : %h", memu_rdata);
+                    if mems_ctrl.is_csr || csru_raise_trap {
+                        $display("  csr rdata : %h", csru_rdata);
+                        $display("  csr trap  : %b", csru_raise_trap);
+                        $display("  csr vec   : %h", csru_trap_vector);
+                    }
+                    if memq_rdata.br_taken {
+                        $display("  JUMP TO   : %h", memq_rdata.jump_addr);
+                    }
                 }
-                if inst_is_br(exs_ctrl) {
-                    $display("  br take : ", exs_brunit_take);
-                }
-            }
-            $display("MEM -----");
-            if mems_valid {
-                $display("  %h : %h", memq_rdata.addr, memq_rdata.bits);
-                $display("  mem stall : %b", memu_stall);
-                $display("  mem rdata : %h", memu_rdata);
-                if mems_ctrl.is_csr || csru_raise_trap {
-                    $display("  csr rdata : %h", csru_rdata);
-                    $display("  csr trap  : %b", csru_raise_trap);
-                    $display("  csr vec   : %h", csru_trap_vector);
-                }
-                if memq_rdata.br_taken {
-                    $display("  JUMP TO   : %h", memq_rdata.jump_addr);
-                }
-            }
-            $display("WB ----");
-            if wbs_valid {
-                $display("  %h : %h", wbq_rdata.addr, wbq_rdata.bits);
-                if wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {
-                    $display("  reg[%d] <= %h", wbs_rd_addr, wbs_wb_data);
+                $display("WB ----");
+                if wbs_valid {
+                    $display("  %h : %h", wbq_rdata.addr, wbq_rdata.bits);
+                    if wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {
+                        $display("  reg[%d] <= %h", wbs_rd_addr, wbs_wb_data);
+                    }
                 }
             }
         }
