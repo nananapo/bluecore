@@ -10,12 +10,13 @@ parser.add_argument("-r", "--recursive", action='store_true', help="search file 
 parser.add_argument("-e", "--extension", default="hex", help="test file extension")
 parser.add_argument("-o", "--output_dir", default="results", help="result output directory")
 parser.add_argument("-t", "--time_limit", type=float, default=10, help="limit of execution time. set 0 to nolimit")
+parser.add_argument("--rom", default="bootrom.hex", help="hex file of rom")
 args = parser.parse_args()
 
 # run test
-def test(file_name):
+def test(romhex, file_name):
     result_file_path = os.path.join(args.output_dir, file_name.replace(os.sep, "_") + ".txt")
-    cmd = args.sim_path + " " + file_name + " 0"
+    cmd = f"{args.sim_path} {romhex} {file_name} 0"
     success = False
     with open(result_file_path, "w") as f:
         no = f.fileno()
@@ -55,7 +56,7 @@ if __name__ == '__main__':
     res_statuses = []
     
     for hexpath in dir_walk(args.dir):
-        f, s = test(os.path.abspath(hexpath))
+        f, s = test(os.path.abspath(args.rom), os.path.abspath(hexpath))
         res_strs.append(("PASS" if s else "FAIL") + " : " + f)
         res_statuses.append(s)
 

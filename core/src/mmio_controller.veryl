@@ -5,11 +5,13 @@ module mmio_controller (
     rst       : input   reset         ,
     req_core  : modport Membus::slave ,
     ram_membus: modport Membus::master,
+    rom_membus: modport Membus::master,
 ) {
 
     enum Device {
         UNKNOWN,
         RAM,
+        ROM,
     }
 
     inst req_saved: Membus;
@@ -31,12 +33,16 @@ module mmio_controller (
     // すべてのデバイスのmasterをリセットする
     function reset_all_device_masters () {
         reset_membus_master(ram_membus);
+        reset_membus_master(rom_membus);
     }
 
     // アドレスからデバイスを取得する
     function get_device (
         addr: input Addr,
     ) -> Device {
+        if MMAP_ROM_BEGIN <= addr && addr <= MMAP_ROM_END {
+            return Device::ROM;
+        }
         if addr >= MMAP_RAM_BEGIN {
             return Device::RAM;
         }
@@ -52,6 +58,10 @@ module mmio_controller (
                 ram_membus      <> req;
                 ram_membus.addr -= MMAP_RAM_BEGIN;
             }
+            Device::ROM: {
+                rom_membus      <> req;
+                rom_membus.addr -= MMAP_ROM_BEGIN;
+            }
             default: {}
         }
     }
@@ -65,6 +75,7 @@ module mmio_controller (
         req.rdata  = 0;
         case device {
             Device::RAM: req <> ram_membus;
+            Device::ROM: req <> rom_membus;
             default    : {}
         }
     }
@@ -75,6 +86,7 @@ module mmio_controller (
     ) -> logic {
         case device {
             Device::RAM: return ram_membus.ready;
+            Device::ROM: return rom_membus.ready;
             default    : {}
         }
         return 1;
@@ -86,6 +98,7 @@ module mmio_controller (
     ) -> logic {
         case device {
             Device::RAM: return ram_membus.rvalid;
+            Device::ROM: return rom_membus.rvalid;
             default    : {}
         }
         return 1;
