@@ -30,7 +30,6 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
         rdata : output,
     }
 
-    // #@@range_begin(modport)
     modport all_input {
         ..input
     }
@@ -52,7 +51,6 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
         wdata: output,
         wmask: output,
     }
-    // #@@range_end(modport)
 }
 
 alias interface Membus = membus_if::<eei::MEMBUS_DATA_WIDTH, eei::XLEN>;
