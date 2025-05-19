@@ -11,11 +11,8 @@ package eei {
     type Inst   = logic       <ILEN>;
     type Addr   = logic       <XLEN>;
 
-    // #@@range_begin(const)
-    // メモリ@<b>|バス|のデータ幅
-    const MEM@<b>|BUS|_DATA_WIDTH: u32 = 64;
-    @<del>|// メモリのアドレス幅|
-    @<del>|const MEM_ADDR_WIDTH: u32 = 16;|
+    // メモリバスのデータ幅
+    const MEMBUS_DATA_WIDTH: u32 = 64;
 
     // RAM
     const RAM_ADDR_WIDTH: u32  = 16;
@@ -27,7 +24,6 @@ package eei {
     const ROM_DATA_WIDTH: u32  = 64;
     const MMAP_ROM_BEGIN: Addr = 'h1000 as Addr;
     const MMAP_ROM_END  : Addr = MMAP_ROM_BEGIN + 'h3ff as Addr;
-    // #@@range_end(const)
 
     // opcode
     const OP_LUI      : logic<7> = 7'b0110111;
