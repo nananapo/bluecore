@@ -17,10 +17,12 @@ extern "C" const char* get_env_value(const char* key) {
 int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
 
+    // #@@range_begin(arg)
     if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << " RAM_FILE_PATH [CYCLE]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " @<b>|RAM|_FILE_PATH [CYCLE]" << std::endl;
         return 1;
     }
+    // #@@range_end(arg)
 
     // メモリの初期値を格納しているファイル名
     std::string memory_file_path = argv[1];
@@ -45,9 +47,11 @@ int main(int argc, char** argv) {
         }
     }
 
+    // #@@range_begin(env)
     // 環境変数でメモリの初期化用ファイルを指定する
-    const char* original_env = getenv("RAM_FILE_PATH");
-    setenv("RAM_FILE_PATH", memory_file_path.c_str(), 1);
+    const char* original_env = getenv("@<b>|RAM|_FILE_PATH");
+    setenv("@<b>|RAM|_FILE_PATH", memory_file_path.c_str(), 1);
+    // #@@range_end(env)
 
     // top
     Vcore_top *dut = new Vcore_top();
@@ -59,10 +63,12 @@ int main(int argc, char** argv) {
     dut->rst = 0;
     dut->eval();
 
+    // #@@range_begin(save)
     // 環境変数を元に戻す
     if (original_env != nullptr){
-        setenv("RAM_FILE_PATH", original_env, 1);
+        setenv("@<b>|RAM|_FILE_PATH", original_env, 1);
     }
+    // #@@range_end(save)
 
     // trace
     #ifdef TRACE

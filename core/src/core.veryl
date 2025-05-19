@@ -1,13 +1,15 @@
 import eei::*;
 import corectrl::*;
 
+// #@@range_begin(port)
 module core (
     clk     : input   clock                          ,
     rst     : input   reset                          ,
     i_membus: modport membus_if::<ILEN, XLEN>::master,
-    d_membus: modport Membus::master                 ,
+    d_membus: modport @<b>|Membus|::master                 ,
     led     : output  UIntX                          ,
 ) {
+// #@@range_end(port)
 
     // ifのFIFOのデータ型
     struct if_fifo_type {
