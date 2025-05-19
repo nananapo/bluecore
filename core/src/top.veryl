@@ -1,9 +1,11 @@
 import eei::*;
 
+// #@@range_begin(port)
 module top #(
     param RAM_FILEPATH_IS_ENV: bit    = 1              ,
     param RAM_FILEPATH       : string = "RAM_FILE_PATH",
 ) (
+// #@@range_end(port)
     clk          : input clock,
     rst          : input reset,
     MMAP_DBG_ADDR: input Addr ,
@@ -12,16 +14,20 @@ module top #(
     led         : output UIntX,
 ) {
 
+    // #@@range_begin(addr_to_memaddr)
     // アドレスをデータ単位でのアドレスに変換する
-    function addr_to_memaddr::<DATA_WIDTH: u32, ADDR_WIDTH: u32> (
+    function addr_to_memaddr@<b>|::<DATA_WIDTH: u32, ADDR_WIDTH: u32>| (
         addr: input logic<XLEN>,
-    ) -> logic<ADDR_WIDTH> {
-        return addr[$clog2(DATA_WIDTH / 8)+:ADDR_WIDTH];
+    ) -> logic<@<b>|ADDR_WIDTH|> {
+        return addr[$clog2(@<b>|DATA_WIDTH| / 8)+:@<b>|ADDR_WIDTH|];
     }
+    // #@@range_end(addr_to_memaddr)
 
-    inst membus  : membus_if::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>;
+    // #@@range_begin(membus)
+    inst membus  : membus_if::<@<b>|RAM|_DATA_WIDTH, @<b>|RAM|_ADDR_WIDTH>;
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
-    inst d_membus: Membus; // ロードストア命令用
+    inst d_membus: @<b>|Membus|; // ロードストア命令用
+    // #@@range_end(membus)
 
     var memarb_last_i    : logic;
     var memarb_last_iaddr: Addr ;
@@ -64,24 +70,28 @@ module top #(
         d_membus.rvalid = membus.rvalid && !memarb_last_i;
         d_membus.rdata  = membus.rdata;
 
+        // #@@range_begin(arb)
         membus.valid = i_membus.valid | d_membus.valid;
         if d_membus.valid {
-            membus.addr  = addr_to_memaddr::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>(d_membus.addr);
+            membus.addr  = addr_to_memaddr@<b>|::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>|(d_membus.addr);
             membus.wen   = d_membus.wen;
             membus.wdata = d_membus.wdata;
             membus.wmask = d_membus.wmask;
         } else {
-            membus.addr  = addr_to_memaddr::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>(i_membus.addr);
+            membus.addr  = addr_to_memaddr@<b>|::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>|(i_membus.addr);
             membus.wen   = 0; // 命令フェッチは常に読み込み
             membus.wdata = 'x;
             membus.wmask = 'x;
         }
+        // #@@range_end(arb)
     }
 
-    inst ram: memory::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH> #(
-        FILEPATH_IS_ENV: RAM_FILEPATH_IS_ENV,
-        FILEPATH       : RAM_FILEPATH       ,
+    // #@@range_begin(inst)
+    inst ram: memory::<@<b>|RAM|_DATA_WIDTH, @<b>|RAM|_ADDR_WIDTH> #(
+        FILEPATH_IS_ENV: @<b>|RAM|_FILEPATH_IS_ENV,
+        FILEPATH       : @<b>|RAM|_FILEPATH       ,
     ) (
+    // #@@range_end(inst)
         clk     ,
         rst     ,
         membus  ,

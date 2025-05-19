@@ -11,7 +11,9 @@ module memunit (
     rs2   : input   UIntX         , // ストア命令で書き込むデータ
     rdata : output  UIntX         , // ロード命令の結果 (stall = 0のときに有効)
     stall : output  logic         , // メモリアクセス命令が完了していない
-    membus: modport Membus::master, // メモリとのinterface
+    // #@@range_begin(port)
+    membus: modport @<b>|Membus|::master, // メモリとのinterface
+    // #@@range_end(port)
 ) {
 
     // memunitの状態を表す列挙型
@@ -23,14 +25,16 @@ module memunit (
 
     var state: State;
 
+    // #@@range_begin(var)
     var req_wen  : logic                       ;
     var req_addr : Addr                        ;
-    var req_wdata: logic<MEMBUS_DATA_WIDTH>    ;
-    var req_wmask: logic<MEMBUS_DATA_WIDTH / 8>;
+    var req_wdata: logic<MEM@<b>|BUS|_DATA_WIDTH>    ;
+    var req_wmask: logic<MEM@<b>|BUS|_DATA_WIDTH / 8>;
 
     const W   : u32                      = XLEN;
-    let D   : logic<MEMBUS_DATA_WIDTH> = membus.rdata;
+    let D   : logic<MEM@<b>|BUS|_DATA_WIDTH> = membus.rdata;
     let sext: logic                    = ctrl.funct3[2] == 1'b0;
+    // #@@range_end(var)
 
     always_comb {
         // メモリアクセス
