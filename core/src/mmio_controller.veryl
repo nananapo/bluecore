@@ -6,11 +6,9 @@ module mmio_controller (
     req_core: modport Membus::slave,
 ) {
 
-    // #@@range_begin(Device)
     enum Device {
         UNKNOWN,
     }
-    // #@@range_end(Device)
 
     inst req_saved: Membus;
 
@@ -66,7 +64,6 @@ module mmio_controller (
         return 1;
     }
 
-    // #@@range_begin(req_core)
     // req_coreの割り当て
     always_comb {
         req_core.ready  = 0;
@@ -83,9 +80,7 @@ module mmio_controller (
             req_core.ready = 1;
         }
     }
-    // #@@range_end(req_core)
 
-    // #@@range_begin(master)
     // デバイスのmasterの割り当て
     always_comb {
         reset_all_device_masters();
@@ -108,9 +103,7 @@ module mmio_controller (
             }
         }
     }
-    // #@@range_end(master)
 
-    // #@@range_begin(on_clock)
     // 新しく要求を受け入れる
     function accept_request () {
         req_saved.valid = req_core.ready && req_core.valid;
@@ -138,7 +131,6 @@ module mmio_controller (
             accept_request();
         }
     }
-    // #@@range_end(on_clock)
 
     function on_reset () {
         last_device         = Device::UNKNOWN;
