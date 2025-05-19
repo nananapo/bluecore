@@ -1,16 +1,20 @@
 import eei::*;
 
+// #@@range_begin(port)
 module mmio_controller (
     clk       : input   clock         ,
     rst       : input   reset         ,
     req_core  : modport Membus::slave ,
-    ram_membus: modport Membus::master,
+    @<b>|ram_membus: modport Membus::master,|
 ) {
+// #@@range_end(port)
 
+    // #@@range_begin(Device)
     enum Device {
         UNKNOWN,
         RAM,
     }
+    // #@@range_end(Device)
 
     inst req_saved: Membus;
 
@@ -29,67 +33,79 @@ module mmio_controller (
     }
 
     // すべてのデバイスのmasterをリセットする
+    // #@@range_begin(reset_all)
     function reset_all_device_masters () {
-        reset_membus_master(ram_membus);
+        @<b>|reset_membus_master(ram_membus);|
     }
+    // #@@range_end(reset_all)
 
     // アドレスからデバイスを取得する
+    // #@@range_begin(get_device)
     function get_device (
         addr: input Addr,
     ) -> Device {
-        if addr >= MMAP_RAM_BEGIN {
-            return Device::RAM;
-        }
+        @<b>|if addr >= MMAP_RAM_BEGIN {|
+        @<b>|    return Device::RAM;|
+        @<b>|}|
         return Device::UNKNOWN;
     }
+    // #@@range_end(get_device)
 
     // デバイスのmasterにreqの情報を割り当てる
+    // #@@range_begin(assign_device_master)
     function assign_device_master (
         req: modport Membus::all_input,
     ) {
-        case get_device(req.addr) {
-            Device::RAM: {
-                ram_membus      <> req;
-                ram_membus.addr -= MMAP_RAM_BEGIN;
-            }
-            default: {}
-        }
+        @<b>|case get_device(req.addr) {|
+        @<b>|    Device::RAM: {|
+        @<b>|        ram_membus      <> req;|
+        @<b>|        ram_membus.addr -= MMAP_RAM_BEGIN;|
+        @<b>|    }|
+        @<b>|    default: {}|
+        @<b>|}|
     }
+    // #@@range_end(assign_device_master)
 
     // デバイスのrvalid、rdataをreqに割り当てる
+    // #@@range_begin(assign_device_slave)
     function assign_device_slave (
         device: input   Device          ,
         req   : modport Membus::response,
     ) {
         req.rvalid = 1;
         req.rdata  = 0;
-        case device {
-            Device::RAM: req <> ram_membus;
-            default    : {}
-        }
+        @<b>|case device {|
+        @<b>|    Device::RAM: req <> ram_membus;|
+        @<b>|    default    : {}|
+        @<b>|}|
     }
+    // #@@range_end(assign_device_slave)
 
     // デバイスのreadyを取得する
+    // #@@range_begin(get_device_ready)
     function get_device_ready (
         device: input Device,
     ) -> logic {
-        case device {
-            Device::RAM: return ram_membus.ready;
-            default    : {}
-        }
+        @<b>|case device {|
+        @<b>|    Device::RAM: return ram_membus.ready;|
+        @<b>|    default    : {}|
+        @<b>|}|
         return 1;
     }
+    // #@@range_end(get_device_ready)
 
     // デバイスのrvalidを取得する
+    // #@@range_begin(get_device_rvalid)
     function get_device_rvalid (
         device: input Device,
     ) -> logic {
-        case device {
-            Device::RAM: return ram_membus.rvalid;
-            default    : {}
-        }
+        @<b>|case device {|
+        @<b>|    Device::RAM: return ram_membus.rvalid;|
+        @<b>|    default    : {}|
+        @<b>|}|
         return 1;
     }
+    // #@@range_end(get_device_rvalid)
 
     // req_coreの割り当て
     always_comb {
