@@ -470,6 +470,7 @@ module core (
         wbq_rready = 1;
     }
 
+    // #@@range_begin(debug)
     ///////////////////////////////// DEBUG /////////////////////////////////
     #[ifdef(PRINT_DEBUG)]
     {
@@ -483,6 +484,7 @@ module core (
 
                 $display("");
                 $display("# %d", clock_count);
+    // #@@range_end(debug)
 
                 $display("IF ------");
                 $display("     pc : %h", if_pc);

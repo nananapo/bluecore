@@ -24,9 +24,11 @@ module top #(
     inst mmio_membus    : Membus;
     inst mmio_ram_membus: Membus;
     inst mmio_rom_membus: Membus;
+    // #@@range_begin(interface)
     inst ram_membus     : membus_if::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>;
     inst rom_membus     : membus_if::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH>;
-    inst dbg_membus     : Membus;
+    @<b>|inst dbg_membus     : Membus;|
+    // #@@range_end(interface)
 
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     inst d_membus: Membus; // ロードストア命令用
@@ -34,6 +36,7 @@ module top #(
     var memarb_last_i    : logic;
     var memarb_last_iaddr: Addr ;
 
+    // #@@range_begin(io)
     // デバッグ用のIO
     always_ff {
         dbg_membus.ready  = 1;
@@ -58,6 +61,7 @@ module top #(
             }
         }
     }
+    // #@@range_end(io)
 
     // mmio_controllerへのメモリアクセスを調停する
     always_ff {
@@ -137,6 +141,7 @@ module top #(
         membus: rom_membus,
     );
 
+    // #@@range_begin(mmioc)
     inst mmioc: mmio_controller (
         clk                        ,
         rst                        ,
@@ -144,8 +149,9 @@ module top #(
         req_core  : mmio_membus    ,
         ram_membus: mmio_ram_membus,
         rom_membus: mmio_rom_membus,
-        dbg_membus                 ,
+        @<b>|dbg_membus                 ,|
     );
+    // #@@range_end(mmioc)
 
     inst c: core (
         clk       ,

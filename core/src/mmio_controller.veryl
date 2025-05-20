@@ -1,5 +1,6 @@
 import eei::*;
 
+// #@@range_begin(port)
 module mmio_controller (
     clk       : input   clock         ,
     rst       : input   reset         ,
@@ -7,15 +8,18 @@ module mmio_controller (
     req_core  : modport Membus::slave ,
     ram_membus: modport Membus::master,
     rom_membus: modport Membus::master,
-    dbg_membus: modport Membus::master,
+    @<b>|dbg_membus: modport Membus::master,|
 ) {
+//  #@@range_end(port)
 
+    // #@@range_begin(Device)
     enum Device {
         UNKNOWN,
         RAM,
         ROM,
-        DEBUG,
+        @<b>|DEBUG,|
     }
+    // #@@range_end(Device)
 
     inst req_saved: Membus;
 
@@ -34,19 +38,22 @@ module mmio_controller (
     }
 
     // すべてのデバイスのmasterをリセットする
+    // #@@range_begin(reset_all)
     function reset_all_device_masters () {
         reset_membus_master(ram_membus);
         reset_membus_master(rom_membus);
-        reset_membus_master(dbg_membus);
+        @<b>|reset_membus_master(dbg_membus);|
     }
+    // #@@range_end(reset_all)
 
     // アドレスからデバイスを取得する
+    // #@@range_begin(get_device)
     function get_device (
         addr: input Addr,
     ) -> Device {
-        if DBG_ADDR <= addr && addr <= DBG_ADDR + 7 {
-            return Device::DEBUG;
-        }
+        @<b>|if DBG_ADDR <= addr && addr <= DBG_ADDR + 7 {|
+        @<b>|    return Device::DEBUG;|
+        @<b>|}|
         if MMAP_ROM_BEGIN <= addr && addr <= MMAP_ROM_END {
             return Device::ROM;
         }
@@ -55,11 +62,13 @@ module mmio_controller (
         }
         return Device::UNKNOWN;
     }
+    // #@@range_end(get_device)
 
     // デバイスのmasterにreqの情報を割り当てる
     function assign_device_master (
         req: modport Membus::all_input,
     ) {
+        // #@@range_begin(assign_device_master)
         case get_device(req.addr) {
             Device::RAM: {
                 ram_membus      <> req;
@@ -69,12 +78,13 @@ module mmio_controller (
                 rom_membus      <> req;
                 rom_membus.addr -= MMAP_ROM_BEGIN;
             }
-            Device::DEBUG: {
-                dbg_membus      <> req;
-                dbg_membus.addr -= DBG_ADDR;
-            }
+            @<b>|Device::DEBUG: {|
+            @<b>|    dbg_membus      <> req;|
+            @<b>|    dbg_membus.addr -= DBG_ADDR;|
+            @<b>|}|
             default: {}
         }
+        // #@@range_end(assign_device_master)
     }
 
     // デバイスのrvalid、rdataをreqに割り当てる
@@ -84,24 +94,28 @@ module mmio_controller (
     ) {
         req.rvalid = 1;
         req.rdata  = 0;
+        // #@@range_begin(assign_device_slave)
         case device {
             Device::RAM  : req <> ram_membus;
             Device::ROM  : req <> rom_membus;
-            Device::DEBUG: req <> dbg_membus;
+            @<b>|Device::DEBUG: req <> dbg_membus;|
             default      : {}
         }
+        // #@@range_end(assign_device_slave)
     }
 
     // デバイスのreadyを取得する
     function get_device_ready (
         device: input Device,
     ) -> logic {
+        // #@@range_begin(get_device_ready)
         case device {
             Device::RAM  : return ram_membus.ready;
             Device::ROM  : return rom_membus.ready;
-            Device::DEBUG: return dbg_membus.ready;
+            @<b>|Device::DEBUG: return dbg_membus.ready;|
             default      : {}
         }
+        // #@@range_end(get_device_ready)
         return 1;
     }
 
@@ -109,12 +123,14 @@ module mmio_controller (
     function get_device_rvalid (
         device: input Device,
     ) -> logic {
+        // #@@range_begin(get_device_rvalid)
         case device {
             Device::RAM  : return ram_membus.rvalid;
             Device::ROM  : return rom_membus.rvalid;
-            Device::DEBUG: return dbg_membus.rvalid;
+            @<b>|Device::DEBUG: return dbg_membus.rvalid;|
             default      : {}
         }
+        // #@@range_end(get_device_rvalid)
         return 1;
     }
 
