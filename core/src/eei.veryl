@@ -26,7 +26,9 @@ package eei {
     const MMAP_ROM_END  : Addr = MMAP_ROM_BEGIN + 'h3ff as Addr;
 
     // pc on reset
-    const INITIAL_PC: Addr = MMAP_ROM_BEGIN;
+    // #@@range_begin(pc)
+    const INITIAL_PC: Addr = @<b>|MMAP_ROM_BEGIN|;
+    // #@@range_end(pc)
 
     // opcode
     const OP_LUI      : logic<7> = 7'b0110111;
