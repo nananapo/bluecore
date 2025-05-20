@@ -64,20 +64,20 @@ module memory::<DATA_WIDTH: u32, ADDR_WIDTH: u32> #(
         } else {
             case state {
                 State::Ready: {
-                                  membus.rvalid = membus.valid & !membus.wen;
-                                  membus.rdata  = mem[membus.addr[ADDR_WIDTH - 1:0]];
-                                  addr_saved    = membus.addr[ADDR_WIDTH - 1:0];
-                                  wdata_saved   = membus.wdata;
-                                  wmask_saved   = membus.wmask;
-                                  rdata_saved   = mem[membus.addr[ADDR_WIDTH - 1:0]];
-                                  if membus.valid && membus.wen {
-                                      state = State::WriteValid;
-                                  }
-                              }
+                    membus.rvalid = membus.valid & !membus.wen;
+                    membus.rdata  = mem[membus.addr[ADDR_WIDTH - 1:0]];
+                    addr_saved    = membus.addr[ADDR_WIDTH - 1:0];
+                    wdata_saved   = membus.wdata;
+                    wmask_saved   = membus.wmask;
+                    rdata_saved   = mem[membus.addr[ADDR_WIDTH - 1:0]];
+                    if membus.valid && membus.wen {
+                        state = State::WriteValid;
+                    }
+                }
                 State::WriteValid: {
-                                       state         = State::Ready;
-                                       membus.rvalid = 1;
-                                   }
+                    state         = State::Ready;
+                    membus.rvalid = 1;
+                }
             }
         }
     }

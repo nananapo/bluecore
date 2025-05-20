@@ -237,21 +237,21 @@ module core (
     always_comb {
         case exs_ctrl.itype {
             InstType::R, InstType::B: {
-                                          exs_op1 = exs_rs1_data;
-                                          exs_op2 = exs_rs2_data;
-                                      }
+                exs_op1 = exs_rs1_data;
+                exs_op2 = exs_rs2_data;
+            }
             InstType::I, InstType::S: {
-                                          exs_op1 = exs_rs1_data;
-                                          exs_op2 = exs_imm;
-                                      }
+                exs_op1 = exs_rs1_data;
+                exs_op2 = exs_imm;
+            }
             InstType::U, InstType::J: {
-                                          exs_op1 = exs_pc;
-                                          exs_op2 = exs_imm;
-                                      }
+                exs_op1 = exs_pc;
+                exs_op2 = exs_imm;
+            }
             default: {
-                         exs_op1 = 'x;
-                         exs_op2 = 'x;
-                     }
+                exs_op1 = 'x;
+                exs_op2 = 'x;
+            }
         }
     }
 
