@@ -1,13 +1,11 @@
 import eei::*;
 
-// #@@range_begin(port)
 module top #(
     param RAM_FILEPATH_IS_ENV: bit    = 1              ,
     param RAM_FILEPATH       : string = "RAM_FILE_PATH",
-    @<b>|param ROM_FILEPATH_IS_ENV: bit    = 1              ,|
-    @<b>|param ROM_FILEPATH       : string = "ROM_FILE_PATH",|
+    param ROM_FILEPATH_IS_ENV: bit    = 1              ,
+    param ROM_FILEPATH       : string = "ROM_FILE_PATH",
 ) (
-// #@@range_end(port)
     clk          : input clock,
     rst          : input reset,
     MMAP_DBG_ADDR: input Addr ,
@@ -23,13 +21,11 @@ module top #(
         return addr[$clog2(DATA_WIDTH / 8)+:ADDR_WIDTH];
     }
 
-    // #@@range_begin(interface)
     inst mmio_membus    : Membus;
     inst mmio_ram_membus: Membus;
-    @<b>|inst mmio_rom_membus: Membus;|
+    inst mmio_rom_membus: Membus;
     inst ram_membus     : membus_if::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH>;
-    @<b>|inst rom_membus     : membus_if::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH>;|
-    // #@@range_end(interface)
+    inst rom_membus     : membus_if::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH>;
 
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     inst d_membus: Membus; // ロードストア命令用
@@ -101,7 +97,6 @@ module top #(
         mmio_ram_membus.rdata  = ram_membus.rdata;
     }
 
-    // #@@range_begin(connect)
     always_comb {
         // mmio <> ROM
         rom_membus.valid       = mmio_rom_membus.valid;
@@ -113,7 +108,6 @@ module top #(
         mmio_rom_membus.rvalid = rom_membus.rvalid;
         mmio_rom_membus.rdata  = rom_membus.rdata;
     }
-    // #@@range_end(connect)
 
     inst ram: memory::<RAM_DATA_WIDTH, RAM_ADDR_WIDTH> #(
         FILEPATH_IS_ENV: RAM_FILEPATH_IS_ENV,
@@ -124,7 +118,6 @@ module top #(
         membus: ram_membus,
     );
 
-    // #@@range_begin(inst)
     inst rom: memory::<ROM_DATA_WIDTH, ROM_ADDR_WIDTH> #(
         FILEPATH_IS_ENV: ROM_FILEPATH_IS_ENV,
         FILEPATH       : ROM_FILEPATH       ,
@@ -133,17 +126,14 @@ module top #(
         rst               ,
         membus: rom_membus,
     );
-    // #@@range_end(inst)
 
-    // #@@range_begin(mmioc)
     inst mmioc: mmio_controller (
         clk                        ,
         rst                        ,
         req_core  : mmio_membus    ,
         ram_membus: mmio_ram_membus,
-        @<b>|rom_membus: mmio_rom_membus,|
+        rom_membus: mmio_rom_membus,
     );
-    // #@@range_end(mmioc)
 
     inst c: core (
         clk       ,
