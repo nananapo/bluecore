@@ -52,15 +52,13 @@ int main(int argc, char** argv) {
     setenv("ROM_FILE_PATH", rom_file_path.c_str(), 1);
     setenv("RAM_FILE_PATH", ram_file_path.c_str(), 1);
 
-    // #@@range_begin(set)
     // デバッグ用の入出力デバイスのアドレスを取得する
-    @<b>|const char* dbg_addr_c = getenv("DBG_ADDR");|
-    @<b>|const unsigned long long DBG_ADDR = dbg_addr_c == nullptr ? 0 : std::strtoull(dbg_addr_c, nullptr, 0);|
+    const char* dbg_addr_c = getenv("DBG_ADDR");
+    const unsigned long long DBG_ADDR = dbg_addr_c == nullptr ? 0 : std::strtoull(dbg_addr_c, nullptr, 0);
 
     // top
     Vcore_top *dut = new Vcore_top();
-    @<b>|dut->MMAP_DBG_ADDR = DBG_ADDR;|
-    // #@@range_end(set)
+    dut->MMAP_DBG_ADDR = DBG_ADDR;
 
     // reset
     dut->clk = 0;
