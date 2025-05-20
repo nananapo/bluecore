@@ -119,16 +119,14 @@ module core (
         i_membus.wdata = 'x; // wdataは使用しない
     }
 
-    // #@@range_begin(pc)
     always_ff {
         if_reset {
-            if_pc           = @<b>|INITIAL_PC|;
+            if_pc           = INITIAL_PC;
             if_is_requested = 0;
             if_pc_requested = 0;
             if_fifo_wvalid  = 0;
             if_fifo_wdata   = 0;
         } else {
-    // #@@range_end(pc)
             if control_hazard {
                 if_pc           = control_hazard_pc_next;
                 if_is_requested = 0;

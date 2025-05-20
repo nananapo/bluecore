@@ -25,10 +25,8 @@ package eei {
     const MMAP_ROM_BEGIN: Addr = 'h1000 as Addr;
     const MMAP_ROM_END  : Addr = MMAP_ROM_BEGIN + 'h3ff as Addr;
 
-    // #@@range_begin(pc)
     // pc on reset
     const INITIAL_PC: Addr = MMAP_RAM_BEGIN;
-    // #@@range_end(pc)
 
     // opcode
     const OP_LUI      : logic<7> = 7'b0110111;
