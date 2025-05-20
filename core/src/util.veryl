@@ -4,6 +4,10 @@ embed (inline) sv{{{
         function string get_env(input string name);
             return get_env_value(name);
         endfunction
+        import "DPI-C" context function longint get_input_dpic();
+        function longint get_input();
+            return get_input_dpic();
+        endfunction
     endpackage
 }}}
 
@@ -12,5 +16,8 @@ package util {
         name: input string,
     ) -> string {
         return $sv::svutil::get_env(name);
+    }
+    function get_input () -> u64 {
+        return $sv::svutil::get_input();
     }
 }
