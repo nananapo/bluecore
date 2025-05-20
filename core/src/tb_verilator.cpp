@@ -2,9 +2,11 @@
 #include <filesystem>
 #include <stdlib.h>
 #include <verilated.h>
+// #@@range_begin(include)
 #include <fcntl.h>
 #include <termios.h>
 #include <signal.h>
+// #@@range_end(include)
 #include "Vcore_top.h"
 #include <verilated_vcd_c.h>
 
@@ -17,6 +19,7 @@ extern "C" const char* get_env_value(const char* key) {
     return value;
 }
 
+// #@@range_begin(get_input_dpic)
 extern "C" const unsigned long long get_input_dpic() {
     unsigned char c = 0;
     ssize_t bytes_read = read(STDIN_FILENO, &c, 1);
@@ -26,7 +29,9 @@ extern "C" const unsigned long long get_input_dpic() {
     }
     return 0;
 }
+// #@@range_end(get_input_dpic)
 
+// #@@range_begin(termios)
 struct termios old_setting;
 
 void restore_termios_setting(void) {
@@ -66,7 +71,9 @@ void set_nonblocking(void) {
         return;
     }
 }
+// #@@range_end(termios)
 
+// #@@range_begin(set)
 int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
 
@@ -75,9 +82,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    #ifdef ENABLE_DEBUG_INPUT
-        set_nonblocking();
-    #endif
+    @<b>|#ifdef ENABLE_DEBUG_INPUT|
+        @<b>|set_nonblocking();|
+    @<b>|#endif|
+// #@@range_end(set)
 
     // メモリの初期値を格納しているファイル名
     std::string rom_file_path = argv[1];

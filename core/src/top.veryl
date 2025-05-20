@@ -35,34 +35,22 @@ module top #(
     var memarb_last_iaddr: Addr ;
 
     // デバッグ用のIO
+    // #@@range_begin(io)
     always_ff {
         dbg_membus.ready  = 1;
         dbg_membus.rvalid = dbg_membus.valid;
         if dbg_membus.valid {
             if dbg_membus.wen {
-                if dbg_membus.wdata[MEMBUS_DATA_WIDTH - 1-:20] == 20'h01010 {
-                    $write("%c", dbg_membus.wdata[7:0]);
-                } else if dbg_membus.wdata[lsb] == 1'b1 {
-                    #[ifdef(TEST_MODE)]
-                    {
-                        test_success = dbg_membus.wdata == 1;
-                    }
-                    if dbg_membus.wdata == 1 {
-                        $display("test success!");
-                    } else {
-                        $display("test failed!");
-                        $error  ("wdata : %h", dbg_membus.wdata);
-                    }
-                    $finish();
-                }
-            } else {
-                #[ifdef(ENABLE_DEBUG_INPUT)]
-                {
-                    dbg_membus.rdata = util::get_input();
-                }
+                ...
+            @<b>|} else {|
+            @<b>|    #[ifdef(ENABLE_DEBUG_INPUT)]|
+            @<b>|    {|
+            @<b>|        dbg_membus.rdata = util::get_input();|
+            @<b>|    }|
             }
         }
     }
+    // #@@range_end(io)
 
     // mmio_controllerへのメモリアクセスを調停する
     always_ff {
