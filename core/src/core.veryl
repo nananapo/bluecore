@@ -473,9 +473,10 @@ module core (
         exs_wb_data_hazard = wbs_valid && wbs_ctrl.rwb_en && (wbs_rd_addr == exs_rs1_addr || wbs_rd_addr == exs_rs2_addr);
     }
 
+    // #@@range_begin(debug)
     ///////////////////////////////// DEBUG /////////////////////////////////
-    #[ifdef(PRINT_DEBUG)]
-    {
+    @<b>|#[ifdef(PRINT_DEBUG)]|
+    @<b>|{|
         var clock_count: u64;
 
         always_ff {
@@ -486,6 +487,7 @@ module core (
 
                 $display("");
                 $display("# %d", clock_count);
+    // #@@range_end(debug)
 
                 $display("IF ------");
                 $display("     pc : %h", if_pc);
