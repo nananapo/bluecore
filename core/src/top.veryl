@@ -55,6 +55,11 @@ module top #(
                     }
                     $finish();
                 }
+            } else {
+                #[ifdef(ENABLE_DEBUG_INPUT)]
+                {
+                    dbg_membus.rdata = util::get_input();
+                }
             }
         }
     }
