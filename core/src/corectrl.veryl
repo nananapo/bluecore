@@ -13,6 +13,7 @@ package corectrl {
     }
 
     // 制御に使うフラグ用の構造体
+    // #@@range_begin(is_amo)
     struct InstCtrl {
         itype    : InstType   , // 命令の形式
         rwb_en   : logic      , // レジスタに書き込むかどうか
@@ -23,10 +24,11 @@ package corectrl {
         is_jump  : logic      , // ジャンプ命令である
         is_load  : logic      , // ロード命令である
         is_csr   : logic      , // CSR命令である
-        is_amo   : logic      , // AMO instruction
+        @<b>|is_amo   : logic      , // AMO instruction|
         funct3   : logic   <3>, // 命令のfunct3フィールド
         funct7   : logic   <7>, // 命令のfunct7フィールド
     }
+    // #@@range_end(is_amo)
 
     // 例外の情報を保存するための型
     struct ExceptionInfo {
@@ -36,11 +38,13 @@ package corectrl {
     }
 
     // 命令がメモリにアクセスする命令か判別する関数
+    // #@@range_begin(inst_is_memop)
     function inst_is_memop (
         ctrl: input InstCtrl,
     ) -> logic {
-        return ctrl.itype == InstType::S || ctrl.is_load || ctrl.is_amo;
+        return ctrl.itype == InstType::S || ctrl.is_load @<b>{|| ctrl.is_amo};
     }
+    // #@@range_end(inst_is_memop)
 
     // 命令がストア命令か判別する関数
     function inst_is_store (

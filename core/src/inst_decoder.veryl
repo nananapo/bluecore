@@ -60,9 +60,11 @@ module inst_decoder (
              bits == 32'h00000073 || // ECALL
              bits == 32'h00100073 || // EBREAK
              bits == 32'h30200073, //MRET
+            // #@@range_begin(valid)
             OP_MISC_MEM: T, // FENCE
-            OP_AMO     : f3 == 3'b010 || f3 == 3'b011, // AMO
+            @<b>{OP_AMO     : f3 == 3'b010 || f3 == 3'b011, // AMO}
             default    : F,
+            // #@@range_end(valid)
         };
         imm = case op {
             OP_LUI, OP_AUIPC       : imm_u,
@@ -108,15 +110,17 @@ module inst_decoder (
                 OP_OP_IMM_32: {
                     InstType::I, T, F, T, F, T, F, F, F, F
                 },
+                // #@@range_begin(ctrl)
                 OP_SYSTEM: {
-                    InstType::I, T, F, F, F, F, F, F, T, F
+                    InstType::I, T, F, F, F, F, F, F, T@<b>|, F|
                 },
                 OP_AMO: {
-                    InstType::R, T, F, F, F, F, F, F, F, T
+                    InstType::R, T, F, F, F, F, F, F, F@<b>|, T|
                 },
                 default: {
-                    InstType::X, F, F, F, F, F, F, F, F, F
+                    InstType::X, F, F, F, F, F, F, F, F@<b>|, F|
                 },
+                // #@@range_end(ctrl)
             }, f3, f7
         };
     }
