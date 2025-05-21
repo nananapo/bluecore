@@ -42,11 +42,8 @@ package eei {
     const OP_STORE    : logic<7> = 7'b0100011;
     const OP_SYSTEM   : logic<7> = 7'b1110011;
     const OP_MISC_MEM : logic<7> = 7'b0001111;
-    // #@@range_begin(op)
     const OP_AMO      : logic<7> = 7'b0101111;
-    // #@@range_end(op)
 
-    // #@@range_begin(AMOOp)
     enum AMOOp: logic<5> {
         LR = 5'b00010,
         SC = 5'b00011,
@@ -60,7 +57,6 @@ package eei {
         MINU = 5'b11000,
         MAXU = 5'b11100,
     }
-    // #@@range_end(AMOOp)
 
     // CSRのアドレス
     enum CsrAddr: logic<12> {
