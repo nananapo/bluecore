@@ -35,7 +35,6 @@ module top #(
     var memarb_last_iaddr: Addr ;
 
     // デバッグ用のIO
-    // #@@range_begin(io)
     always_ff {
         dbg_membus.ready  = 1;
         dbg_membus.rvalid = dbg_membus.valid;
@@ -58,15 +57,14 @@ module top #(
                     }
                     $finish();
                 }
-            @<b>|} else {|
-            @<b>|    #[ifdef(ENABLE_DEBUG_INPUT)]|
-            @<b>|    block {|
-            @<b>|        dbg_membus.rdata = util::get_input();|
-            @<b>|    }|
+            } else {
+                #[ifdef(ENABLE_DEBUG_INPUT)]
+                block {
+                    dbg_membus.rdata = util::get_input();
+                }
             }
         }
     }
-    // #@@range_end(io)
 
     // mmio_controllerへのメモリアクセスを調停する
     always_ff {
