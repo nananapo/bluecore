@@ -4,9 +4,7 @@ import corectrl::*;
 module core (
     clk     : input   clock               ,
     rst     : input   reset               ,
-    // #@@range_begin(port)
-    i_membus: modport @<b>|core_inst_if|::master,
-    // #@@range_end(port)
+    i_membus: modport core_inst_if::master,
     d_membus: modport core_data_if::master,
     led     : output  UIntX               ,
 ) {
@@ -68,7 +66,6 @@ module core (
     var wbq_rvalid: logic   ;
     var wbq_rdata : wbq_type;
 
-    // #@@range_begin(if)
     ///////////////////////////////// IF Stage /////////////////////////////////
 
     var control_hazard        : logic;
@@ -76,17 +73,14 @@ module core (
 
     always_comb {
         i_membus.is_hazard = control_hazard;
-        i_membus.next_pc = control_hazard_pc_next;
+        i_membus.next_pc   = control_hazard_pc_next;
     }
-    // #@@range_end(if)
 
     ///////////////////////////////// ID Stage /////////////////////////////////
 
-    // #@@range_begin(idvar)
-    let ids_valid     : logic    = @<b>|i_membus.rvalid|;
-    let ids_pc        : Addr     = @<b>|i_membus.raddr|;
-    let ids_inst_bits : Inst     = @<b>|i_membus.rdata|;
-    // #@@range_end(idvar)
+    let ids_valid     : logic    = i_membus.rvalid;
+    let ids_pc        : Addr     = i_membus.raddr;
+    let ids_inst_bits : Inst     = i_membus.rdata;
     var ids_inst_valid: logic   ;
     var ids_ctrl      : InstCtrl;
     var ids_imm       : UIntX   ;
@@ -98,16 +92,14 @@ module core (
         imm  : ids_imm       ,
     );
 
-    // #@@range_begin(idex)
     always_comb {
         // ID -> EX
-        @<b>|i_membus.|rready = exq_wready;
-        exq_wvalid      = @<b>|i_membus.|rvalid;
-        exq_wdata.addr  = @<b>|i_membus.|raddr;
-        exq_wdata.bits  = @<b>|i_membus.|rdata;
+        i_membus.rready = exq_wready;
+        exq_wvalid      = i_membus.rvalid;
+        exq_wdata.addr  = i_membus.raddr;
+        exq_wdata.bits  = i_membus.rdata;
         exq_wdata.ctrl  = ids_ctrl;
         exq_wdata.imm   = ids_imm;
-    // #@@range_end(idex)
         // exception
         exq_wdata.expt = 0;
         if !ids_inst_valid {
