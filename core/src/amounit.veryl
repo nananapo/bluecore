@@ -7,15 +7,13 @@ module amounit (
     master: modport Membus::master     ,
 ) {
 
-    // #@@range_begin(State)
     enum State {
         Init,
         WaitReady,
         WaitValid,
-        @<b>|SCSuccess,|
-        @<b>|SCFail,|
+        SCSuccess,
+        SCFail,
     }
-    // #@@range_end(State)
 
     var state      : State;
     inst slave_saved: core_data_if;
@@ -51,15 +49,13 @@ module amounit (
     function accept_request_comb () {
         if slave.ready && slave.valid {
             if slave.is_amo {
-    // #@@range_begin(accept_request_comb)
-    case slave.amoop {
-        AMOOp::LR: assign_master(slave.addr, 0, 0, 0);
-        @<b>|AMOOp::SC: if is_addr_reserved && slave.addr == reserved_addr {|
-        @<b>     assign_master(slave.addr, 1, slave.wdata, slave.wmask);|
-        @<b> }|
-        default: {}
-    }
-    // #@@range_end(accept_request_comb)
+                case slave.amoop {
+                    AMOOp::LR: assign_master(slave.addr, 0, 0, 0);
+                    AMOOp::SC: if is_addr_reserved && slave.addr == reserved_addr {
+                        assign_master(slave.addr, 1, slave.wdata, slave.wmask);
+                    }
+                    default: {}
+                }
             } else {
                 assign_master(slave.addr, slave.wen, slave.wdata, slave.wmask);
             }
@@ -81,24 +77,21 @@ module amounit (
                 slave.rvalid = master.rvalid;
                 slave.rdata  = master.rdata;
             }
-    // #@@range_begin(assign_slave)
-    State::SCSuccess: {
-        slave.ready  = master.rvalid;
-        slave.rvalid = master.rvalid;
-        slave.rdata  = 0;
-    }
-    State::SCFail: {
-        slave.ready  = 1;
-        slave.rvalid = 1;
-        slave.rdata  = 1;
-    }
-    // #@@range_end(assign_slave)
+            State::SCSuccess: {
+                slave.ready  = master.rvalid;
+                slave.rvalid = master.rvalid;
+                slave.rdata  = 0;
+            }
+            State::SCFail: {
+                slave.ready  = 1;
+                slave.rvalid = 1;
+                slave.rdata  = 1;
+            }
             default: {}
         }
     }
 
     // masterに要求を割り当てる
-    // #@@range_begin(master_comb)
     always_comb {
         reset_master();
         case state {
@@ -106,18 +99,17 @@ module amounit (
             State::WaitReady: if slave_saved.is_amo {
                 case slave_saved.amoop {
                     AMOOp::LR: assign_master(slave_saved.addr, 0, 0, 0);
-                    @<b>|AMOOp::SC: assign_master(slave_saved.addr, 1, slave_saved.wdata, slave_saved.wmask);|
+                    AMOOp::SC: assign_master(slave_saved.addr, 1, slave_saved.wdata, slave_saved.wmask);
                     default  : {}
                 }
             } else {
                 assign_master(slave_saved.addr, slave_saved.wen, slave_saved.wdata, slave_saved.wmask);
             }
             State::WaitValid               : accept_request_comb();
-            @<b>|State::SCFail, State::SCSuccess: accept_request_comb();|
+            State::SCFail, State::SCSuccess: accept_request_comb();
             default                        : {}
         }
     }
-    // #@@range_end(master_comb)
 
     // 新しく要求を受け入れる
     function accept_request_ff () {
@@ -140,19 +132,17 @@ module amounit (
                         reserved_addr    = slave.addr;
                         state            = if master.ready ? State::WaitValid : State::WaitReady;
                     }
-    // #@@range_begin(accept_request_ff)
-    AMOOp::SC: {
-        // reset reserved
-        let prev            : logic = is_addr_reserved;
-        is_addr_reserved = 0;
-        // check
-        if prev && slave.addr == reserved_addr {
-            state = if master.ready ? State::SCSuccess : State::WaitReady;
-        } else {
-            state = State::SCFail;
-        }
-    }
-    // #@@range_end(accept_request_ff)
+                    AMOOp::SC: {
+                        // reset reserved
+                        let prev            : logic = is_addr_reserved;
+                        is_addr_reserved = 0;
+                        // check
+                        if prev && slave.addr == reserved_addr {
+                            state = if master.ready ? State::SCSuccess : State::WaitReady;
+                        } else {
+                            state = State::SCFail;
+                        }
+                    }
                     default: {}
                 }
             } else {
@@ -163,28 +153,26 @@ module amounit (
         }
     }
 
-    // #@@range_begin(on_clock)
     function on_clock () {
         case state {
             State::Init     : accept_request_ff();
             State::WaitReady: if master.ready {
-                @<b>|if slave_saved.is_amo && slave_saved.amoop == AMOOp::SC {|
-                @<b>|    state = State::SCSuccess;|
-                @<b>|} else {|
+                if slave_saved.is_amo && slave_saved.amoop == AMOOp::SC {
+                    state = State::SCSuccess;
+                } else {
                     state = State::WaitValid;
-                @<b>|}|
+                }
             }
             State::WaitValid: if master.rvalid {
                 accept_request_ff();
             }
-            @<b>|State::SCSuccess: if master.rvalid {|
-            @<b>|    accept_request_ff();|
-            @<b>|}|
-            @<b>|State::SCFail: accept_request_ff();|
+            State::SCSuccess: if master.rvalid {
+                accept_request_ff();
+            }
+            State::SCFail: accept_request_ff();
             default      : {}
         }
     }
-    // #@@range_end(on_clock)
 
     function on_reset () {
         state              = State::Init;
