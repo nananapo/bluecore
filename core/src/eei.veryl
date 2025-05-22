@@ -12,10 +12,8 @@ package eei {
     type Inst   = logic       <ILEN>;
     type Addr   = logic       <XLEN>;
 
-    // #@@range_begin(mimpid)
     // Machine Implementation ID
     const MACHINE_IMPLEMENTATION_ID: UIntX = 1;
-    // #@@range_end(mimpid)
 
     // メモリバスのデータ幅
     const MEMBUS_DATA_WIDTH: u32 = 64;
