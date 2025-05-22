@@ -30,12 +30,17 @@ module top #(
 
     // 命令フェッチ用
     inst i_membus     : Membus;
+    // #@@range_begin(i_membus_core)
     inst i_membus_core: core_inst_if;
+    // #@@range_end(i_membus_core)
     // ロードストア命令用
     inst d_membus     : Membus;
     inst d_membus_core: core_data_if;
 
+    // #@@range_begin(memarb_last_i_def)
     var memarb_last_i: logic;
+    @<del>|var memarb_last_iaddr: Addr;|
+    // #@@range_end(memarb_last_i_def)
 
     // デバッグ用のIO
     always_ff {
@@ -68,20 +73,26 @@ module top #(
     }
 
     // mmio_controllerへのメモリアクセスを調停する
+    // #@@range_begin(memarb_last_i_update)
     always_ff {
         if_reset {
             memarb_last_i = 0;
+            @<del>|memarb_last_i = 0;|
         } else {
             if mmio_membus.ready {
                 memarb_last_i = !d_membus.valid;
+                @<del>|memarb_last_iaddr = i_membus.addr;|
             }
         }
     }
+    // #@@range_end(memarb_last_i_update)
 
+    // #@@range_begin(memarb)
     always_comb {
         i_membus.ready  = mmio_membus.ready && !d_membus.valid;
         i_membus.rvalid = mmio_membus.rvalid && memarb_last_i;
-        i_membus.rdata  = mmio_membus.rdata;
+        i_membus.rdata  = @<b>|mmio_membus.rdata|;
+    // #@@range_end(memarb)
 
         d_membus.ready  = mmio_membus.ready;
         d_membus.rvalid = mmio_membus.rvalid && !memarb_last_i;
@@ -160,18 +171,22 @@ module top #(
         master: d_membus     ,
     );
 
+    // #@@range_begin(inst)
     inst fetcher: inst_fetcher (
         clk                   ,
         rst                   ,
         core_if: i_membus_core,
         mem_if : i_membus     ,
     );
+    // #@@range_end(inst)
 
+    // #@@range_begin(core)
     inst c: core (
         clk                    ,
         rst                    ,
-        i_membus: i_membus_core,
+        @<b>|i_membus: i_membus_core,|
         d_membus: d_membus_core,
         led                    ,
     );
+    // #@@range_end(core)
 }
