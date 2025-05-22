@@ -35,11 +35,13 @@ module inst_fetcher (
         rdata     : fetch_fifo_rdata ,
     );
 
+    // #@@range_begin(issue_fifo_type)
     struct issue_fifo_type {
         addr  : Addr ,
         bits  : Inst ,
-        is_rvc: logic,
+        @<b>|is_rvc: logic,|
     }
+    // #@@range_end(issue_fifo_type)
 
     var issue_fifo_flush : logic          ;
     var issue_fifo_wvalid: logic          ;
@@ -112,43 +114,47 @@ module inst_fetcher (
 
         if !core_if.is_hazard && fetch_fifo_rvalid {
             if issue_fifo_wready {
-                if offset == 6 {
-                    // offsetが6な32ビット命令の場合、
-                    // 命令は{rdata_next[15:0], rdata[63:48}になる
-                    if issue_is_rdata_saved {
-                        issue_fifo_wvalid       = 1;
-                        issue_fifo_wdata.addr   = {issue_saved_addr[msb:3], offset};
-                        issue_fifo_wdata.bits   = {rdata[15:0], issue_saved_bits};
-                        issue_fifo_wdata.is_rvc = 0;
-                    } else {
-                        // Read next 8 bytes
-                        fetch_fifo_rready = 1;
-                    }
-                } else {
-                    fetch_fifo_rready     = offset == 4;
-                    issue_fifo_wvalid     = 1;
-                    issue_fifo_wdata.addr = {raddr[msb:3], offset};
-                    issue_fifo_wdata.bits = case offset {
-                        0      : rdata[31:0],
-                        2      : rdata[47:16],
-                        4      : rdata[63:32],
-                        default: 0,
-                    };
-                    issue_fifo_wdata.is_rvc = 0;
-                }
+    // #@@range_begin(issue_comb)
+    if offset == 6 {
+        // offsetが6な32ビット命令の場合、
+        // 命令は{rdata_next[15:0], rdata[63:48}になる
+        if issue_is_rdata_saved {
+            issue_fifo_wvalid       = 1;
+            issue_fifo_wdata.addr   = {issue_saved_addr[msb:3], offset};
+            issue_fifo_wdata.bits   = {rdata[15:0], issue_saved_bits};
+            @<b>|issue_fifo_wdata.is_rvc = 0;|
+        } else {
+            // Read next 8 bytes
+            fetch_fifo_rready = 1;
+        }
+    } else {
+        fetch_fifo_rready     = offset == 4;
+        issue_fifo_wvalid     = 1;
+        issue_fifo_wdata.addr = {raddr[msb:3], offset};
+        issue_fifo_wdata.bits = case offset {
+            0      : rdata[31:0],
+            2      : rdata[47:16],
+            4      : rdata[63:32],
+            default: 0,
+        };
+        @<b>|issue_fifo_wdata.is_rvc = 0;|
+    }
+    // #@@range_end(issue_comb)
             }
         }
     }
 
     // issue_fifo <-> core
+    // #@@range_begin(issue_core)
     always_comb {
         issue_fifo_flush  = core_if.is_hazard;
         issue_fifo_rready = core_if.rready;
         core_if.rvalid    = issue_fifo_rvalid;
         core_if.raddr     = issue_fifo_rdata.addr;
         core_if.rdata     = issue_fifo_rdata.bits;
-        core_if.is_rvc    = issue_fifo_rdata.is_rvc;
+        @<b>|core_if.is_rvc    = issue_fifo_rdata.is_rvc;|
     }
+    // #@@range_end(issue_core)
 
     /*--------- fetch logic ----------*/
     var fetch_pc          : Addr ;

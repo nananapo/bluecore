@@ -85,13 +85,15 @@ module core (
     var ids_ctrl      : InstCtrl;
     var ids_imm       : UIntX   ;
 
+    // #@@range_begin(inst_decoder)
     inst decoder: inst_decoder (
         bits  : ids_inst_bits  ,
-        is_rvc: i_membus.is_rvc,
+        @<b>|is_rvc: i_membus.is_rvc,|
         valid : ids_inst_valid ,
         ctrl  : ids_ctrl       ,
         imm   : ids_imm        ,
     );
+    // #@@range_end(inst_decoder)
 
     always_comb {
         // ID -> EX
@@ -365,11 +367,13 @@ module core (
     let wbs_imm      : UIntX    = wbq_rdata.imm;
 
     let wbs_rd_addr: logic<5> = wbs_inst_bits[11:7];
+    // #@@range_begin(wb_data)
     let wbs_wb_data: UIntX    = if wbs_ctrl.is_lui ?
         wbs_imm
     : if wbs_ctrl.is_jump ?
-        wbs_pc + (if wbs_ctrl.is_rvc ? 2 : 4)
+        wbs_pc + @<b>|(if wbs_ctrl.is_rvc ? 2 : |4@<b>|)|
     : if wbs_ctrl.is_load || wbs_ctrl.is_amo ?
+    // #@@range_end(wb_data)
         wbq_rdata.mem_rdata
     : if wbs_ctrl.is_csr ?
         wbq_rdata.csr_rdata

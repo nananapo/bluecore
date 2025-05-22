@@ -1,13 +1,15 @@
 import eei::*;
 import corectrl::*;
 
+// #@@range_begin(port)
 module inst_decoder (
     bits  : input  Inst    ,
-    is_rvc: input  logic   ,
+    @<b>|is_rvc: input  logic   ,|
     valid : output logic   ,
     ctrl  : output InstCtrl,
     imm   : output UIntX   ,
 ) {
+// #@@range_end(port)
     // 即値の生成
     let imm_i_g: logic<12> = bits[31:20];
     let imm_s_g: logic<12> = {bits[31:25], bits[11:7]};
@@ -62,9 +64,11 @@ module inst_decoder (
              bits == 32'h00100073 || // EBREAK
              bits == 32'h30200073, //MRET
             OP_MISC_MEM: T, // FENCE
+        // #@@range_begin(valid)
             OP_AMO     : f3 == 3'b010 || f3 == 3'b011, // AMO
             default    : F,
-        } && (IALIGN == 16 || !is_rvc); // IALIGN == 32のとき、C拡張は無効
+        } @<b>{&& (IALIGN == 16 || !is_rvc)}; @<b>{// IALIGN == 32のとき、C拡張は無効}
+        // #@@range_end(valid)
         imm = case op {
             OP_LUI, OP_AUIPC       : imm_u,
             OP_JAL                 : imm_j,
@@ -115,10 +119,12 @@ module inst_decoder (
                 OP_AMO: {
                     InstType::R, T, F, F, F, F, F, F, F, T
                 },
+        // #@@range_begin(ctrl)
                 default: {
                     InstType::X, F, F, F, F, F, F, F, F, F
                 },
-            }, is_rvc, f3, f7
+            }, @<b>|is_rvc,| f3, f7
         };
+        // #@@range_end(ctrl)
     }
 }
