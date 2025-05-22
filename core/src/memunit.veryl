@@ -10,9 +10,11 @@ module memunit (
     addr  : input   Addr                , // アクセスするアドレス
     rs2   : input   UIntX               , // ストア命令で書き込むデータ
     rdata : output  UIntX               , // ロード命令の結果 (stall = 0のときに有効)
+    // #@@range_begin(port)
     stall : output  logic               , // メモリアクセス命令が完了していない
-    membus: modport core_data_if::master, // メモリとのinterface
+    membus: modport @<b>|core_data_if|::master, // メモリとのinterface
 ) {
+    // #@@range_end(port)
 
     // memunitの状態を表す列挙型
     enum State: logic<2> {
@@ -23,20 +25,23 @@ module memunit (
 
     var state: State;
 
+    // #@@range_begin(reg)
     var req_wen   : logic                       ;
     var req_addr  : Addr                        ;
     var req_wdata : logic<MEMBUS_DATA_WIDTH>    ;
     var req_wmask : logic<MEMBUS_DATA_WIDTH / 8>;
-    var req_is_amo: logic                       ;
-    var req_amoop : AMOOp                       ;
-    var req_aq    : logic                       ;
-    var req_rl    : logic                       ;
-    var req_funct3: logic<3>                    ;
+    @<b>|var req_is_amo: logic                       ;|
+    @<b>|var req_amoop : AMOOp                       ;|
+    @<b>|var req_aq    : logic                       ;|
+    @<b>|var req_rl    : logic                       ;|
+    @<b>|var req_funct3: logic<3>                    ;|
+    // #@@range_end(reg)
 
     const W   : u32                      = XLEN;
     let D   : logic<MEMBUS_DATA_WIDTH> = membus.rdata;
     let sext: logic                    = ctrl.funct3[2] == 1'b0;
 
+    // #@@range_begin(assign)
     always_comb {
         // メモリアクセス
         membus.valid  = state == State::WaitReady;
@@ -44,11 +49,12 @@ module memunit (
         membus.wen    = req_wen;
         membus.wdata  = req_wdata;
         membus.wmask  = req_wmask;
-        membus.is_amo = req_is_amo;
-        membus.amoop  = req_amoop;
-        membus.aq     = req_aq;
-        membus.rl     = req_rl;
-        membus.funct3 = req_funct3;
+        @<b>|membus.is_amo = req_is_amo;|
+        @<b>|membus.amoop  = req_amoop;|
+        @<b>|membus.aq     = req_aq;|
+        @<b>|membus.rl     = req_rl;|
+        @<b>|membus.funct3 = req_funct3;|
+    // #@@range_end(assign)
         // loadの結果
         rdata = case ctrl.funct3[1:0] {
             2'b00: case addr[2:0] {
@@ -86,6 +92,7 @@ module memunit (
         };
     }
 
+    // #@@range_begin(reset)
     always_ff {
         if_reset {
             state      = State::Init;
@@ -93,43 +100,26 @@ module memunit (
             req_addr   = 0;
             req_wdata  = 0;
             req_wmask  = 0;
-            req_is_amo = 0;
-            req_amoop  = 0 as AMOOp;
-            req_aq     = 0;
-            req_rl     = 0;
-            req_funct3 = 0;
+            @<b>|req_is_amo = 0;|
+            @<b>|req_amoop  = 0 as AMOOp;|
+            @<b>|req_aq     = 0;|
+            @<b>|req_rl     = 0;|
+            @<b>|req_funct3 = 0;|
         } else {
+    //#@@range_end(reset)
             if valid {
+                // #@@range_begin(Init)
                 case state {
                     State::Init: if is_new & inst_is_memop(ctrl) {
-                        state     = State::WaitReady;
-                        req_wen   = inst_is_store(ctrl);
-                        req_addr  = addr;
-                        req_wdata = rs2 << {addr[2:0], 3'b0};
-                        req_wmask = case ctrl.funct3[1:0] {
-                            2'b00: 8'b1 << addr[2:0],
-                            2'b01: case addr[2:0] {
-                                6      : 8'b11000000,
-                                4      : 8'b00110000,
-                                2      : 8'b00001100,
-                                0      : 8'b00000011,
-                                default: 'x,
-                            },
-                            2'b10: case addr[2:0] {
-                                0      : 8'b00001111,
-                                4      : 8'b11110000,
-                                default: 'x,
-                            },
-                            2'b11  : 8'b11111111,
-                            default: 'x,
-                        };
-                        req_is_amo = ctrl.is_amo;
-                        req_amoop  = ctrl.funct7[6:2] as AMOOp;
-                        req_aq     = ctrl.funct7[1];
-                        req_rl     = ctrl.funct7[0];
-                        req_funct3 = ctrl.funct3;
+                        ...
+                        @<b>|req_is_amo = ctrl.is_amo;|
+                        @<b>|req_amoop  = ctrl.funct7[6:2] as AMOOp;|
+                        @<b>|req_aq     = ctrl.funct7[1];|
+                        @<b>|req_rl     = ctrl.funct7[0];|
+                        @<b>|req_funct3 = ctrl.funct3;|
                     }
                     State::WaitReady: if membus.ready {
+                // #@@range_end(Init)
                         state = State::WaitValid;
                     }
                     State::WaitValid: if membus.rvalid {
