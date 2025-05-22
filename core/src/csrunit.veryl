@@ -26,7 +26,9 @@ module csrunit (
     const MTVAL_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
     const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
 
+    // #@@range_begin(mode)
     var mode: PrivMode;
+    // #@@range_end(mode)
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
@@ -92,11 +94,13 @@ module csrunit (
         } & wmask | (rdata & ~wmask);
     }
 
+    // #@@range_begin(reset)
     always_ff {
         if_reset {
             mode   = PrivMode::M;
-            mtvec  = 0;
+            mtvec  = 0:
             mepc   = 0;
+    // #@@range_end(reset)
             mcause = 0;
             mtval  = 0;
             led    = 0;
