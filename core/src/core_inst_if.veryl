@@ -4,24 +4,20 @@ interface core_inst_if {
     var rvalid   : logic;
     var rready   : logic;
     var raddr    : Addr ;
-    // #@@range_begin(var)
     var rdata    : Inst ;
-    @<b>|var is_rvc   : logic;|
+    var is_rvc   : logic;
     var is_hazard: logic;
-    // #@@range_end(var)
     var next_pc  : Addr ;
 
-    // #@@range_begin(master)
     modport master {
         rvalid   : input ,
         rready   : output,
         raddr    : input ,
         rdata    : input ,
-        @<b>|is_rvc   : input ,|
+        is_rvc   : input ,
         is_hazard: output, // control hazard
         next_pc  : output, // actual next pc
     }
-    // #@@range_end(master)
 
     modport slave {
         ..converse(master)
