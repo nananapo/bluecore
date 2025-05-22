@@ -39,13 +39,14 @@ module csrunit (
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
 
     // CSR
-    let misa   : UIntX = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
-    let mhartid: UIntX = 0;
-    var mstatus: UIntX;
-    var mtvec  : UIntX;
-    var mepc   : UIntX;
-    var mcause : UIntX;
-    var mtval  : UIntX;
+    let misa   : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
+    let mhartid: UIntX  = 0;
+    var mstatus: UIntX ;
+    var mtvec  : UIntX ;
+    var mcycle : UInt64;
+    var mepc   : UIntX ;
+    var mcause : UIntX ;
+    var mtval  : UIntX ;
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -76,6 +77,7 @@ module csrunit (
             CsrAddr::MHARTID: mhartid,
             CsrAddr::MSTATUS: mstatus,
             CsrAddr::MTVEC  : mtvec,
+            CsrAddr::MCYCLE : mcycle,
             CsrAddr::MEPC   : mepc,
             CsrAddr::MCAUSE : mcause,
             CsrAddr::MTVAL  : mtval,
@@ -106,11 +108,13 @@ module csrunit (
             mode    = PrivMode::M;
             mstatus = 0;
             mtvec   = 0;
+            mcycle  = 0;
             mepc    = 0;
             mcause  = 0;
             mtval   = 0;
             led     = 0;
         } else {
+            mcycle += 1;
             if valid {
                 if raise_trap {
                     if raise_expt {
