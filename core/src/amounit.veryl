@@ -25,9 +25,11 @@ module amounit (
         master.wmask = 0;
     }
 
+    // #@@range_begin(list)
     // lr/sc
     var is_addr_reserved: logic;
     var reserved_addr   : Addr ;
+    // #@@range_end(list)
 
     // masterに要求を割り当てる
     function assign_master (
@@ -44,18 +46,20 @@ module amounit (
     }
 
     // 新しく要求を受け入れる
+    // #@@range_begin(accept_request_comb)
     function accept_request_comb () {
         if slave.ready && slave.valid {
-            if slave.is_amo {
-                case slave.amoop {
-                    AMOOp::LR: assign_master(slave.addr, 0, 0, 0);
-                    default  : {}
-                }
-            } else {
+            @<b>|if slave.is_amo {|
+            @<b>|    case slave.amoop {|
+            @<b>|        AMOOp::LR: assign_master(slave.addr, 0, 0, 0);|
+            @<b>|        default  : {}|
+            @<b>|    }|
+            @<b>|} else {|
                 assign_master(slave.addr, slave.wen, slave.wdata, slave.wmask);
-            }
+            @<b>|}|
         }
     }
+    // #@@range_end(accept_request_comb)
 
     // slaveに結果を割り当てる
     always_comb {
@@ -77,49 +81,47 @@ module amounit (
     }
 
     // masterに要求を割り当てる
+    // #@@range_begin(master_comb)
     always_comb {
         reset_master();
         case state {
             State::Init     : accept_request_comb();
-            State::WaitReady: if slave_saved.is_amo {
-                case slave_saved.amoop {
-                    AMOOp::LR: assign_master(slave_saved.addr, 0, 0, 0);
-                    default  : {}
-                }
-            } else {
+            @<b>|State::WaitReady: if slave_saved.is_amo {|
+            @<b>|    case slave_saved.amoop {|
+            @<b>|        AMOOp::LR: assign_master(slave_saved.addr, 0, 0, 0);|
+            @<b>|        default  : {}|
+            @<b>|    }|
+            @<b>|} else {|
                 assign_master(slave_saved.addr, slave_saved.wen, slave_saved.wdata, slave_saved.wmask);
-            }
+            @<b>|}|
+    // #@@range_end(master_comb)
             State::WaitValid: accept_request_comb();
             default         : {}
         }
     }
 
     // 新しく要求を受け入れる
+    // #@@range_begin(accept_request_ff)
     function accept_request_ff () {
         slave_saved.valid = slave.ready && slave.valid;
         if slave.ready && slave.valid {
             slave_saved.addr   = slave.addr;
-            slave_saved.wen    = slave.wen;
-            slave_saved.wdata  = slave.wdata;
-            slave_saved.wmask  = slave.wmask;
-            slave_saved.is_amo = slave.is_amo;
-            slave_saved.amoop  = slave.amoop;
-            slave_saved.aq     = slave.aq;
-            slave_saved.rl     = slave.rl;
+            ...
             slave_saved.funct3 = slave.funct3;
-            if slave.is_amo {
-                case slave.amoop {
-                    AMOOp::LR: {
-                        // reserve address
-                        is_addr_reserved = 1;
-                        reserved_addr    = slave.addr;
-                        state            = if master.ready ? State::WaitValid : State::WaitReady;
-                    }
-                    default: {}
-                }
-            } else {
+            @<b>|if slave.is_amo {|
+            @<b>|    case slave.amoop {|
+            @<b>|        AMOOp::LR: {|
+            @<b>|            // reserve address|
+            @<b>|            is_addr_reserved = 1;|
+            @<b>|            reserved_addr    = slave.addr;|
+            @<b>|            state            = if master.ready ? State::WaitValid : State::WaitReady;|
+            @<b>|        }|
+            @<b>|        default: {}|
+            @<b>|    }|
+            @<b>|} else {|
                 state = if master.ready ? State::WaitValid : State::WaitReady;
-            }
+            @<b>|}|
+    // #@@range_end(accept_request_ff)
         } else {
             state = State::Init;
         }
@@ -149,8 +151,10 @@ module amounit (
         slave_saved.aq     = 0;
         slave_saved.rl     = 0;
         slave_saved.funct3 = 0;
+        // #@@range_begin(reset)
         is_addr_reserved   = 0;
         reserved_addr      = 0;
+        // #@@range_end(reset)
     }
 
     always_ff {
