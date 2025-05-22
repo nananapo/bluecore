@@ -1,9 +1,7 @@
 package eei {
     const XLEN  : u32 = 64;
     const ILEN  : u32 = 32;
-    // #@@range_begin(IALIGN)
     const IALIGN: u32 = 16;
-    // #@@range_end(IALIGN)
 
     type UIntX  = logic       <XLEN>;
     type UInt32 = logic       <32>  ;
