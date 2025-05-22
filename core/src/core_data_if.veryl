@@ -28,10 +28,12 @@ interface core_data_if {
         is_amo  : output,
         aq      : output,
         rl      : output,
-        amoop   : output,
-        funct3  : output,
-        is_Zaamo: import,
-    }
+// #@@range_begin(master)
+    amoop   : output,
+    funct3  : output,
+    @<b>|is_Zaamo: import,|
+}
+// #@@range_end(master)
 
     modport slave {
         is_Zaamo: import,
@@ -42,7 +44,10 @@ interface core_data_if {
         ..input
     }
 
+
+    // #@@range_begin(is_Zaamo)
     function is_Zaamo () -> logic {
         return is_amo && (amoop != AMOOp::LR && amoop != AMOOp::SC);
     }
+    // #@@range_end(is_Zaamo)
 }
