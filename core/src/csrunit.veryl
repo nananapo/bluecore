@@ -38,9 +38,7 @@ module csrunit (
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
 
     // CSR
-    // #@@range_begin(misa)
     let misa  : UIntX = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
-    // #@@range_end(misa)
     var mtvec : UIntX;
     var mepc  : UIntX;
     var mcause: UIntX;
@@ -69,10 +67,8 @@ module csrunit (
 
     always_comb {
         // read
-        // #@@range_begin(rdata)
         rdata = case csr_addr {
-            @<b>|CsrAddr::MISA  : misa,|
-        // #@@range_end(rdata)
+            CsrAddr::MISA  : misa,
             CsrAddr::MTVEC : mtvec,
             CsrAddr::MEPC  : mepc,
             CsrAddr::MCAUSE: mcause,
