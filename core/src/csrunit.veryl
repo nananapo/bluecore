@@ -67,9 +67,11 @@ module csrunit (
 
     always_comb {
         // read
+        // #@@range_begin(rdata)
         rdata = case csr_addr {
             CsrAddr::MISA  : misa,
-            CsrAddr::MIMPID: MACHINE_IMPLEMENTATION_ID,
+            @<b>|CsrAddr::MIMPID: MACHINE_IMPLEMENTATION_ID,|
+        // #@@range_end(rdata)
             CsrAddr::MTVEC : mtvec,
             CsrAddr::MEPC  : mepc,
             CsrAddr::MCAUSE: mcause,
