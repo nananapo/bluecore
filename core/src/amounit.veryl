@@ -7,19 +7,17 @@ module amounit (
     master: modport Membus::master     ,
 ) {
 
-    // #@@range_begin(State)
     enum State {
         Init,
         WaitReady,
         WaitValid,
         SCSuccess,
         SCFail,
-        @<b>|AMOLoadReady,|
-        @<b>|AMOLoadValid,|
-        @<b>|AMOStoreReady,|
-        @<b>|AMOStoreValid,|
+        AMOLoadReady,
+        AMOLoadValid,
+        AMOStoreReady,
+        AMOStoreValid,
     }
-    // #@@range_end(State)
 
     var state      : State;
     inst slave_saved: core_data_if;
@@ -37,10 +35,8 @@ module amounit (
     var is_addr_reserved: logic;
     var reserved_addr   : Addr ;
 
-    // #@@range_begin(reg)
     // amo
     var zaamo_fetched_data: UIntX;
-    // #@@range_end(reg)
 
     // masterに要求を割り当てる
     function assign_master (
@@ -56,7 +52,6 @@ module amounit (
         master.wmask = wmask;
     }
 
-    // #@@range_begin(calc_amo)
     // AMO ALU
     function calc_amo::<W: u32> (
         amoop: input AMOOp   ,
@@ -97,7 +92,6 @@ module amounit (
             default: return 0;
         }
     }
-    // #@@range_end(calc_amo)
 
     // 新しく要求を受け入れる
     function accept_request_comb () {
@@ -108,11 +102,9 @@ module amounit (
                     AMOOp::SC: if is_addr_reserved && slave.addr == reserved_addr {
                         assign_master(slave.addr, 1, slave.wdata, slave.wmask);
                     }
-    // #@@range_begin(accept_request_comb)
-    default: @<b>|if slave.is_Zaamo()| {
-        @<b>|assign_master(slave.addr, 0, 0, 0);|
-    }
-    // #@@range_end(accept_request_comb)
+                    default: if slave.is_Zaamo() {
+                        assign_master(slave.addr, 0, 0, 0);
+                    }
                 }
             } else {
                 assign_master(slave.addr, slave.wen, slave.wdata, slave.wmask);
@@ -145,13 +137,11 @@ module amounit (
                 slave.rvalid = 1;
                 slave.rdata  = 1;
             }
-    // #@@range_begin(assign_slave_comb)
-    State::AMOStoreValid: {
-        slave.ready  = master.rvalid;
-        slave.rvalid = master.rvalid;
-        slave.rdata  = zaamo_fetched_data;
-    }
-    // #@@range_end(assign_slave_comb)
+            State::AMOStoreValid: {
+                slave.ready  = master.rvalid;
+                slave.rvalid = master.rvalid;
+                slave.rdata  = zaamo_fetched_data;
+            }
             default: {}
         }
     }
@@ -172,15 +162,13 @@ module amounit (
             }
             State::WaitValid                         : accept_request_comb();
             State::SCSuccess, State::SCFail          : accept_request_comb();
-    // #@@range_begin(assign_master_comb)
-    State::AMOLoadReady                      : assign_master      (slave_saved.addr, 0, 0, 0);
-    State::AMOLoadValid, State::AMOStoreReady: {
-        let rdata        : UIntX = if state == State::AMOLoadValid ? master.rdata : zaamo_fetched_data;
-        let wdata        : UIntX = gen_amo_wdata(slave_saved, rdata);
-        assign_master(slave_saved.addr, 1, wdata, slave_saved.wmask);
-    }
-    State::AMOStoreValid: accept_request_comb();
-    // #@@range_end(assign_master_comb)
+            State::AMOLoadReady                      : assign_master      (slave_saved.addr, 0, 0, 0);
+            State::AMOLoadValid, State::AMOStoreReady: {
+                let rdata        : UIntX = if state == State::AMOLoadValid ? master.rdata : zaamo_fetched_data;
+                let wdata        : UIntX = gen_amo_wdata(slave_saved, rdata);
+                assign_master(slave_saved.addr, 1, wdata, slave_saved.wmask);
+            }
+            State::AMOStoreValid: accept_request_comb();
             default             : {}
         }
     }
@@ -217,11 +205,9 @@ module amounit (
                             state = State::SCFail;
                         }
                     }
-    // #@@range_begin(accept_request_ff)
-    default: @<b>|if slave.is_Zaamo()| {
-        @<b>|state = if master.ready ? State::AMOLoadValid : State::AMOLoadReady;|
-    }
-    // #@@range_end(accept_request_ff)
+                    default: if slave.is_Zaamo() {
+                        state = if master.ready ? State::AMOLoadValid : State::AMOLoadReady;
+                    }
                 }
             } else {
                 state = if master.ready ? State::WaitValid : State::WaitReady;
@@ -248,21 +234,19 @@ module amounit (
                 accept_request_ff();
             }
             State::SCFail      : accept_request_ff();
-    // #@@range_begin(on_clock)
-    State::AMOLoadReady: if master.ready {
-        state = State::AMOLoadValid;
-    }
-    State::AMOLoadValid: if master.rvalid {
-        zaamo_fetched_data = master.rdata;
-        state              = if slave.ready ? State::AMOStoreValid : State::AMOStoreReady;
-    }
-    State::AMOStoreReady: if master.ready {
-        state = State::AMOStoreValid;
-    }
-    State::AMOStoreValid: if master.rvalid {
-        accept_request_ff();
-    }
-    // #@@range_end(on_clock)
+            State::AMOLoadReady: if master.ready {
+                state = State::AMOLoadValid;
+            }
+            State::AMOLoadValid: if master.rvalid {
+                zaamo_fetched_data = master.rdata;
+                state              = if slave.ready ? State::AMOStoreValid : State::AMOStoreReady;
+            }
+            State::AMOStoreReady: if master.ready {
+                state = State::AMOStoreValid;
+            }
+            State::AMOStoreValid: if master.rvalid {
+                accept_request_ff();
+            }
             default: {}
         }
     }
@@ -279,11 +263,9 @@ module amounit (
         slave_saved.rl     = 0;
         slave_saved.funct3 = 0;
         is_addr_reserved   = 0;
-    // #@@range_begin(reset)
         reserved_addr      = 0;
-        @<b>|zaamo_fetched_data = 0;|
+        zaamo_fetched_data = 0;
     }
-    // #@@range_end(reset)
 
     always_ff {
         if_reset {
