@@ -43,7 +43,9 @@ module csrunit (
     let mhartid: UIntX  = 0;
     var mstatus: UIntX ;
     var mtvec  : UIntX ;
+    // #@@range_begin(reg)
     var mcycle : UInt64;
+    // #@@range_end(reg)
     var mepc   : UIntX ;
     var mcause : UIntX ;
     var mtval  : UIntX ;
@@ -77,7 +79,9 @@ module csrunit (
             CsrAddr::MHARTID: mhartid,
             CsrAddr::MSTATUS: mstatus,
             CsrAddr::MTVEC  : mtvec,
-            CsrAddr::MCYCLE : mcycle,
+    // #@@range_begin(rdata)
+    CsrAddr::MCYCLE : mcycle,
+    // #@@range_end(rdata)
             CsrAddr::MEPC   : mepc,
             CsrAddr::MCAUSE : mcause,
             CsrAddr::MTVAL  : mtval,
@@ -103,18 +107,20 @@ module csrunit (
         } & wmask | (rdata & ~wmask);
     }
 
+    // #@@range_begin(always_ff)
     always_ff {
         if_reset {
             mode    = PrivMode::M;
             mstatus = 0;
             mtvec   = 0;
-            mcycle  = 0;
+            @<b>|mcycle  = 0;|
             mepc    = 0;
             mcause  = 0;
             mtval   = 0;
             led     = 0;
         } else {
-            mcycle += 1;
+            @<b>|mcycle += 1;|
+    // #@@range_end(always_ff)
             if valid {
                 if raise_trap {
                     if raise_expt {
