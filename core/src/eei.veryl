@@ -59,41 +59,37 @@ package eei {
         MAXU = 5'b11100,
     }
 
-    // #@@range_begin(PrivMode)
     enum PrivMode: logic<2> {
         M = 2'b11,
         S = 2'b01,
         U = 2'b00,
     }
-    // #@@range_end(PrivMode)
 
     // CSRのアドレス
-    // #@@range_begin(CsrAddr)
     enum CsrAddr: logic<12> {
-        @<b>|// Machine Information Registers|
-        @<b>|MIMPID = 12'hf13,|
-        @<b>|MHARTID = 12'hf14,|
-        @<b>|// Machine Trap Setup|
-        @<b>|MSTATUS = 12'h300,|
-        @<b>|MISA = 12'h301,|
-        @<b>|MEDELEG = 12'h302,|
-        @<b>|MIDELEG = 12'h303,|
-        @<b>|MIE = 12'h304,|
+        // Machine Information Registers
+        MIMPID = 12'hf13,
+        MHARTID = 12'hf14,
+        // Machine Trap Setup
+        MSTATUS = 12'h300,
+        MISA = 12'h301,
+        MEDELEG = 12'h302,
+        MIDELEG = 12'h303,
+        MIE = 12'h304,
         MTVEC = 12'h305,
-        @<b>|MCOUNTEREN = 12'h306,|
-        @<b>|// Machine Trap Handling|
-        @<b>|MSCRATCH = 12'h340,|
-        @<b>|MEPC = 12'h341,|
+        MCOUNTEREN = 12'h306,
+        // Machine Trap Handling
+        MSCRATCH = 12'h340,
+        MEPC = 12'h341,
         MCAUSE = 12'h342,
         MTVAL = 12'h343,
         MIP = 12'h344,
-        @<b>|// Machine Counter/Timers|
-        @<b>|MCYCLE = 12'hB00,|
-        @<b>|MINSTRET = 12'hB02,|
+        // Machine Counter/Timers
+        MCYCLE = 12'hB00,
+        MINSTRET = 12'hB02,
         // Custom
         LED = 12'h800,
     }
-    // #@@range_end(CsrAddr)
 
     enum CsrCause: UIntX {
         INSTRUCTION_ADDRESS_MISALIGNED = 0,
