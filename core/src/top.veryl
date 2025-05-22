@@ -31,9 +31,7 @@ module top #(
     inst i_membus: membus_if::<ILEN, XLEN>; // 命令フェッチ用
     // ロードストア命令用
     inst d_membus     : Membus;
-    // #@@range_begin(d_membus_core)
     inst d_membus_core: core_data_if;
-    // #@@range_end(d_membus_core)
 
     var memarb_last_i    : logic;
     var memarb_last_iaddr: Addr ;
@@ -156,22 +154,18 @@ module top #(
         dbg_membus                 ,
     );
 
-    // #@@range_begin(amou)
     inst amou: amounit (
         clk                  ,
         rst                  ,
         slave : d_membus_core,
         master: d_membus     ,
     );
-    // #@@range_end(amou)
 
-    // #@@range_begin(core)
     inst c: core (
         clk                    ,
         rst                    ,
         i_membus               ,
-        @<b>|d_membus: d_membus_core,|
+        d_membus: d_membus_core,
         led                    ,
     );
-    // #@@range_end(core)
 }

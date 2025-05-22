@@ -4,11 +4,9 @@ import corectrl::*;
 module core (
     clk     : input   clock                          ,
     rst     : input   reset                          ,
-    // #@@range_begin(port)
     i_membus: modport membus_if::<ILEN, XLEN>::master,
-    d_membus: modport @<b>|core_data_if|::master           ,
+    d_membus: modport core_data_if::master           ,
     led     : output  UIntX                          ,
-    // #@@range_end(port)
 ) {
 
     // ifのFIFOのデータ型
