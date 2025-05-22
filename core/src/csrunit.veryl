@@ -23,9 +23,11 @@ module csrunit (
 
     // wmasks
     const MSTATUS_WMASK : UIntX = 'h0000_0000_0000_0000 as UIntX;
+    // #@@range_begin(WMASK)
     const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fffc;
-    const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
+    @<b>|const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;|
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
+    // #@@range_end(WMASK)
     const MCAUSE_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
     const LED_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
@@ -46,9 +48,11 @@ module csrunit (
     let mhartid : UIntX  = 0;
     var mstatus : UIntX ;
     var mtvec   : UIntX ;
+    // #@@range_begin(reg)
     var mcycle  : UInt64;
-    var mscratch: UIntX ;
+    @<b>|var mscratch: UIntX ;|
     var mepc    : UIntX ;
+    // #@@range_end(reg)
     var mcause  : UIntX ;
     var mtval   : UIntX ;
 
@@ -85,9 +89,11 @@ module csrunit (
             CsrAddr::MSTATUS : mstatus,
             CsrAddr::MTVEC   : mtvec,
             CsrAddr::MCYCLE  : mcycle,
-            CsrAddr::MINSTRET: minstret,
-            CsrAddr::MSCRATCH: mscratch,
-            CsrAddr::MEPC    : mepc,
+    // #@@range_begin(rdata)
+    CsrAddr::MINSTRET: minstret,
+    @<b>|CsrAddr::MSCRATCH: mscratch,|
+    CsrAddr::MEPC    : mepc,
+    // #@@range_end(rdata)
             CsrAddr::MCAUSE  : mcause,
             CsrAddr::MTVAL   : mtval,
             CsrAddr::LED     : led,
@@ -96,9 +102,11 @@ module csrunit (
         // write
         wmask = case csr_addr {
             CsrAddr::MSTATUS : MSTATUS_WMASK,
-            CsrAddr::MTVEC   : MTVEC_WMASK,
-            CsrAddr::MSCRATCH: MSCRATCH_WMASK,
-            CsrAddr::MEPC    : MEPC_WMASK,
+    // #@@range_begin(wmask)
+    CsrAddr::MTVEC   : MTVEC_WMASK,
+    @<b>|CsrAddr::MSCRATCH: MSCRATCH_WMASK,|
+    CsrAddr::MEPC    : MEPC_WMASK,
+    // #@@range_end(wmask)
             CsrAddr::MCAUSE  : MCAUSE_WMASK,
             CsrAddr::MTVAL   : MTVAL_WMASK,
             CsrAddr::LED     : LED_WMASK,
@@ -117,9 +125,11 @@ module csrunit (
         if_reset {
             mode     = PrivMode::M;
             mstatus  = 0;
-            mtvec    = 0;
-            mscratch = 0;
-            mcycle   = 0;
+    // #@@range_begin(reset)
+    mtvec    = 0;
+    @<b>|mscratch = 0;|
+    mcycle   = 0;
+    // #@@range_end(reset)
             mepc     = 0;
             mcause   = 0;
             mtval    = 0;
@@ -137,9 +147,11 @@ module csrunit (
                     if is_wsc {
                         case csr_addr {
                             CsrAddr::MSTATUS : mstatus  = wdata;
-                            CsrAddr::MTVEC   : mtvec    = wdata;
-                            CsrAddr::MSCRATCH: mscratch = wdata;
-                            CsrAddr::MEPC    : mepc     = wdata;
+    // #@@range_begin(write)
+    CsrAddr::MTVEC   : mtvec    = wdata;
+    @<b>|CsrAddr::MSCRATCH: mscratch = wdata;|
+    CsrAddr::MEPC    : mepc     = wdata;
+    // #@@range_end(write)
                             CsrAddr::MCAUSE  : mcause   = wdata;
                             CsrAddr::MTVAL   : mtval    = wdata;
                             CsrAddr::LED     : led      = wdata;
