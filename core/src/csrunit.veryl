@@ -21,7 +21,9 @@ module csrunit (
 
     // wmasks
     const MTVEC_WMASK : UIntX = 'hffff_ffff_ffff_fffc;
-    const MEPC_WMASK  : UIntX = 'hffff_ffff_ffff_fffe;
+    // #@@range_begin(mepc)
+    const MEPC_WMASK  : UIntX = 'hffff_ffff_ffff_fff@<b>|e|;
+    // #@@range_end(mepc)
     const MCAUSE_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
     const LED_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
