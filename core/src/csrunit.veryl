@@ -20,9 +20,7 @@ module csrunit (
 ) {
 
     // wmasks
-    // #@@range_begin(wmaskdef)
     const MSTATUS_WMASK: UIntX = 'h0000_0000_0000_0000 as UIntX;
-    // #@@range_end(wmaskdef)
     const MTVEC_WMASK  : UIntX = 'hffff_ffff_ffff_fffc;
     const MEPC_WMASK   : UIntX = 'hffff_ffff_ffff_fffe;
     const MCAUSE_WMASK : UIntX = 'hffff_ffff_ffff_ffff;
@@ -43,9 +41,7 @@ module csrunit (
     // CSR
     let misa   : UIntX = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
     let mhartid: UIntX = 0;
-    // #@@range_begin(reg)
     var mstatus: UIntX;
-    // #@@range_end(reg)
     var mtvec  : UIntX;
     var mepc   : UIntX;
     var mcause : UIntX;
@@ -74,13 +70,11 @@ module csrunit (
 
     always_comb {
         // read
-        // #@@range_begin(rdata)
         rdata = case csr_addr {
             CsrAddr::MISA   : misa,
             CsrAddr::MIMPID : MACHINE_IMPLEMENTATION_ID,
             CsrAddr::MHARTID: mhartid,
-            @<b>|CsrAddr::MSTATUS: mstatus,|
-        // #@@range_end(rdata)
+            CsrAddr::MSTATUS: mstatus,
             CsrAddr::MTVEC  : mtvec,
             CsrAddr::MEPC   : mepc,
             CsrAddr::MCAUSE : mcause,
@@ -89,10 +83,8 @@ module csrunit (
             default         : 'x,
         };
         // write
-        // #@@range_begin(wmask)
         wmask = case csr_addr {
-            @<b>|CsrAddr::MSTATUS: MSTATUS_WMASK,|
-        // #@@range_end(wmask)
+            CsrAddr::MSTATUS: MSTATUS_WMASK,
             CsrAddr::MTVEC  : MTVEC_WMASK,
             CsrAddr::MEPC   : MEPC_WMASK,
             CsrAddr::MCAUSE : MCAUSE_WMASK,
@@ -109,12 +101,10 @@ module csrunit (
         } & wmask | (rdata & ~wmask);
     }
 
-    // #@@range_begin(reset)
     always_ff {
         if_reset {
             mode    = PrivMode::M;
-            @<b>|mstatus = 0;|
-    // #@@range_end(reset)
+            mstatus = 0;
             mtvec   = 0;
             mepc    = 0;
             mcause  = 0;
@@ -129,12 +119,10 @@ module csrunit (
                         mtval  = expt_value;
                     }
                 } else {
-    // #@@range_begin(write)
-    if is_wsc {
-        case csr_addr {
-            @<b>|CsrAddr::MSTATUS: mstatus = wdata;|
-            CsrAddr::MTVEC  : mtvec   = wdata;
-    // #@@range_end(write)
+                    if is_wsc {
+                        case csr_addr {
+                            CsrAddr::MSTATUS: mstatus = wdata;
+                            CsrAddr::MTVEC  : mtvec   = wdata;
                             CsrAddr::MEPC   : mepc    = wdata;
                             CsrAddr::MCAUSE : mcause  = wdata;
                             CsrAddr::MTVAL  : mtval   = wdata;
