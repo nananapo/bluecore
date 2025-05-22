@@ -324,8 +324,12 @@ module core (
     var csru_rdata      : UIntX ;
     var csru_raise_trap : logic ;
     var csru_trap_vector: Addr  ;
+    // #@@range_begin(csru_trap_return)
     var csru_trap_return: logic ;
+    // #@@range_end(csru_trap_return)
+    // #@@range_begin(minstret)
     var minstret        : UInt64;
+    // #@@range_end(minstret)
 
     inst csru: csrunit (
         clk                               ,
@@ -342,8 +346,12 @@ module core (
         rdata      : csru_rdata           ,
         raise_trap : csru_raise_trap      ,
         trap_vector: csru_trap_vector     ,
+        // #@@range_begin(port1)
         trap_return: csru_trap_return     ,
+        // #@@range_end(port1)
+        // #@@range_begin(port2)
         minstret                          ,
+        // #@@range_end(port2)
         led                               ,
     );
 
@@ -358,7 +366,9 @@ module core (
         wbq_wdata.alu_result = memq_rdata.alu_result;
         wbq_wdata.mem_rdata  = memu_rdata;
         wbq_wdata.csr_rdata  = csru_rdata;
-        wbq_wdata.raise_trap = csru_raise_trap && !csru_trap_return;
+        // #@@range_begin(raise_trap)
+        wbq_wdata.raise_trap = csru_raise_trap @<b>|&& !csru_trap_return;|
+        // #@@range_end(raise_trap)
     }
 
     ///////////////////////////////// WB Stage /////////////////////////////////
@@ -381,6 +391,7 @@ module core (
         wbq_rdata.alu_result
     ;
 
+    // #@@range_begin(inc)
     always_ff {
         if_reset {
             minstret = 0;
@@ -390,6 +401,7 @@ module core (
             }
         }
     }
+    // #@@range_end(inc)
 
     always_ff {
         if wbs_valid && wbs_ctrl.rwb_en && !wbq_rdata.raise_trap {

@@ -16,8 +16,12 @@ module csrunit (
     rdata      : output UIntX            ,
     raise_trap : output logic            ,
     trap_vector: output Addr             ,
+    // #@@range_begin(port1)
     trap_return: output logic            ,
+    // #@@range_end(port1)
+    // #@@range_begin(port2)
     minstret   : input  UInt64           ,
+    // #@@range_end(port2)
     led        : output UIntX            ,
 ) {
 
@@ -63,11 +67,13 @@ module csrunit (
         default                                    : 0
     };
 
-    // Trap Return
-    assign trap_return = valid && is_mret && !raise_expt;
+    // #@@range_begin(trap_return)
+    @<b>|// Trap Return|
+    @<b>|assign trap_return = valid && is_mret && !raise_expt;|
 
     // Trap
-    assign raise_trap  = raise_expt || trap_return;
+    assign raise_trap  = raise_expt || @<b>|trap_return|;
+    // #@@range_end(trap_return)
     let trap_cause : UIntX = expt_cause;
     assign trap_vector = if raise_expt ? mtvec : mepc;
 
@@ -82,9 +88,11 @@ module csrunit (
             CsrAddr::MHARTID : mhartid,
             CsrAddr::MSTATUS : mstatus,
             CsrAddr::MTVEC   : mtvec,
-            CsrAddr::MCYCLE  : mcycle,
-            CsrAddr::MINSTRET: minstret,
-            CsrAddr::MEPC    : mepc,
+    // #@@range_begin(rdata)
+    CsrAddr::MCYCLE  : mcycle,
+    @<b>|CsrAddr::MINSTRET: minstret,|
+    CsrAddr::MEPC    : mepc,
+    // #@@range_end(rdata)
             CsrAddr::MCAUSE  : mcause,
             CsrAddr::MTVAL   : mtval,
             CsrAddr::LED     : led,
