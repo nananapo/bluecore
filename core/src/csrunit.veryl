@@ -39,7 +39,9 @@ module csrunit (
 
     // CSR
     let misa   : UIntX = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000000000001000100000101}; // M, I, C, A
+    // #@@range_begin(mhartid)
     let mhartid: UIntX = 0;
+    // #@@range_end(mhartid)
     var mtvec  : UIntX;
     var mepc   : UIntX;
     var mcause : UIntX;
@@ -68,10 +70,12 @@ module csrunit (
 
     always_comb {
         // read
+        // #@@range_begin(rdata)
         rdata = case csr_addr {
             CsrAddr::MISA   : misa,
             CsrAddr::MIMPID : MACHINE_IMPLEMENTATION_ID,
-            CsrAddr::MHARTID: mhartid,
+            @<b>|CsrAddr::MHARTID: mhartid,|
+        // #@@range_end(rdata)
             CsrAddr::MTVEC  : mtvec,
             CsrAddr::MEPC   : mepc,
             CsrAddr::MCAUSE : mcause,
