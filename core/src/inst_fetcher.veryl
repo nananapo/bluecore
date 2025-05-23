@@ -71,7 +71,7 @@ module inst_fetcher (
     var issue_saved_addr    : Addr     ;
     var issue_saved_bits    : logic<16>; // rdata[63:48]
 
-    // #@@range_begin(inst)
+
     // instruction converter
     var rvcc_is_rvc: logic;
     var rvcc_inst32: Inst ;
@@ -87,7 +87,6 @@ module inst_fetcher (
         is_rvc: rvcc_is_rvc,
         inst32: rvcc_inst32,
     );
-    // #@@range_end(inst)
 
     always_ff {
         if_reset {
@@ -100,10 +99,9 @@ module inst_fetcher (
                 issue_pc_offset      = core_if.next_pc[2:0];
                 issue_is_rdata_saved = 0;
             } else {
-                // #@@range_begin(issue_ff)
                 // offsetが6な32ビット命令の場合、
                 // アドレスと上位16ビットを保存してFIFOを読み進める
-                if issue_pc_offset == 6 && @<b>|!rvcc_is_rvc &&| !issue_is_rdata_saved {
+                if issue_pc_offset == 6 && !rvcc_is_rvc && !issue_is_rdata_saved {
                     if fetch_fifo_rvalid {
                         issue_is_rdata_saved = 1;
                         issue_saved_addr     = fetch_fifo_rdata.addr;
@@ -111,11 +109,10 @@ module inst_fetcher (
                     }
                 } else {
                     if issue_fifo_wready && issue_fifo_wvalid {
-                        issue_pc_offset      += @<b>{if issue_is_rdata_saved || !rvcc_is_rvc ?} 4 @<b>{: 2};
+                        issue_pc_offset      += if issue_is_rdata_saved || !rvcc_is_rvc ? 4 : 2;
                         issue_is_rdata_saved =  0;
                     }
                 }
-                // #@@range_end(issue_ff)
             }
         }
     }
@@ -130,7 +127,6 @@ module inst_fetcher (
         issue_fifo_wvalid = 0;
         issue_fifo_wdata  = 0;
 
-        // #@@range_begin(issue_comb)
         if !core_if.is_hazard && fetch_fifo_rvalid {
             if offset == 6 {
                 // offsetが6な32ビット命令の場合、
@@ -141,35 +137,34 @@ module inst_fetcher (
                     issue_fifo_wdata.bits   = {rdata[15:0], issue_saved_bits};
                     issue_fifo_wdata.is_rvc = 0;
                 } else {
-                    @<b>|if rvcc_is_rvc {|
-                    @<b>|    fetch_fifo_rready       = issue_fifo_wready;|
-                    @<b>|    issue_fifo_wvalid       = 1;|
-                    @<b>|    issue_fifo_wdata.addr   = {raddr[msb:3], offset};|
-                    @<b>|    issue_fifo_wdata.is_rvc = 1;|
-                    @<b>|    issue_fifo_wdata.bits   = rvcc_inst32;|
-                    @<b>|} else {|
-                    @<b>|    // save inst[15:0]|
-                    @<b>|    fetch_fifo_rready = 1; // Read next 8 bytes|
-                    @<b>|}|
+                    if rvcc_is_rvc {
+                        fetch_fifo_rready       = issue_fifo_wready;
+                        issue_fifo_wvalid       = 1;
+                        issue_fifo_wdata.addr   = {raddr[msb:3], offset};
+                        issue_fifo_wdata.is_rvc = 1;
+                        issue_fifo_wdata.bits   = rvcc_inst32;
+                    } else {
+                        // save inst[15:0]
+                        fetch_fifo_rready = 1; // Read next 8 bytes
+                    }
                 }
             } else {
-                fetch_fifo_rready     = issue_fifo_wready && @<b>|!rvcc_is_rvc &&| offset == 4;
+                fetch_fifo_rready     = issue_fifo_wready && !rvcc_is_rvc && offset == 4;
                 issue_fifo_wvalid     = 1;
                 issue_fifo_wdata.addr = {raddr[msb:3], offset};
-                @<b>|if rvcc_is_rvc {|
-                @<b>|    issue_fifo_wdata.bits = rvcc_inst32;|
-                @<b>|} else {|
+                if rvcc_is_rvc {
+                    issue_fifo_wdata.bits = rvcc_inst32;
+                } else {
                     issue_fifo_wdata.bits = case offset {
                         0      : rdata[31:0],
                         2      : rdata[47:16],
                         4      : rdata[63:32],
                         default: 0,
                     };
-                @<b>|}|
-                issue_fifo_wdata.is_rvc = @<b>|rvcc_is_rvc|;
+                }
+                issue_fifo_wdata.is_rvc = rvcc_is_rvc;
             }
         }
-        // #@@range_end(issue_comb)
     }
 
     // issue_fifo <-> core
