@@ -1,14 +1,16 @@
 import eei::*;
 import corectrl::*;
 
+// #@@range_begin(port)
 module core (
     clk     : input   clock               ,
     rst     : input   reset               ,
     i_membus: modport core_inst_if::master,
     d_membus: modport core_data_if::master,
     led     : output  UIntX               ,
-    aclint  : modport aclint_if::slave    ,
+    @<b>|aclint  : modport aclint_if::slave    ,|
 ) {
+// #@@range_end(port)
 
     struct exq_type {
         addr: Addr         ,
@@ -344,10 +346,12 @@ module core (
         raise_trap : csru_raise_trap      ,
         trap_vector: csru_trap_vector     ,
         trap_return: csru_trap_return     ,
+    // #@@range_begin(csru)
         minstret                          ,
         led                               ,
-        aclint                            ,
+        @<b>|aclint                            ,|
     );
+    // #@@range_end(csru)
 
     always_comb {
         // MEM -> WB
