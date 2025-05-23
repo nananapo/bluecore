@@ -1,31 +1,24 @@
-//#@@range_begin(port)
 import eei::*;
 import inst_gen_pkg::*;
 
 module rvc_converter (
     inst16: input  logic<16>,
     is_rvc: output logic    ,
-    inst32: output Inst     ,
+    inst32: output Inst, // expanded inst16
 ) {
-// #@@range_end(port)
-
-    // #@@range_begin(rs)
     let rs1 : logic<5> = inst16[11:7];
     let rs2 : logic<5> = inst16[6:2];
     let rs1d: logic<5> = {2'b01, inst16[9:7]};
     let rs2d: logic<5> = {2'b01, inst16[4:2]};
-    // #@@range_end(rs)
 
-    // #@@range_begin(imm)
+    let c0_mem_w: logic<12> = {5'b0, inst16[5], inst16[12:10], inst16[6], 2'b0}; // C.LW, C.SW
+    let c0_mem_d: logic<12> = {4'b0, inst16[6:5], inst16[12:10], 3'b0}; // C.LD, C.SD
+
     let imm_i    : logic<12> = {inst16[12] repeat 7, inst16[6:2]};
     let imm_shamt: logic<6>  = {inst16[12], inst16[6:2]};
     let imm_j    : logic<20> = {inst16[12] repeat 10, inst16[8], inst16[10:9], inst16[6], inst16[7], inst16[2], inst16[11], inst16[5:3]};
     let imm_br   : logic<12> = {inst16[12] repeat 5, inst16[6:5], inst16[2], inst16[11:10], inst16[4:3]};
-    let c0_mem_w : logic<12> = {5'b0, inst16[5], inst16[12:10], inst16[6], 2'b0}; // C.LW, C.SW
-    let c0_mem_d : logic<12> = {4'b0, inst16[6:5], inst16[12:10], 3'b0}; // C.LD, C.SD
-    // #@@range_end(imm)
 
-    // #@@range_begin(always_comb)
     always_comb {
         is_rvc = inst16[1:0] != 2'b11;
         inst32 = {16'b0, inst16};
@@ -123,5 +116,4 @@ module rvc_converter (
             default: {}
         }
     }
-    // #@@range_end(always_comb)
 }
