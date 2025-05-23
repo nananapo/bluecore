@@ -25,9 +25,7 @@ module csrunit (
 
     // wmasks
     const MSTATUS_WMASK : UIntX = 'h0000_0000_0000_0088 as UIntX;
-    // #@@range_begin(WMASK)
-    const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fff@<b>|d|;
-    // #@@range_end(WMASK)
+    const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fffd;
     const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
     const MCAUSE_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
@@ -81,10 +79,8 @@ module csrunit (
     // Interrupt
     let raise_interrupt : logic = valid && can_intr && mstatus_mie && (mip & mie) != 0;
     let interrupt_cause : UIntX = CsrCause::MACHINE_SOFTWARE_INTERRUPT;
-    // #@@range_begin(interrupt_vector)
     let interrupt_vector: Addr  = if mtvec[0] == 0 ? {mtvec[msb:2], 2'b0} : // Direct
      {mtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}; // Vectored
-    // #@@range_end(interrupt_vector)
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -98,9 +94,7 @@ module csrunit (
         expt_cause == CsrCause::ILLEGAL_INSTRUCTION: {1'b0 repeat XLEN - $bits(Inst), inst_bits},
         default                                    : 0
     };
-    // #@@range_begin(expt_vector)
     let expt_vector: Addr = {mtvec[msb:2], 2'b0};
-    // #@@range_end(expt_vector)
 
     // Trap Return
     assign trap_return = valid && is_mret && !raise_expt && !raise_interrupt;
@@ -112,14 +106,12 @@ module csrunit (
         raise_interrupt: interrupt_cause,
         default        : 0,
     };
-    // #@@range_begin(trap_vector)
     assign trap_vector = switch {
-        raise_expt     : @<b>|expt_vector|,
+        raise_expt     : expt_vector,
         raise_interrupt: interrupt_vector,
         trap_return    : mepc,
         default        : 0,
     };
-    // #@@range_end(trap_vector)
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
