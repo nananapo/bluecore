@@ -29,6 +29,14 @@ package eei {
     const MMAP_ROM_BEGIN: Addr = 'h1000 as Addr;
     const MMAP_ROM_END  : Addr = MMAP_ROM_BEGIN + 'h3ff as Addr;
 
+    // ACLINT
+    const MMAP_ACLINT_BEGIN   : Addr = 'h200_0000 as Addr;
+    const MMAP_ACLINT_MSIP    : Addr = 0;
+    const MMAP_ACLINT_MTIMECMP: Addr = 'h4000 as Addr;
+    const MMAP_ACLINT_MTIME   : Addr = 'h7ff8 as Addr;
+    const MMAP_ACLINT_SETSSIP : Addr = 'h8000 as Addr;
+    const MMAP_ACLINT_END     : Addr = MMAP_ACLINT_BEGIN + 'hbfff as Addr;
+
     // pc on reset
     const INITIAL_PC: Addr = MMAP_ROM_BEGIN;
 
@@ -101,5 +109,11 @@ package eei {
         LOAD_ADDRESS_MISALIGNED = 4,
         STORE_AMO_ADDRESS_MISALIGNED = 6,
         ENVIRONMENT_CALL_FROM_M_MODE = 11,
+        SUPERVISOR_SOFTWARE_INTERRUPT = 'h8000_0000_0000_0001,
+        MACHINE_SOFTWARE_INTERRUPT = 'h8000_0000_0000_0003,
+        SUPERVISOR_TIMER_INTERRUPT = 'h8000_0000_0000_0005,
+        MACHINE_TIMER_INTERRUPT = 'h8000_0000_0000_0007,
+        SUPERVISOR_EXTERNAL_INTERRUPT = 'h8000_0000_0000_0009,
+        MACHINE_EXTERNAL_INTERRUPT = 'h8000_0000_0000_000b,
     }
 }
