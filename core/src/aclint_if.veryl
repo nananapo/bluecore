@@ -1,7 +1,7 @@
 interface aclint_if {
-    @<b>|var msip: logic;|
+    var msip: logic;
     modport master {
-        @<b>|msip: output,|
+        msip: output,
     }
     modport slave {
         ..converse(master)

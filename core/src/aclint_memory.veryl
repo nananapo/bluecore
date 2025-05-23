@@ -6,44 +6,36 @@ module aclint_memory (
     membus: modport Membus::slave    ,
     aclint: modport aclint_if::master,
 ) {
-// #@@range_begin(reg)
-var msip0: logic;
-// #@@range_end(reg)
+    var msip0: logic;
 
-// #@@range_begin(aclint_msip)
-always_comb {
-    aclint.msip = msip0;
-}
-// #@@range_end(aclint_msip)
+    always_comb {
+        aclint.msip = msip0;
+    }
 
     assign membus.ready = 1;
-// #@@range_begin(if_reset)
-always_ff {
-    if_reset {
-        membus.rvalid = 0;
-        membus.rdata  = 0;
-        @<b>|msip0         = 0;|
-// #@@range_end(if_reset)
+    always_ff {
+        if_reset {
+            membus.rvalid = 0;
+            membus.rdata  = 0;
+            msip0         = 0;
         } else {
             membus.rvalid = membus.valid;
-// #@@range_begin(rw)
-if membus.valid {
-    let addr: Addr = {membus.addr[XLEN - 1:3], 3'b0};
-    if membus.wen {
-        let M: logic<MEMBUS_DATA_WIDTH> = membus.wmask_expand();
-        let D: logic<MEMBUS_DATA_WIDTH> = membus.wdata & M;
-        case addr {
-            MMAP_ACLINT_MSIP: msip0 = D[0] | msip0 & ~M[0];
-            default         : {}
-        }
-    } else {
-        membus.rdata = case addr {
-            MMAP_ACLINT_MSIP: {63'b0, msip0},
-            default         : 0,
-        };
-    }
-}
-// #@@range_end(rw)
+            if membus.valid {
+                let addr: Addr = {membus.addr[XLEN - 1:3], 3'b0};
+                if membus.wen {
+                    let M: logic<MEMBUS_DATA_WIDTH> = membus.wmask_expand();
+                    let D: logic<MEMBUS_DATA_WIDTH> = membus.wdata & M;
+                    case addr {
+                        MMAP_ACLINT_MSIP: msip0 = D[0] | msip0 & ~M[0];
+                        default         : {}
+                    }
+                } else {
+                    membus.rdata = case addr {
+                        MMAP_ACLINT_MSIP: {63'b0, msip0},
+                        default         : 0,
+                    };
+                }
+            }
         }
     }
 }
