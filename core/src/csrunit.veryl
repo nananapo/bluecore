@@ -29,9 +29,7 @@ module csrunit (
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
     const MCAUSE_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK   : UIntX = 'hffff_ffff_ffff_ffff;
-    // #@@range_begin(WMASK)
     const MIE_WMASK     : UIntX = 'h0000_0000_0000_0088 as UIntX;
-    // #@@range_end(WMASK)
     const LED_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
 
     var mode: PrivMode;
@@ -50,18 +48,15 @@ module csrunit (
     let mhartid : UIntX  = 0;
     var mstatus : UIntX ;
     var mtvec   : UIntX ;
-    // #@@range_begin(regmie)
     var mie     : UIntX ;
-    // #@@range_end(regmie)
     var mcycle  : UInt64;
     var mscratch: UIntX ;
     var mepc    : UIntX ;
     var mcause  : UIntX ;
     var mtval   : UIntX ;
 
-    // #@@range_begin(mip)
     let mip: UIntX = {
-        1'b0 repeat XLEN - 12, // 0
+        1'b0 repeat XLEN - 12, // 0, LCOFIP
         1'b0, // MEIP
         1'b0, // 0
         1'b0, // SEIP
@@ -75,7 +70,6 @@ module csrunit (
         1'b0, // SSIP
         1'b0, // 0
     };
-    // #@@range_end(mip)
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -108,12 +102,10 @@ module csrunit (
             CsrAddr::MIMPID  : MACHINE_IMPLEMENTATION_ID,
             CsrAddr::MHARTID : mhartid,
             CsrAddr::MSTATUS : mstatus,
-// #@@range_begin(rdata)
-CsrAddr::MTVEC   : mtvec,
-@<b>|CsrAddr::MIP     : mip,|
-@<b>|CsrAddr::MIE     : mie,|
-CsrAddr::MCYCLE  : mcycle,
-// #@@range_end(rdata)
+            CsrAddr::MTVEC   : mtvec,
+            CsrAddr::MIP     : mip,
+            CsrAddr::MIE     : mie,
+            CsrAddr::MCYCLE  : mcycle,
             CsrAddr::MINSTRET: minstret,
             CsrAddr::MSCRATCH: mscratch,
             CsrAddr::MEPC    : mepc,
@@ -125,11 +117,9 @@ CsrAddr::MCYCLE  : mcycle,
         // write
         wmask = case csr_addr {
             CsrAddr::MSTATUS : MSTATUS_WMASK,
-// #@@range_begin(wmask)
-CsrAddr::MTVEC   : MTVEC_WMASK,
-@<b>|CsrAddr::MIE     : MIE_WMASK,|
-CsrAddr::MSCRATCH: MSCRATCH_WMASK,
-// #@@range_end(wmask)
+            CsrAddr::MTVEC   : MTVEC_WMASK,
+            CsrAddr::MIE     : MIE_WMASK,
+            CsrAddr::MSCRATCH: MSCRATCH_WMASK,
             CsrAddr::MEPC    : MEPC_WMASK,
             CsrAddr::MCAUSE  : MCAUSE_WMASK,
             CsrAddr::MTVAL   : MTVAL_WMASK,
@@ -146,14 +136,12 @@ CsrAddr::MSCRATCH: MSCRATCH_WMASK,
     }
 
     always_ff {
-// #@@range_begin(if_reset)
-if_reset {
-    mode     = PrivMode::M;
-    mstatus  = 0;
-    mtvec    = 0;
-    @<b>|mie      = 0;|
-    mscratch = 0;
-// #@@range_end(if_reset)
+        if_reset {
+            mode     = PrivMode::M;
+            mstatus  = 0;
+            mtvec    = 0;
+            mie      = 0;
+            mscratch = 0;
             mcycle   = 0;
             mepc     = 0;
             mcause   = 0;
@@ -169,14 +157,12 @@ if_reset {
                         mtval  = expt_value;
                     }
                 } else {
-// #@@range_begin(write)
-if is_wsc {
-    case csr_addr {
-        CsrAddr::MSTATUS : mstatus  = wdata;
-        CsrAddr::MTVEC   : mtvec    = wdata;
-        @<b>|CsrAddr::MIE     : mie      = wdata;|
-        CsrAddr::MSCRATCH: mscratch = wdata;
-// #@@range_end(write)
+                    if is_wsc {
+                        case csr_addr {
+                            CsrAddr::MSTATUS : mstatus  = wdata;
+                            CsrAddr::MTVEC   : mtvec    = wdata;
+                            CsrAddr::MIE     : mie      = wdata;
+                            CsrAddr::MSCRATCH: mscratch = wdata;
                             CsrAddr::MEPC    : mepc     = wdata;
                             CsrAddr::MCAUSE  : mcause   = wdata;
                             CsrAddr::MTVAL   : mtval    = wdata;
