@@ -12,11 +12,9 @@ module csrunit (
     rd_addr    : input   logic           <5> ,
     csr_addr   : input   logic           <12>,
     rs1_addr   : input   logic           <5> ,
-    // #@@range_begin(port)
     rs1_data   : input   UIntX               ,
-    @<b>|can_intr   : input   logic               ,|
+    can_intr   : input   logic               ,
     rdata      : output  UIntX               ,
-    // #@@range_end(port)
     raise_trap : output  logic               ,
     trap_vector: output  Addr                ,
     trap_return: output  logic               ,
@@ -78,12 +76,10 @@ module csrunit (
     let mstatus_mpie: logic = mstatus[7];
     let mstatus_mie : logic = mstatus[3];
 
-    // #@@range_begin(intr)
     // Interrupt
     let raise_interrupt : logic = valid && can_intr && mstatus_mie && (mip & mie) != 0;
     let interrupt_cause : UIntX = CsrCause::MACHINE_SOFTWARE_INTERRUPT;
     let interrupt_vector: Addr  = mtvec;
-    // #@@range_end(intr)
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -98,26 +94,22 @@ module csrunit (
         default                                    : 0
     };
 
-    // #@@range_begin(ret)
     // Trap Return
-    assign trap_return = valid && is_mret && !raise_expt @<b>|&& !raise_interrupt|;
-    // #@@range_end(ret)
+    assign trap_return = valid && is_mret && !raise_expt && !raise_interrupt;
 
     // Trap
-    // #@@range_begin(trap)
-    assign raise_trap = raise_expt || @<b>{raise_interrupt ||} trap_return;
-    let trap_cause: UIntX = @<b>|switch {|
-    @<b>|    raise_expt     : expt_cause,|
-    @<b>|    raise_interrupt: interrupt_cause,|
-    @<b>|    default        : 0,|
-    @<b>|};|
-    assign trap_vector = @<b>|switch {|
-    @<b>|    raise_expt     : mtvec,|
-    @<b>|    raise_interrupt: interrupt_vector,|
-    @<b>|    trap_return    : mepc,|
-    @<b>|    default        : 0,|
-    @<b>|};|
-    // #@@range_end(trap)
+    assign raise_trap = raise_expt || raise_interrupt || trap_return;
+    let trap_cause: UIntX = switch {
+        raise_expt     : expt_cause,
+        raise_interrupt: interrupt_cause,
+        default        : 0,
+    };
+    assign trap_vector = switch {
+        raise_expt     : mtvec,
+        raise_interrupt: interrupt_vector,
+        trap_return    : mepc,
+        default        : 0,
+    };
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
@@ -177,15 +169,13 @@ module csrunit (
         } else {
             mcycle += 1;
             if valid {
-// #@@range_begin(ff)
-    if raise_trap {
-        if raise_expt @<b>{|| raise_interrupt} {
-            mepc   = pc;
-            mcause = trap_cause;
-            @<b>|if raise_expt {|
-                mtval = expt_value;
-            @<b>|}|
-// #@@range_end(ff)
+                if raise_trap {
+                    if raise_expt || raise_interrupt {
+                        mepc   = pc;
+                        mcause = trap_cause;
+                        if raise_expt {
+                            mtval = expt_value;
+                        }
                         // save mstatus.mie to mstatus.mpie
                         // and set mstatus.mie = 0
                         mstatus[7] = mstatus[3];
