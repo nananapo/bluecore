@@ -17,10 +17,12 @@ module csrunit (
     raise_trap : output  logic               ,
     trap_vector: output  Addr                ,
     trap_return: output  logic               ,
+// #@@range_begin(port)
     minstret   : input   UInt64              ,
     led        : output  UIntX               ,
-    aclint     : modport aclint_if::slave    ,
+    @<b>|aclint     : modport aclint_if::slave    ,|
 ) {
+// #@@range_end(port)
 
     // wmasks
     const MSTATUS_WMASK : UIntX = 'h0000_0000_0000_0000 as UIntX;
