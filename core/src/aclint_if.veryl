@@ -1,0 +1,8 @@
+interface aclint_if {
+    modport master {
+        // TODO
+    }
+    modport slave {
+        ..converse(master)
+    }
+}

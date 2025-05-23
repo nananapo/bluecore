@@ -1,0 +1,18 @@
+import eei::*;
+
+module aclint_memory (
+    clk   : input   clock            ,
+    rst   : input   reset            ,
+    membus: modport Membus::slave    ,
+    aclint: modport aclint_if::master,
+) {
+    assign membus.ready = 1;
+    always_ff {
+        if_reset {
+            membus.rvalid = 0;
+            membus.rdata  = 0;
+        } else {
+            membus.rvalid = membus.valid;
+        }
+    }
+}

@@ -7,6 +7,7 @@ module core (
     i_membus: modport core_inst_if::master,
     d_membus: modport core_data_if::master,
     led     : output  UIntX               ,
+    aclint  : modport aclint_if::slave    ,
 ) {
 
     struct exq_type {
@@ -345,6 +346,7 @@ module core (
         trap_return: csru_trap_return     ,
         minstret                          ,
         led                               ,
+        aclint                            ,
     );
 
     always_comb {
