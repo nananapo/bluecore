@@ -1,6 +1,5 @@
 import eei::*;
 
-// #@@range_begin(port)
 module mmio_controller (
     clk          : input   clock         ,
     rst          : input   reset         ,
@@ -9,19 +8,16 @@ module mmio_controller (
     ram_membus   : modport Membus::master,
     rom_membus   : modport Membus::master,
     dbg_membus   : modport Membus::master,
-    @<b>|aclint_membus: modport Membus::master,|
+    aclint_membus: modport Membus::master,
 ) {
-// #@@range_end(port)
 
-    // #@@range_begin(Device)
     enum Device {
         UNKNOWN,
         RAM,
         ROM,
         DEBUG,
-        @<b>|ACLINT,|
+        ACLINT,
     }
-    // #@@range_end(Device)
 
     inst req_saved: Membus;
 
@@ -40,14 +36,12 @@ module mmio_controller (
     }
 
     // すべてのデバイスのmasterをリセットする
-    // #@@range_begin(reset_all)
     function reset_all_device_masters () {
         reset_membus_master(ram_membus);
         reset_membus_master(rom_membus);
         reset_membus_master(dbg_membus);
-        @<b>|reset_membus_master(aclint_membus);|
+        reset_membus_master(aclint_membus);
     }
-    // #@@range_end(reset_all)
 
     // アドレスからデバイスを取得する
     function get_device (
@@ -59,11 +53,9 @@ module mmio_controller (
         if MMAP_ROM_BEGIN <= addr && addr <= MMAP_ROM_END {
             return Device::ROM;
         }
-    // #@@range_begin(get_device)
-    if MMAP_ACLINT_BEGIN <= addr && addr <= MMAP_ACLINT_END {
-        return Device::ACLINT;
-    }
-    // #@@range_end(get_device)
+        if MMAP_ACLINT_BEGIN <= addr && addr <= MMAP_ACLINT_END {
+            return Device::ACLINT;
+        }
         if addr >= MMAP_RAM_BEGIN {
             return Device::RAM;
         }
@@ -87,12 +79,10 @@ module mmio_controller (
                 dbg_membus      <> req;
                 dbg_membus.addr -= DBG_ADDR;
             }
-    // #@@range_begin(assign_device_master)
-    Device::ACLINT: {
-        aclint_membus      <> req;
-        aclint_membus.addr -= MMAP_ACLINT_BEGIN;
-    }
-    // #@@range_end(assign_device_master)
+            Device::ACLINT: {
+                aclint_membus      <> req;
+                aclint_membus.addr -= MMAP_ACLINT_BEGIN;
+            }
             default: {}
         }
     }
@@ -108,9 +98,7 @@ module mmio_controller (
             Device::RAM   : req <> ram_membus;
             Device::ROM   : req <> rom_membus;
             Device::DEBUG : req <> dbg_membus;
-    // #@@range_begin(assign_device_slave)
-    Device::ACLINT: req <> aclint_membus;
-    // #@@range_end(assign_device_slave)
+            Device::ACLINT: req <> aclint_membus;
             default       : {}
         }
     }
@@ -123,9 +111,7 @@ module mmio_controller (
             Device::RAM   : return ram_membus.ready;
             Device::ROM   : return rom_membus.ready;
             Device::DEBUG : return dbg_membus.ready;
-    // #@@range_begin(get_device_ready)
-    Device::ACLINT: return aclint_membus.ready;
-    // #@@range_end(get_device_ready)
+            Device::ACLINT: return aclint_membus.ready;
             default       : {}
         }
         return 1;
@@ -139,9 +125,7 @@ module mmio_controller (
             Device::RAM   : return ram_membus.rvalid;
             Device::ROM   : return rom_membus.rvalid;
             Device::DEBUG : return dbg_membus.rvalid;
-    // #@@range_begin(get_device_rvalid)
-    Device::ACLINT: return aclint_membus.rvalid;
-    // #@@range_end(get_device_rvalid)
+            Device::ACLINT: return aclint_membus.rvalid;
             default       : {}
         }
         return 1;
