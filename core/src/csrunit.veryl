@@ -23,7 +23,9 @@ module csrunit (
 ) {
 
     // wmasks
+    // #@@range_begin(WMASK)
     const MSTATUS_WMASK : UIntX = 'h0000_0000_0000_0088 as UIntX;
+    // #@@range_end(WMASK)
     const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fffc;
     const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
@@ -71,9 +73,11 @@ module csrunit (
         1'b0, // 0
     };
 
+    // #@@range_begin(mstatus)
     // mstatus bits
     let mstatus_mpie: logic = mstatus[7];
     let mstatus_mie : logic = mstatus[3];
+    // #@@range_end(mstatus)
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -154,21 +158,23 @@ module csrunit (
         } else {
             mcycle += 1;
             if valid {
-                if raise_trap {
-                    if raise_expt {
-                        mepc   = pc;
-                        mcause = trap_cause;
-                        mtval  = expt_value;
-                        // save mstatus.mie to mstatus.mpie
-                        // and set mstatus.mie = 0
-                        mstatus[7] = mstatus[3];
-                        mstatus[3] = 0;
-                    } else if trap_return {
-                        // set mstatus.mie = mstatus.mpie
-                        //     mstatus.mpie = 0
-                        mstatus[3] = mstatus[7];
-                        mstatus[7] = 0;
-                    }
+// #@@range_begin(change)
+if raise_trap {
+    if raise_expt {
+        mepc   = pc;
+        mcause = trap_cause;
+        mtval  = expt_value;
+        @<b>|// save mstatus.mie to mstatus.mpie|
+        @<b>|// and set mstatus.mie = 0|
+        @<b>|mstatus[7] = mstatus[3];|
+        @<b>|mstatus[3] = 0;|
+    } @<b>|else if trap_return {|
+        @<b>|// set mstatus.mie = mstatus.mpie|
+        @<b>|//     mstatus.mpie = 0|
+        @<b>|mstatus[3] = mstatus[7];|
+        @<b>|mstatus[7] = 0;|
+    @<b>|}|
+// #@@range_end(change)
                 } else {
                     if is_wsc {
                         case csr_addr {
