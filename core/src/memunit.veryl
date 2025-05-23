@@ -98,12 +98,14 @@ module memunit (
             req_aq     = 0;
             req_rl     = 0;
             req_funct3 = 0;
-        } else {
-            if !valid {
-                state = State::Init;
-            } else {
-                case state {
-                    State::Init: if is_new & inst_is_memop(ctrl) {
+    // #@@range_begin(reset)
+    } else {
+        if @<b>|!|valid {
+            @<b>|state = State::Init;|
+        @<b>|} else {|
+            case state {
+                State::Init: if is_new & inst_is_memop(ctrl) {
+    // #@@range_end(reset)
                         state     = State::WaitReady;
                         req_wen   = inst_is_store(ctrl);
                         req_addr  = addr;
