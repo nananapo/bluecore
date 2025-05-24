@@ -46,6 +46,7 @@ module csrunit (
     const SEPC_WMASK      : UIntX = 'hffff_ffff_ffff_fffe;
     const SCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const STVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
+    const SATP_WMASK      : UIntX = 'hffff_ffff_ffff_ffff;
     const LED_WMASK       : UIntX = 'hffff_ffff_ffff_ffff;
 
     // read masks
@@ -129,6 +130,7 @@ module csrunit (
     var stval     : UIntX ;
     let sip       : UIntX  = mip & mideleg;
     var sie       : UIntX ;
+    var satp      : UIntX ;
 
     // Interrupt to M-mode
     let interrupt_pending_mmode: UIntX = mip & mie & ~mideleg;
@@ -241,6 +243,7 @@ module csrunit (
             CsrAddr::STVAL     : stval,
             CsrAddr::SIP       : sip,
             CsrAddr::SIE       : sie & mideleg,
+            CsrAddr::SATP      : satp,
             CsrAddr::LED       : led,
             CsrAddr::CYCLE     : mcycle,
             CsrAddr::TIME      : aclint.mtime,
@@ -268,6 +271,7 @@ module csrunit (
             CsrAddr::SCAUSE    : SCAUSE_WMASK,
             CsrAddr::STVAL     : STVAL_WMASK,
             CsrAddr::SIE       : SIE_WMASK & mideleg,
+            CsrAddr::SATP      : SATP_WMASK,
             CsrAddr::LED       : LED_WMASK,
             default            : 0,
         };
@@ -304,6 +308,7 @@ module csrunit (
             scause     = 0;
             stval      = 0;
             sie        = 0;
+            satp       = 0;
             led        = 0;
         } else {
             mcycle  += 1;
@@ -378,6 +383,7 @@ module csrunit (
                             CsrAddr::SCAUSE    : scause     = wdata;
                             CsrAddr::STVAL     : stval      = wdata;
                             CsrAddr::SIE       : sie        = wdata;
+                            CsrAddr::SATP      : satp       = validate_satp(satp, wdata);
                             CsrAddr::LED       : led        = wdata;
                             default            : {}
                         }
@@ -398,5 +404,16 @@ module csrunit (
             result[12:11] = mstatus[12:11];
         }
         return result;
+    }
+
+    function validate_satp (
+        satp : input UIntX,
+        wdata: input UIntX,
+    ) -> UIntX {
+        // mode
+        if wdata[msb-:4] != 0 && wdata[msb-:4] != 8 {
+            return satp;
+        }
+        return wdata;
     }
 }
