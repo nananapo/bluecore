@@ -50,9 +50,7 @@ module csrunit (
     // MRET命令かどうか
     let is_mret: logic = inst_bits == 32'h30200073;
     // SRET命令かどうか
-    // #@@range_begin(is_sret)
     let is_sret: logic = inst_bits == 32'h10200073;
-    // #@@range_end(is_sret)
     // WFI命令かどうか
     let is_wfi: logic = inst_bits == 32'h10500073;
 
@@ -71,10 +69,7 @@ module csrunit (
         CsrAddr::INSTRET: !scounteren[2],
         default         : 0,
     }); // attempt to access Zicntr CSR without permission
-    // #@@range_begin(priv)
-    let expt_trap_return_priv: logic = (is_mret && mode <: PrivMode::M) @<b>{|| (is_sret && mode <: PrivMode::S)};
-    // #@@range_end(priv)
-    // attempt to execute trap return instruction in low privilege level
+    let expt_trap_return_priv: logic = (is_mret && mode <: PrivMode::M) || (is_sret && mode <: PrivMode::S); // attempt to execute trap return instruction in low privilege level
 
     // CSR
     let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000101000001000100000101}; // U, S, M, I, C, A
@@ -158,11 +153,9 @@ module csrunit (
     let expt_mode  : PrivMode = PrivMode::M;
 
     // Trap Return
-    // #@@range_begin(ret)
-    assign trap_return        = valid && @<b>{(}is_mret @<b>{|| is_sret)} && !raise_expt && !raise_interrupt;
-    let trap_return_mode  : PrivMode = @<b>|if is_mret ?| mstatus_mpp @<b>|: mstatus_spp|;
-    @<b>|let trap_return_vector: Addr     = if is_mret ? mepc : sepc;|
-    // #@@range_end(ret)
+    assign trap_return        = valid && (is_mret || is_sret) && !raise_expt && !raise_interrupt;
+    let trap_return_mode  : PrivMode = if is_mret ? mstatus_mpp : mstatus_spp;
+    let trap_return_vector: Addr     = if is_mret ? mepc : sepc;
 
     // Trap
     assign raise_trap = raise_expt || raise_interrupt || trap_return;
@@ -171,14 +164,12 @@ module csrunit (
         raise_interrupt: interrupt_cause,
         default        : 0,
     };
-    // #@@range_begin(vec)
     assign trap_vector = switch {
         raise_expt     : expt_vector,
         raise_interrupt: interrupt_vector,
-        trap_return    : @<b>|trap_return_vector|,
+        trap_return    : trap_return_vector,
         default        : 0,
     };
-    // #@@range_end(vec)
     let trap_mode_next: PrivMode = switch {
         raise_expt     : expt_mode,
         raise_interrupt: interrupt_mode,
@@ -299,25 +290,23 @@ module csrunit (
                             // save current privilege mode (S or U) to sstatus.spp
                             mstatus[8] = mode[0];
                         }
-    // #@@range_begin(ff)
-    } else if trap_return {
-        @<b>|if is_mret {|
-            // set mstatus.mie = mstatus.mpie
-            //     mstatus.mpie = 0
-            mstatus[3] = mstatus[7];
-            mstatus[7] = 0;
-            // set mstatus.mpp = U (least privilege level)
-            mstatus[12:11] = PrivMode::U;
-        @<b>|} else if is_sret {|
-        @<b>|    // set sstatus.sie = sstatus.spie|
-        @<b>|    //     sstatus.spie = 0|
-        @<b>|    mstatus[1] = mstatus[5];|
-        @<b>|    mstatus[5] = 0;|
-        @<b>|    // set sstatus.spp = U (least privilege level)|
-        @<b>|    mstatus[8] = 0;|
-        @<b>|}|
-    }
-    // #@@range_end(ff)
+                    } else if trap_return {
+                        if is_mret {
+                            // set mstatus.mie = mstatus.mpie
+                            //     mstatus.mpie = 0
+                            mstatus[3] = mstatus[7];
+                            mstatus[7] = 0;
+                            // set mstatus.mpp = U (least privilege level)
+                            mstatus[12:11] = PrivMode::U;
+                        } else if is_sret {
+                            // set sstatus.sie = sstatus.spie
+                            //     sstatus.spie = 0
+                            mstatus[1] = mstatus[5];
+                            mstatus[5] = 0;
+                            // set sstatus.spp = U (least privilege level)
+                            mstatus[8] = 0;
+                        }
+                    }
                     mode = trap_mode_next;
                 } else {
                     if is_wsc {
