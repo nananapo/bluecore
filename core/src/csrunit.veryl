@@ -127,7 +127,6 @@ module csrunit (
     let sip       : UIntX  = mip & mideleg;
     var sie       : UIntX ;
 
-    // #@@range_begin(mmode)
     // Interrupt to M-mode
     let interrupt_pending_mmode: UIntX = mip & mie & ~mideleg;
     let raise_interrupt_mmode  : logic = (mode != PrivMode::M || mstatus_mie) && interrupt_pending_mmode != 0;
@@ -139,9 +138,7 @@ module csrunit (
         interrupt_pending_mmode[5]: CsrCause::SUPERVISOR_TIMER_INTERRUPT,
         default                   : 0,
     };
-    // #@@range_end(mmode)
 
-    // #@@range_begin(smode)
     // Interrupt to S-mode
     let interrupt_pending_smode: UIntX = sip & sie;
     let raise_interrupt_smode  : logic = (mode <: PrivMode::S || (mode == PrivMode::S && mstatus_sie)) && interrupt_pending_smode != 0;
@@ -151,20 +148,17 @@ module csrunit (
         interrupt_pending_smode[5]: CsrCause::SUPERVISOR_TIMER_INTERRUPT,
         default                   : 0,
     };
-    // #@@range_end(smode)
 
-    // #@@range_begin(intr)
     // Interrupt
-    let raise_interrupt : logic = valid && can_intr && (@<b>{raise_interrupt_mmode || raise_interrupt_smode});
-    let interrupt_cause : UIntX = @<b>|if raise_interrupt_mmode ? interrupt_cause_mmode : interrupt_cause_smode|;
+    let raise_interrupt : logic = valid && can_intr && (raise_interrupt_mmode || raise_interrupt_smode);
+    let interrupt_cause : UIntX = if raise_interrupt_mmode ? interrupt_cause_mmode : interrupt_cause_smode;
     let interrupt_xtvec : Addr  = if interrupt_mode == PrivMode::M ? mtvec : stvec;
     let interrupt_vector: Addr  = if interrupt_xtvec[0] == 0 ?
         {interrupt_xtvec[msb:2], 2'b0}
     : // Direct
         {interrupt_xtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}
     ; // Vectored
-    let interrupt_mode: PrivMode = @<b>|if raise_interrupt_mmode ?| PrivMode::M @<b>|: PrivMode::S|;
-    // #@@range_end(intr)
+    let interrupt_mode: PrivMode = if raise_interrupt_mmode ? PrivMode::M : PrivMode::S;
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv || expt_trap_return_priv);
@@ -183,9 +177,7 @@ module csrunit (
     };
     let expt_xtvec : Addr     = if expt_mode == PrivMode::M ? mtvec : stvec;
     let expt_vector: Addr     = {expt_xtvec[msb:2], 2'b0};
-    // #@@range_begin(expt)
-    let expt_mode  : PrivMode = @<b>{if mode == PrivMode::M || !medeleg[expt_cause[5:0]] ?} PrivMode::M @<b>{: PrivMode::S};
-    // #@@range_end(expt)
+    let expt_mode  : PrivMode = if mode == PrivMode::M || !medeleg[expt_cause[5:0]] ? PrivMode::M : PrivMode::S;
 
     // Trap Return
     assign trap_return        = valid && (is_mret || is_sret) && !raise_expt && !raise_interrupt;
