@@ -109,14 +109,12 @@ module core (
             exq_wdata.expt.valid = 1;
             exq_wdata.expt.cause = CsrCause::ILLEGAL_INSTRUCTION;
             exq_wdata.expt.value = {1'b0 repeat XLEN - ILEN, ids_inst_bits};
-    // #@@range_begin(expt)
-    } else if ids_inst_bits == 32'h00000073 {
-        // ECALL
-        exq_wdata.expt.valid      = 1;
-        exq_wdata.expt.cause      = @<b>|CsrCause::ENVIRONMENT_CALL_FROM_U_MODE;|
-        @<b>|exq_wdata.expt.cause[1:0] = csru_priv_mode;|
-        exq_wdata.expt.value      = 0;
-    // #@@range_end(expt)
+        } else if ids_inst_bits == 32'h00000073 {
+            // ECALL
+            exq_wdata.expt.valid      = 1;
+            exq_wdata.expt.cause      = CsrCause::ENVIRONMENT_CALL_FROM_U_MODE;
+            exq_wdata.expt.cause[1:0] = csru_priv_mode; // adjust mode
+            exq_wdata.expt.value      = 0;
         } else if ids_inst_bits == 32'h00100073 {
             // EBREAK
             exq_wdata.expt.valid = 1;
@@ -325,9 +323,7 @@ module core (
         membus: d_membus                      ,
     );
 
-    // #@@range_begin(reg)
     var csru_priv_mode  : PrivMode;
-    // #@@range_end(reg)
     var csru_rdata      : UIntX   ;
     var csru_raise_trap : logic   ;
     var csru_trap_vector: Addr    ;
@@ -347,11 +343,9 @@ module core (
         rs1_addr   : memq_rdata.rs1_addr  ,
         rs1_data   : memq_rdata.rs1_data  ,
         can_intr   : mems_is_new          ,
-    // #@@range_begin(port)
-    rdata      : csru_rdata           ,
-    @<b>|mode       : csru_priv_mode       ,|
-    raise_trap : csru_raise_trap      ,
-    // #@@range_end(port)
+        rdata      : csru_rdata           ,
+        mode       : csru_priv_mode       ,
+        raise_trap : csru_raise_trap      ,
         trap_vector: csru_trap_vector     ,
         trap_return: csru_trap_return     ,
         minstret                          ,
