@@ -256,11 +256,12 @@ module csrunit (
             mcycle += 1;
             if valid {
                 if raise_trap {
+                    // #@@range_begin(ff)
                     if raise_expt || raise_interrupt {
-                        let xepc: Addr = if raise_expt ? pc : // exception
-                         if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt
-                        if trap_mode_next == PrivMode::M {
-                            mepc   = xepc;
+                        @<b>|let x|epc@<b>|: Addr| = if raise_expt ? pc : // exception
+                        if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt
+                        @<b>|if trap_mode_next == PrivMode::M {|
+                            @<b>|mepc   = xepc;|
                             mcause = trap_cause;
                             mtval  = if raise_expt ? expt_value : 0;
                             // save mstatus.mie to mstatus.mpie
@@ -269,11 +270,14 @@ module csrunit (
                             mstatus[3] = 0;
                             // save current privilege level to mstatus.mpp
                             mstatus[12:11] = mode;
-                        } else {
-                            sepc   = xepc;
-                            scause = trap_cause;
-                            stval  = if raise_expt ? expt_value : 0;
-                        }
+                        @<b>|} else {|
+                        @<b>|   sepc   = xepc;|
+                        @<b>|   scause = trap_cause;|
+                        @<b>|   if raise_expt {|
+                        @<b>|       stval  = if raise_expt ? expt_value : 0;|
+                        @<b>|   }|
+                        @<b>|}|
+                    // #@@range_end(ff)
                     } else if trap_return {
                         // set mstatus.mie = mstatus.mpie
                         //     mstatus.mpie = 1
