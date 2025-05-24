@@ -16,8 +16,10 @@ package eei {
     const MACHINE_IMPLEMENTATION_ID: UIntX = 1;
 
     // mstatus
+    // #@@range_begin(sxl)
     const MSTATUS_UXL: UInt64 = 2 << 32;
-    const MSTATUS_SXL: UInt64 = 2 << 34;
+    @<b>|const MSTATUS_SXL: UInt64 = 2 << 34;|
+    // #@@range_end(sxl)
 
     // メモリバスのデータ幅
     const MEMBUS_DATA_WIDTH: u32 = 64;
