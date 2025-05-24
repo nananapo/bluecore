@@ -80,7 +80,6 @@ package eei {
     }
 
     // CSRのアドレス
-    // #@@range_begin(CsrAddr)
     enum CsrAddr: logic<12> {
         // Supervisor Trap Setup
         SSTATUS = 12'h100,
@@ -95,7 +94,6 @@ package eei {
         SIP = 12'h144,
         // Supervisor Protection and Translation
         SATP = 12'h180,
-    // #@@range_end(CsrAddr)
         // Machine Information Registers
         MIMPID = 12'hf13,
         MHARTID = 12'hf14,
