@@ -26,9 +26,7 @@ module csrunit (
     // wmasks
     const MSTATUS_WMASK   : UIntX = 'h0000_0000_0020_1888 as UIntX;
     const MTVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
-    // #@@range_begin(WMASK)
     const MCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
-    // #@@range_end(WMASK)
     const MSCRATCH_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
     const MEPC_WMASK      : UIntX = 'hffff_ffff_ffff_fffe;
     const MCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
@@ -49,23 +47,19 @@ module csrunit (
     let will_not_write_csr     : logic = (ctrl.funct3[1:0] == 2 || ctrl.funct3[1:0] == 3) && rs1_addr == 0; // set/clear with source = 0
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
     let expt_csr_priv_violation: logic = is_wsc && csr_addr[9:8] >: mode; // attempt to access CSR without privilege level
-    // #@@range_begin(priv)
     let expt_zicntr_priv       : logic = is_wsc && mode == PrivMode::U && case csr_addr {
         CsrAddr::CYCLE  : !mcounteren[0],
         CsrAddr::TIME   : !mcounteren[1],
         CsrAddr::INSTRET: !mcounteren[2],
         default         : 0,
     }; // attemp to access Zicntr CSR without permission
-    // #@@range_end(priv)
 
     // CSR
     let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000100000001000100000101}; // U, M, I, C, A
     let mhartid   : UIntX  = 0;
     var mstatus   : UIntX ;
     var mtvec     : UIntX ;
-    // #@@range_begin(reg)
     var mcounteren: UInt32;
-    // #@@range_end(reg)
     var mie       : UIntX ;
     var mcycle    : UInt64;
     var mscratch  : UIntX ;
@@ -111,11 +105,9 @@ module csrunit (
     let expt_cause: UIntX = switch {
         expt_info.valid        : expt_info.cause,
         expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,
-    // #@@range_begin(cause)
-    expt_csr_priv_violation: CsrCause::ILLEGAL_INSTRUCTION,
-    @<b>|expt_zicntr_priv       : CsrCause::ILLEGAL_INSTRUCTION,|
-    default                : 0,
-    // #@@range_end(cause)
+        expt_csr_priv_violation: CsrCause::ILLEGAL_INSTRUCTION,
+        expt_zicntr_priv       : CsrCause::ILLEGAL_INSTRUCTION,
+        default                : 0,
     };
     let expt_value: UIntX = switch {
         expt_info.valid                            : expt_info.value,
@@ -161,11 +153,9 @@ module csrunit (
             CsrAddr::MSTATUS   : mstatus,
             CsrAddr::MTVEC     : mtvec,
             CsrAddr::MIP       : mip,
-    // #@@range_begin(rdata)
-    CsrAddr::MIE       : mie,
-    @<b>|CsrAddr::MCOUNTEREN: {1'b0 repeat XLEN - 32, mcounteren},|
-    CsrAddr::MCYCLE    : mcycle,
-    // #@@range_end(rdata)
+            CsrAddr::MIE       : mie,
+            CsrAddr::MCOUNTEREN: {1'b0 repeat XLEN - 32, mcounteren},
+            CsrAddr::MCYCLE    : mcycle,
             CsrAddr::MINSTRET  : minstret,
             CsrAddr::MSCRATCH  : mscratch,
             CsrAddr::MEPC      : mepc,
@@ -181,11 +171,9 @@ module csrunit (
         wmask = case csr_addr {
             CsrAddr::MSTATUS   : MSTATUS_WMASK,
             CsrAddr::MTVEC     : MTVEC_WMASK,
-    // #@@range_begin(wmask)
-    CsrAddr::MIE       : MIE_WMASK,
-    @<b>|CsrAddr::MCOUNTEREN: MCOUNTEREN_WMASK,|
-    CsrAddr::MSCRATCH  : MSCRATCH_WMASK,
-    // #@@range_end(wmask)
+            CsrAddr::MIE       : MIE_WMASK,
+            CsrAddr::MCOUNTEREN: MCOUNTEREN_WMASK,
+            CsrAddr::MSCRATCH  : MSCRATCH_WMASK,
             CsrAddr::MEPC      : MEPC_WMASK,
             CsrAddr::MCAUSE    : MCAUSE_WMASK,
             CsrAddr::MTVAL     : MTVAL_WMASK,
@@ -206,11 +194,9 @@ module csrunit (
             mode       = PrivMode::M;
             mstatus    = MSTATUS_UXL;
             mtvec      = 0;
-    // #@@range_begin(reset)
-    mie        = 0;
-    @<b>|mcounteren = 0;|
-    mscratch   = 0;
-    // #@@range_end(reset)
+            mie        = 0;
+            mcounteren = 0;
+            mscratch   = 0;
             mcycle     = 0;
             mepc       = 0;
             mcause     = 0;
@@ -247,11 +233,9 @@ module csrunit (
                         case csr_addr {
                             CsrAddr::MSTATUS   : mstatus    = validate_mstatus(mstatus, wdata);
                             CsrAddr::MTVEC     : mtvec      = wdata;
-    // #@@range_begin(write)
-    CsrAddr::MIE       : mie        = wdata;
-    @<b>|CsrAddr::MCOUNTEREN: mcounteren = wdata[31:0];|
-    CsrAddr::MSCRATCH  : mscratch   = wdata;
-    // #@@range_end(write)
+                            CsrAddr::MIE       : mie        = wdata;
+                            CsrAddr::MCOUNTEREN: mcounteren = wdata[31:0];
+                            CsrAddr::MSCRATCH  : mscratch   = wdata;
                             CsrAddr::MEPC      : mepc       = wdata;
                             CsrAddr::MCAUSE    : mcause     = wdata;
                             CsrAddr::MTVAL     : mtval      = wdata;
