@@ -56,13 +56,14 @@ module csrunit (
     var mcause  : UIntX ;
     var mtval   : UIntX ;
 
+    // #@@range_begin(mip)
     let mip: UIntX = {
         1'b0 repeat XLEN - 12, // 0, LCOFIP
         1'b0, // MEIP
         1'b0, // 0
         1'b0, // SEIP
         1'b0, // 0
-        aclint.mtip, // MTIP
+        @<b>|aclint.mtip|, // MTIP
         1'b0, // 0
         1'b0, // STIP
         1'b0, // 0
@@ -71,21 +72,24 @@ module csrunit (
         1'b0, // SSIP
         1'b0, // 0
     };
+    // #@@range_end(mip)
 
     // mstatus bits
     let mstatus_mpie: logic = mstatus[7];
     let mstatus_mie : logic = mstatus[3];
 
     // Interrupt
-    let interrupt_pending: UIntX = mip & mie;
-    let raise_interrupt  : logic = valid && can_intr && mstatus_mie && interrupt_pending != 0;
-    let interrupt_cause  : UIntX = switch {
-        interrupt_pending[3]: CsrCause::MACHINE_SOFTWARE_INTERRUPT,
-        interrupt_pending[7]: CsrCause::MACHINE_TIMER_INTERRUPT,
-        default             : 0,
-    };
+    // #@@range_begin(intr)
+    @<b>|let interrupt_pending: UIntX = mip & mie;|
+    let raise_interrupt  : logic = valid && can_intr && mstatus_mie && @<b>|interrupt_pending != 0|;
+    let interrupt_cause  : @<b>|UIntX = switch {|
+        @<b>|interrupt_pending[3]:| CsrCause::MACHINE_SOFTWARE_INTERRUPT@<b>|,|
+        @<b>|interrupt_pending[7]: CsrCause::MACHINE_TIMER_INTERRUPT,|
+        @<b>|default             : 0,|
+    @<b>|}|;
     let interrupt_vector: Addr = if mtvec[0] == 0 ? {mtvec[msb:2], 2'b0} : // Direct
      {mtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}; // Vectored
+    // #@@range_end(intr)
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
