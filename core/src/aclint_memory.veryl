@@ -10,11 +10,13 @@ module aclint_memory (
     var mtime    : UInt64;
     var mtimecmp0: UInt64;
 
+    // #@@range_begin(comb)
     always_comb {
         aclint.msip  = msip0;
         aclint.mtip  = mtime >= mtimecmp0;
-        aclint.mtime = mtime;
+        @<b>|aclint.mtime = mtime;|
     }
+    // #@@range_end(comb)
 
     assign membus.ready = 1;
     always_ff {
