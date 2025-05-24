@@ -40,7 +40,9 @@ module csrunit (
     // MRET命令かどうか
     let is_mret: logic = inst_bits == 32'h30200073;
     // WFI命令かどうか
+    // #@@range_begin(is_wfi)
     let is_wfi: logic = inst_bits == 32'h10500073;
+    // #@@range_end(is_wfi)
 
     // Check CSR access
     let will_not_write_csr     : logic = (ctrl.funct3[1:0] == 2 || ctrl.funct3[1:0] == 3) && rs1_addr == 0; // set/clear with source = 0
@@ -179,10 +181,12 @@ module csrunit (
             mcycle += 1;
             if valid {
                 if raise_trap {
-                    if raise_expt || raise_interrupt {
-                        mepc = if raise_expt ? pc : // exception
-                         if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt
-                        mcause = trap_cause;
+    // #@@range_begin(expt)
+    if raise_expt || raise_interrupt {
+        mepc = @<b>|if raise_expt ? pc : // exception|
+         @<b>|if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt|
+        mcause = trap_cause;
+    // #@@range_end(expt)
                         if raise_expt {
                             mtval = expt_value;
                         }
