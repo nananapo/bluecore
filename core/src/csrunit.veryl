@@ -45,9 +45,7 @@ module csrunit (
     // Check CSR access
     let will_not_write_csr     : logic = (ctrl.funct3[1:0] == 2 || ctrl.funct3[1:0] == 3) && rs1_addr == 0; // set/clear with source = 0
     let expt_write_readonly_csr: logic = is_wsc && !will_not_write_csr && csr_addr[11:10] == 2'b11; // attempt to write read-only CSR
-    // #@@range_begin(priv)
     let expt_csr_priv_violation: logic = is_wsc && csr_addr[9:8] >: mode; // attempt to access CSR without privilege level
-    // #@@range_end(priv)
 
     // CSR
     let misa    : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000100000001000100000101}; // U, M, I, C, A
@@ -95,16 +93,12 @@ module csrunit (
     let interrupt_mode: PrivMode = PrivMode::M;
 
     // Exception
-    // #@@range_begin(raise_expt)
-    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || @<b>{expt_csr_priv_violation});
-    // #@@range_end(raise_expt)
+    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation);
     let expt_cause: UIntX = switch {
         expt_info.valid        : expt_info.cause,
-// #@@range_begin(cause)
-    expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,
-    @<b>|expt_csr_priv_violation: CsrCause::ILLEGAL_INSTRUCTION,|
-    default                : 0,
-// #@@range_end(cause)
+        expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,
+        expt_csr_priv_violation: CsrCause::ILLEGAL_INSTRUCTION,
+        default                : 0,
     };
     let expt_value: UIntX = switch {
         expt_info.valid                            : expt_info.value,
