@@ -24,7 +24,7 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK : UIntX = 'h0000_0000_0020_0088 as UIntX;
+    const MSTATUS_WMASK : UIntX = 'h0000_0000_0020_1888 as UIntX;
     const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fffd;
     const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
@@ -75,8 +75,9 @@ module csrunit (
     };
 
     // mstatus bits
-    let mstatus_mpie: logic = mstatus[7];
-    let mstatus_mie : logic = mstatus[3];
+    let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;
+    let mstatus_mpie: logic    = mstatus[7];
+    let mstatus_mie : logic    = mstatus[3];
 
     // Interrupt
     let interrupt_pending: UIntX = mip & mie;
@@ -88,6 +89,7 @@ module csrunit (
     };
     let interrupt_vector: Addr = if mtvec[0] == 0 ? {mtvec[msb:2], 2'b0} : // Direct
      {mtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}; // Vectored
+    let interrupt_mode: PrivMode = PrivMode::M;
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -101,10 +103,12 @@ module csrunit (
         expt_cause == CsrCause::ILLEGAL_INSTRUCTION: {1'b0 repeat XLEN - $bits(Inst), inst_bits},
         default                                    : 0
     };
-    let expt_vector: Addr = {mtvec[msb:2], 2'b0};
+    let expt_vector: Addr     = {mtvec[msb:2], 2'b0};
+    let expt_mode  : PrivMode = PrivMode::M;
 
     // Trap Return
-    assign trap_return = valid && is_mret && !raise_expt && !raise_interrupt;
+    assign trap_return      = valid && is_mret && !raise_expt && !raise_interrupt;
+    let trap_return_mode: PrivMode = mstatus_mpp;
 
     // Trap
     assign raise_trap = raise_expt || raise_interrupt || trap_return;
@@ -118,6 +122,12 @@ module csrunit (
         raise_interrupt: interrupt_vector,
         trap_return    : mepc,
         default        : 0,
+    };
+    let trap_mode_next: PrivMode = switch {
+        raise_expt     : expt_mode,
+        raise_interrupt: interrupt_mode,
+        trap_return    : trap_return_mode,
+        default        : PrivMode::U,
     };
 
     var wmask: UIntX; // write mask
@@ -193,16 +203,21 @@ module csrunit (
                         // and set mstatus.mie = 0
                         mstatus[7] = mstatus[3];
                         mstatus[3] = 0;
+                        // save current privilege level to mstatus.mpp
+                        mstatus[12:11] = mode;
                     } else if trap_return {
                         // set mstatus.mie = mstatus.mpie
                         //     mstatus.mpie = 0
                         mstatus[3] = mstatus[7];
                         mstatus[7] = 0;
+                        // set mstatus.mpp = U (least privilege level)
+                        mstatus[12:11] = PrivMode::U;
                     }
+                    mode = trap_mode_next;
                 } else {
                     if is_wsc {
                         case csr_addr {
-                            CsrAddr::MSTATUS : mstatus  = wdata;
+                            CsrAddr::MSTATUS : mstatus  = validate_mstatus(mstatus, wdata);
                             CsrAddr::MTVEC   : mtvec    = wdata;
                             CsrAddr::MIE     : mie      = wdata;
                             CsrAddr::MSCRATCH: mscratch = wdata;
@@ -216,5 +231,18 @@ module csrunit (
                 }
             }
         }
+    }
+
+    function validate_mstatus (
+        mstatus: input UIntX,
+        wdata  : input UIntX,
+    ) -> UIntX {
+        var result: UIntX;
+        result = wdata;
+        // MPP
+        if wdata[12:11] != PrivMode::M && wdata[12:11] != PrivMode::U {
+            result[12:11] = mstatus[12:11];
+        }
+        return result;
     }
 }
