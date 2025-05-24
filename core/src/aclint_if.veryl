@@ -1,12 +1,10 @@
 interface aclint_if {
-    // #@@range_begin(mtip)
     var msip: logic;
-    @<b>|var mtip: logic;|
+    var mtip: logic;
     modport master {
         msip: output,
-        @<b>|mtip: output,|
+        mtip: output,
     }
-    // #@@range_end(mtip)
     modport slave {
         ..converse(master)
     }
