@@ -120,12 +120,14 @@ module csrunit (
         interrupt_pending[7]: CsrCause::MACHINE_TIMER_INTERRUPT,
         default             : 0,
     };
-    let interrupt_xtvec : Addr = if interrupt_mode == PrivMode::M ? mtvec : stvec;
-    let interrupt_vector: Addr = if interrupt_xtvec[0] == 0 ?
-        {interrupt_xtvec[msb:2], 2'b0}
+    // #@@range_begin(interrupt)
+    @<b>|let interrupt_xtvec : Addr = if interrupt_mode == PrivMode::M ? mtvec : stvec;|
+    let interrupt_vector: Addr = if @<b>|interrupt_x|tvec[0] == 0 ?
+        {@<b>|interrupt_x|tvec[msb:2], 2'b0}
     : // Direct
-        {interrupt_xtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}
+        {@<b>|interrupt_x|tvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}
     ; // Vectored
+    // #@@range_end(interrupt)
     let interrupt_mode: PrivMode = PrivMode::M;
 
     // Exception
@@ -143,8 +145,10 @@ module csrunit (
         expt_cause == CsrCause::ILLEGAL_INSTRUCTION: {1'b0 repeat XLEN - $bits(Inst), inst_bits},
         default                                    : 0
     };
-    let expt_xtvec : Addr     = if expt_mode == PrivMode::M ? mtvec : stvec;
-    let expt_vector: Addr     = {expt_xtvec[msb:2], 2'b0};
+    // #@@range_begin(expt)
+    @<b>|let expt_xtvec : Addr     = if expt_mode == PrivMode::M ? mtvec : stvec;|
+    let expt_vector: Addr     = {@<b>|expt_x|tvec[msb:2], 2'b0};
+    // #@@range_end(expt)
     let expt_mode  : PrivMode = PrivMode::M;
 
     // Trap Return
