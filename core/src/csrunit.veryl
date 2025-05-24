@@ -25,7 +25,9 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK   : UIntX = 'h0000_0000_0020_19aa as UIntX;
+    // #@@range_begin(mstatus_WMASK)
+    const MSTATUS_WMASK   : UIntX = 'h0000_0000_0020_1@<b>|9aa| as UIntX;
+    // #@@range_end(mstatus_WMASK)
     const MTVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const MCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const MSCRATCH_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
@@ -33,7 +35,9 @@ module csrunit (
     const MCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_0088 as UIntX;
-    const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0122 as UIntX;
+    // #@@range_begin(sstatus_WMASK)
+    const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0@<b>|122| as UIntX;
+    // #@@range_end(sstatus_WMASK)
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const STVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const SSCRATCH_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
@@ -99,12 +103,14 @@ module csrunit (
     };
 
     // mstatus bits
+    // #@@range_begin(mstatus)
     let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;
-    let mstatus_spp : PrivMode = if mstatus[8] ? PrivMode::S : PrivMode::U;
+    @<b>|let mstatus_spp : PrivMode = if mstatus[8] ? PrivMode::S : PrivMode::U;|
     let mstatus_mpie: logic    = mstatus[7];
-    let mstatus_spie: logic    = mstatus[5];
+    @<b>|let mstatus_spie: logic    = mstatus[5];|
     let mstatus_mie : logic    = mstatus[3];
-    let mstatus_sie : logic    = mstatus[1];
+    @<b>|let mstatus_sie : logic    = mstatus[1];|
+    // #@@range_end(mstatus)
 
     // Supervisor mode CSR
     let sstatus   : UIntX  = mstatus & SSTATUS_RMASK;
@@ -274,19 +280,21 @@ module csrunit (
                             mstatus[3] = 0;
                             // save current privilege level to mstatus.mpp
                             mstatus[12:11] = mode;
-                        } else {
-                            sepc   = xepc;
-                            scause = trap_cause;
-                            if raise_expt {
-                                stval = expt_value;
-                            }
-                            // save sstatus.sie to sstatus.spie
-                            // and set sstatus.sie = 0
-                            mstatus[5] = mstatus[1];
-                            mstatus[1] = 0;
-                            // save current privilege mode (S or U) to sstatus.spp
-                            mstatus[8] = mode[0];
-                        }
+    // #@@range_begin(ff)
+    } else {
+        sepc   = xepc;
+        scause = trap_cause;
+        if raise_expt {
+            stval = expt_value;
+        }
+        @<b>|// save sstatus.sie to sstatus.spie|
+        @<b>|// and set sstatus.sie = 0|
+        @<b>|mstatus[5] = mstatus[1];|
+        @<b>|mstatus[1] = 0;|
+        @<b>|// save current privilege mode (S or U) to sstatus.spp|
+        @<b>|mstatus[8] = mode[0];|
+    }
+    // #@@range_end(ff)
                     } else if trap_return {
                         // set mstatus.mie = mstatus.mpie
                         //     mstatus.mpie = 0
