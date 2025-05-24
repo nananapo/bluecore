@@ -27,8 +27,10 @@ module csrunit (
     // wmasks
     const MSTATUS_WMASK   : UIntX = 'h0000_0000_0060_19aa as UIntX;
     const MTVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
+    // #@@range_begin(WMASK_deleg)
     const MEDELEG_WMASK   : UIntX = 'hffff_ffff_fffe_f7ff;
     const MIDELEG_WMASK   : UIntX = 'h0000_0000_0000_0222 as UIntX;
+    // #@@range_end(WMASK_deleg)
     const MCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const MSCRATCH_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
     const MEPC_WMASK      : UIntX = 'hffff_ffff_ffff_fffe;
@@ -37,7 +39,9 @@ module csrunit (
     const MIP_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_02aa as UIntX;
     const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0122 as UIntX;
+    // #@@range_begin(WMASK_sie)
     const SIE_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;
+    // #@@range_end(WMASK_sie)
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const STVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const SSCRATCH_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
@@ -80,8 +84,10 @@ module csrunit (
     let mhartid   : UIntX  = 0;
     var mstatus   : UIntX ;
     var mtvec     : UIntX ;
+    // #@@range_begin(deleg)
     var medeleg   : UInt64;
     var mideleg   : UIntX ;
+    // #@@range_end(deleg)
     var mcounteren: UInt32;
     var mie       : UIntX ;
     var mcycle    : UInt64;
@@ -124,8 +130,10 @@ module csrunit (
     var sepc      : UIntX ;
     var scause    : UIntX ;
     var stval     : UIntX ;
+    // #@@range_begin(sipsie)
     let sip       : UIntX  = mip & mideleg;
     var sie       : UIntX ;
+    // #@@range_end(sipsie)
 
     // Interrupt
     let interrupt_pending: UIntX = mip & mie;
@@ -201,8 +209,10 @@ module csrunit (
             CsrAddr::MHARTID   : mhartid,
             CsrAddr::MSTATUS   : mstatus,
             CsrAddr::MTVEC     : mtvec,
-            CsrAddr::MEDELEG   : medeleg,
-            CsrAddr::MIDELEG   : mideleg,
+    // #@@range_begin(deleg_rdata)
+    CsrAddr::MEDELEG   : medeleg,
+    CsrAddr::MIDELEG   : mideleg,
+    // #@@range_end(deleg_rdata)
             CsrAddr::MIP       : mip,
             CsrAddr::MIE       : mie,
             CsrAddr::MCOUNTEREN: {1'b0 repeat XLEN - 32, mcounteren},
@@ -219,8 +229,10 @@ module csrunit (
             CsrAddr::SEPC      : sepc,
             CsrAddr::SCAUSE    : scause,
             CsrAddr::STVAL     : stval,
-            CsrAddr::SIP       : sip,
-            CsrAddr::SIE       : sie & mideleg,
+    // #@@range_begin(si_rdata)
+    CsrAddr::SIP       : sip,
+    CsrAddr::SIE       : sie & mideleg,
+    // #@@range_end(si_rdata)
             CsrAddr::LED       : led,
             CsrAddr::CYCLE     : mcycle,
             CsrAddr::TIME      : aclint.mtime,
@@ -231,8 +243,10 @@ module csrunit (
         wmask = case csr_addr {
             CsrAddr::MSTATUS   : MSTATUS_WMASK,
             CsrAddr::MTVEC     : MTVEC_WMASK,
-            CsrAddr::MEDELEG   : MEDELEG_WMASK,
-            CsrAddr::MIDELEG   : MIDELEG_WMASK,
+    // #@@range_begin(deleg_wmask)
+    CsrAddr::MEDELEG   : MEDELEG_WMASK,
+    CsrAddr::MIDELEG   : MIDELEG_WMASK,
+    // #@@range_end(deleg_wmask)
             CsrAddr::MIP       : MIP_WMASK,
             CsrAddr::MIE       : MIE_WMASK,
             CsrAddr::MCOUNTEREN: MCOUNTEREN_WMASK,
@@ -247,7 +261,9 @@ module csrunit (
             CsrAddr::SEPC      : SEPC_WMASK,
             CsrAddr::SCAUSE    : SCAUSE_WMASK,
             CsrAddr::STVAL     : STVAL_WMASK,
-            CsrAddr::SIE       : SIE_WMASK & mideleg,
+    // #@@range_begin(sie_wmask)
+    CsrAddr::SIE       : SIE_WMASK & mideleg,
+    // #@@range_end(sie_wmask)
             CsrAddr::LED       : LED_WMASK,
             default            : 0,
         };
@@ -265,8 +281,10 @@ module csrunit (
             mode       = PrivMode::M;
             mstatus    = MSTATUS_SXL | MSTATUS_UXL;
             mtvec      = 0;
-            medeleg    = 0;
-            mideleg    = 0;
+    // #@@range_begin(deleg_reset)
+    medeleg    = 0;
+    mideleg    = 0;
+    // #@@range_end(deleg_reset)
             mie        = 0;
             mip_reg    = 0;
             mcounteren = 0;
@@ -281,7 +299,9 @@ module csrunit (
             sepc       = 0;
             scause     = 0;
             stval      = 0;
-            sie        = 0;
+    // #@@range_begin(sie_reset)
+    sie        = 0;
+    // #@@range_end(sie_reset)
             led        = 0;
         } else {
             mcycle += 1;
@@ -338,8 +358,10 @@ module csrunit (
                         case csr_addr {
                             CsrAddr::MSTATUS   : mstatus    = validate_mstatus(mstatus, wdata);
                             CsrAddr::MTVEC     : mtvec      = wdata;
-                            CsrAddr::MEDELEG   : medeleg    = wdata;
-                            CsrAddr::MIDELEG   : mideleg    = wdata;
+    // #@@range_begin(deleg_write)
+    CsrAddr::MEDELEG   : medeleg    = wdata;
+    CsrAddr::MIDELEG   : mideleg    = wdata;
+    // #@@range_end(deleg_write)
                             CsrAddr::MIP       : mip_reg    = wdata & MIP_WMASK;
                             CsrAddr::MIE       : mie        = wdata;
                             CsrAddr::MCOUNTEREN: mcounteren = wdata[31:0];
@@ -354,7 +376,9 @@ module csrunit (
                             CsrAddr::SEPC      : sepc       = wdata;
                             CsrAddr::SCAUSE    : scause     = wdata;
                             CsrAddr::STVAL     : stval      = wdata;
-                            CsrAddr::SIE       : sie        = wdata;
+    // #@@range_begin(sie_write)
+    CsrAddr::SIE       : sie        = wdata;
+    // #@@range_end(sie_write)
                             CsrAddr::LED       : led        = wdata;
                             default            : {}
                         }
