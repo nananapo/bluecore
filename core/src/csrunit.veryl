@@ -24,7 +24,9 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK : UIntX = 'h0000_0000_0020_1888 as UIntX;
+    // #@@range_begin(WMASK)
+    const MSTATUS_WMASK : UIntX = 'h0000_0000_0020_@<b>|18|88 as UIntX;
+    // #@@range_end(WMASK)
     const MTVEC_WMASK   : UIntX = 'hffff_ffff_ffff_fffd;
     const MSCRATCH_WMASK: UIntX = 'hffff_ffff_ffff_ffff;
     const MEPC_WMASK    : UIntX = 'hffff_ffff_ffff_fffe;
@@ -75,9 +77,11 @@ module csrunit (
     };
 
     // mstatus bits
-    let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;
+    // #@@range_begin(mpp)
+    @<b>|let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;|
     let mstatus_mpie: logic    = mstatus[7];
     let mstatus_mie : logic    = mstatus[3];
+    // #@@range_end(mpp)
 
     // Interrupt
     let interrupt_pending: UIntX = mip & mie;
@@ -89,7 +93,9 @@ module csrunit (
     };
     let interrupt_vector: Addr = if mtvec[0] == 0 ? {mtvec[msb:2], 2'b0} : // Direct
      {mtvec[msb:2] + interrupt_cause[msb - 2:0], 2'b0}; // Vectored
+    // #@@range_begin(interrupt_mode)
     let interrupt_mode: PrivMode = PrivMode::M;
+    // #@@range_end(interrupt_mode)
 
     // Exception
     let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr);
@@ -104,11 +110,15 @@ module csrunit (
         default                                    : 0
     };
     let expt_vector: Addr     = {mtvec[msb:2], 2'b0};
+    // #@@range_begin(expt_mode)
     let expt_mode  : PrivMode = PrivMode::M;
+    // #@@range_end(expt_mode)
 
     // Trap Return
     assign trap_return      = valid && is_mret && !raise_expt && !raise_interrupt;
+    // #@@range_begin(trap_return_mode)
     let trap_return_mode: PrivMode = mstatus_mpp;
+    // #@@range_end(trap_return_mode)
 
     // Trap
     assign raise_trap = raise_expt || raise_interrupt || trap_return;
@@ -123,12 +133,14 @@ module csrunit (
         trap_return    : mepc,
         default        : 0,
     };
+    // #@@range_begin(trap_mode_next)
     let trap_mode_next: PrivMode = switch {
         raise_expt     : expt_mode,
         raise_interrupt: interrupt_mode,
         trap_return    : trap_return_mode,
         default        : PrivMode::U,
     };
+    // #@@range_end(trap_mode_next)
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
@@ -191,33 +203,25 @@ module csrunit (
         } else {
             mcycle += 1;
             if valid {
-                if raise_trap {
-                    if raise_expt || raise_interrupt {
-                        mepc = if raise_expt ? pc : // exception
-                         if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt
-                        mcause = trap_cause;
-                        if raise_expt {
-                            mtval = expt_value;
-                        }
-                        // save mstatus.mie to mstatus.mpie
-                        // and set mstatus.mie = 0
-                        mstatus[7] = mstatus[3];
-                        mstatus[3] = 0;
-                        // save current privilege level to mstatus.mpp
-                        mstatus[12:11] = mode;
-                    } else if trap_return {
-                        // set mstatus.mie = mstatus.mpie
-                        //     mstatus.mpie = 0
-                        mstatus[3] = mstatus[7];
-                        mstatus[7] = 0;
-                        // set mstatus.mpp = U (least privilege level)
-                        mstatus[12:11] = PrivMode::U;
-                    }
-                    mode = trap_mode_next;
+    // #@@range_begin(trap)
+    if raise_trap {
+        if raise_expt || raise_interrupt {
+            ...
+            @<b>|// save current privilege level to mstatus.mpp|
+            @<b<|mstatus[12:11] = mode;|
+        } else if trap_return {
+            ...
+            @<b>|// set mstatus.mpp = U (least privilege level)|
+            @<b>|mstatus[12:11] = PrivMode::U;|
+        }
+        mode = trap_mode_next;
+    // #@@range_end(trap)
                 } else {
                     if is_wsc {
                         case csr_addr {
-                            CsrAddr::MSTATUS : mstatus  = validate_mstatus(mstatus, wdata);
+    // #@@range_begin(write)
+    CsrAddr::MSTATUS : mstatus  = validate_mstatus(mstatus, wdata);
+    // #@@range_end(write)
                             CsrAddr::MTVEC   : mtvec    = wdata;
                             CsrAddr::MIE     : mie      = wdata;
                             CsrAddr::MSCRATCH: mscratch = wdata;
@@ -233,6 +237,7 @@ module csrunit (
         }
     }
 
+    // #@@range_begin(func)
     function validate_mstatus (
         mstatus: input UIntX,
         wdata  : input UIntX,
@@ -245,4 +250,5 @@ module csrunit (
         }
         return result;
     }
+    // #@@range_end(func)
 }
