@@ -53,7 +53,9 @@ module csrunit (
         CsrAddr::INSTRET: !mcounteren[2],
         default         : 0,
     }; // attemp to access Zicntr CSR without permission
+    // #@@range_begin(priv)
     let expt_trap_return_priv: logic = is_mret && mode <: PrivMode::M; // attempt to execute trap return instruction in low privilege level
+    // #@@range_end(priv)
 
     // CSR
     let misa      : UIntX  = {2'd2, 1'b0 repeat XLEN - 28, 26'b00000100000001000100000101}; // U, M, I, C, A
@@ -102,15 +104,19 @@ module csrunit (
     let interrupt_mode: PrivMode = PrivMode::M;
 
     // Exception
-    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv || expt_trap_return_priv);
+    // #@@range_begin(raise_expt)
+    let raise_expt: logic = valid && (expt_info.valid || expt_write_readonly_csr || expt_csr_priv_violation || expt_zicntr_priv @<b>{|| expt_trap_return_priv});
+    // #@@range_end(raise_expt)
     let expt_cause: UIntX = switch {
         expt_info.valid        : expt_info.cause,
         expt_write_readonly_csr: CsrCause::ILLEGAL_INSTRUCTION,
         expt_csr_priv_violation: CsrCause::ILLEGAL_INSTRUCTION,
+    // #@@range_begin(cause)
         expt_zicntr_priv       : CsrCause::ILLEGAL_INSTRUCTION,
-        expt_trap_return_priv  : CsrCause::ILLEGAL_INSTRUCTION,
+        @<b>|expt_trap_return_priv  : CsrCause::ILLEGAL_INSTRUCTION,|
         default                : 0,
     };
+    // #@@range_end(cause)
     let expt_value: UIntX = switch {
         expt_info.valid                            : expt_info.value,
         expt_cause == CsrCause::ILLEGAL_INSTRUCTION: {1'b0 repeat XLEN - $bits(Inst), inst_bits},
