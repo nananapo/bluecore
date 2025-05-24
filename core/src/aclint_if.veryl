@@ -1,13 +1,15 @@
 import eei::*;
 
 interface aclint_if {
-    var msip : logic ;
-    var mtip : logic ;
-    var mtime: UInt64;
+    var msip   : logic ;
+    var mtip   : logic ;
+    var mtime  : UInt64;
+    var setssip: logic ;
     modport master {
-        msip : output,
-        mtip : output,
-        mtime: output,
+        msip   : output,
+        mtip   : output,
+        mtime  : output,
+        setssip: output,
     }
     modport slave {
         ..converse(master)
