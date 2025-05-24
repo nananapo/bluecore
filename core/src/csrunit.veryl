@@ -35,11 +35,13 @@ module csrunit (
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_0088 as UIntX;
     const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0000 as UIntX;
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
+    // #@@range_begin(WMASK)
     const STVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const SSCRATCH_WMASK  : UIntX = 'hffff_ffff_ffff_ffff;
     const SEPC_WMASK      : UIntX = 'hffff_ffff_ffff_fffe;
     const SCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const STVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
+    // #@@range_end(WMASK)
     const LED_WMASK       : UIntX = 'hffff_ffff_ffff_ffff;
 
     // read masks
@@ -106,11 +108,13 @@ module csrunit (
     // Supervisor mode CSR
     let sstatus   : UIntX  = mstatus & SSTATUS_RMASK;
     var scounteren: UInt32;
+    // #@@range_begin(reg)
     var stvec     : UIntX ;
     var sscratch  : UIntX ;
     var sepc      : UIntX ;
     var scause    : UIntX ;
     var stval     : UIntX ;
+    // #@@range_end(reg)
 
     // Interrupt
     let interrupt_pending: UIntX = mip & mie;
@@ -188,11 +192,13 @@ module csrunit (
             CsrAddr::MTVAL     : mtval,
             CsrAddr::SSTATUS   : sstatus,
             CsrAddr::SCOUNTEREN: {1'b0 repeat XLEN - 32, scounteren},
-            CsrAddr::STVEC     : stvec,
-            CsrAddr::SSCRATCH  : sscratch,
-            CsrAddr::SEPC      : sepc,
-            CsrAddr::SCAUSE    : scause,
-            CsrAddr::STVAL     : stval,
+    // #@@range_begin(rdata)
+    CsrAddr::STVEC     : stvec,
+    CsrAddr::SSCRATCH  : sscratch,
+    CsrAddr::SEPC      : sepc,
+    CsrAddr::SCAUSE    : scause,
+    CsrAddr::STVAL     : stval,
+    // #@@range_end(rdata)
             CsrAddr::LED       : led,
             CsrAddr::CYCLE     : mcycle,
             CsrAddr::TIME      : aclint.mtime,
@@ -211,11 +217,13 @@ module csrunit (
             CsrAddr::MTVAL     : MTVAL_WMASK,
             CsrAddr::SSTATUS   : SSTATUS_WMASK,
             CsrAddr::SCOUNTEREN: SCOUNTEREN_WMASK,
-            CsrAddr::STVEC     : STVEC_WMASK,
-            CsrAddr::SSCRATCH  : SSCRATCH_WMASK,
-            CsrAddr::SEPC      : SEPC_WMASK,
-            CsrAddr::SCAUSE    : SCAUSE_WMASK,
-            CsrAddr::STVAL     : STVAL_WMASK,
+    // #@@range_begin(wmask)
+    CsrAddr::STVEC     : STVEC_WMASK,
+    CsrAddr::SSCRATCH  : SSCRATCH_WMASK,
+    CsrAddr::SEPC      : SEPC_WMASK,
+    CsrAddr::SCAUSE    : SCAUSE_WMASK,
+    CsrAddr::STVAL     : STVAL_WMASK,
+    // #@@range_end(wmask)
             CsrAddr::LED       : LED_WMASK,
             default            : 0,
         };
@@ -241,11 +249,13 @@ module csrunit (
             mcause     = 0;
             mtval      = 0;
             scounteren = 0;
-            stvec      = 0;
-            sscratch   = 0;
-            sepc       = 0;
-            scause     = 0;
-            stval      = 0;
+    // #@@range_begin(reset)
+    stvec      = 0;
+    sscratch   = 0;
+    sepc       = 0;
+    scause     = 0;
+    stval      = 0;
+    // #@@range_end(reset)
             led        = 0;
         } else {
             mcycle += 1;
@@ -286,11 +296,13 @@ module csrunit (
                             CsrAddr::MTVAL     : mtval      = wdata;
                             CsrAddr::SSTATUS   : mstatus    = validate_mstatus(mstatus, wdata | mstatus & ~SSTATUS_WMASK);
                             CsrAddr::SCOUNTEREN: scounteren = wdata[31:0];
-                            CsrAddr::STVEC     : stvec      = wdata;
-                            CsrAddr::SSCRATCH  : sscratch   = wdata;
-                            CsrAddr::SEPC      : sepc       = wdata;
-                            CsrAddr::SCAUSE    : scause     = wdata;
-                            CsrAddr::STVAL     : stval      = wdata;
+    // #@@range_begin(write)
+    CsrAddr::STVEC     : stvec      = wdata;
+    CsrAddr::SSCRATCH  : sscratch   = wdata;
+    CsrAddr::SEPC      : sepc       = wdata;
+    CsrAddr::SCAUSE    : scause     = wdata;
+    CsrAddr::STVAL     : stval      = wdata;
+    // #@@range_end(write)
                             CsrAddr::LED       : led        = wdata;
                             default            : {}
                         }
