@@ -274,7 +274,9 @@ module csrunit (
         } & wmask | (rdata & ~wmask);
     }
 
+    // #@@range_begin(reg)
     let setssip: UIntX = {1'b0 repeat XLEN - 2, aclint.setssip, 1'b0};
+    // #@@range_end(reg)
 
     always_ff {
         if_reset {
@@ -299,9 +301,11 @@ module csrunit (
             stval      = 0;
             sie        = 0;
             led        = 0;
-        } else {
-            mcycle  += 1;
-            mip_reg |= setssip;
+    // #@@range_begin(update)
+    } else {
+        mcycle  += 1;
+        mip_reg |= setssip;
+    // #@@range_end(update)
             if valid {
                 if raise_trap {
                     if raise_expt || raise_interrupt {
@@ -357,7 +361,9 @@ module csrunit (
                             CsrAddr::MTVEC     : mtvec      = wdata;
                             CsrAddr::MEDELEG   : medeleg    = wdata;
                             CsrAddr::MIDELEG   : mideleg    = wdata;
-                            CsrAddr::MIP       : mip_reg    = (wdata & MIP_WMASK) | setssip;
+    // #@@range_begin(write)
+    CsrAddr::MIP       : mip_reg    = @<b>{(}wdata & MIP_WMASK@<b>{) | setssip};
+    // #@@range_end(write)
                             CsrAddr::MIE       : mie        = wdata;
                             CsrAddr::MCOUNTEREN: mcounteren = wdata[31:0];
                             CsrAddr::MSCRATCH  : mscratch   = wdata;
