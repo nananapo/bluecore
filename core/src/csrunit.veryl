@@ -32,10 +32,8 @@ module csrunit (
     const MEPC_WMASK      : UIntX = 'hffff_ffff_ffff_fffe;
     const MCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
-    // #@@range_begin(WMASK)
-    @<b>|const MIP_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;|
-    const MIE_WMASK       : UIntX = 'h0000_0000_0000_0@<b>|2aa| as UIntX;
-    // #@@range_end(WMASK)
+    const MIP_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;
+    const MIE_WMASK       : UIntX = 'h0000_0000_0000_02aa as UIntX;
     const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0122 as UIntX;
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const STVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
@@ -87,10 +85,8 @@ module csrunit (
     var mcause    : UIntX ;
     var mtval     : UIntX ;
 
-    // #@@range_begin(mip)
-    @<b>|var mip_reg: UIntX;|
-    let mip    : UIntX = @<b>{mip_reg |} {
-    // #@@range_end(mip)
+    var mip_reg: UIntX;
+    let mip    : UIntX = mip_reg | {
         1'b0 repeat XLEN - 12, // 0, LCOFIP
         1'b0, // MEIP
         1'b0, // 0
@@ -127,16 +123,14 @@ module csrunit (
     // Interrupt
     let interrupt_pending: UIntX = mip & mie;
     let raise_interrupt  : logic = valid && can_intr && (mode != PrivMode::M || mstatus_mie) && interrupt_pending != 0;
-    // #@@range_begin(cause)
     let interrupt_cause  : UIntX = switch {
         interrupt_pending[3]: CsrCause::MACHINE_SOFTWARE_INTERRUPT,
         interrupt_pending[7]: CsrCause::MACHINE_TIMER_INTERRUPT,
-        @<b>|interrupt_pending[9]: CsrCause::SUPERVISOR_EXTERNAL_INTERRUPT,|
-        @<b>|interrupt_pending[1]: CsrCause::SUPERVISOR_SOFTWARE_INTERRUPT,|
-        @<b>|interrupt_pending[5]: CsrCause::SUPERVISOR_TIMER_INTERRUPT,|
+        interrupt_pending[9]: CsrCause::SUPERVISOR_EXTERNAL_INTERRUPT,
+        interrupt_pending[1]: CsrCause::SUPERVISOR_SOFTWARE_INTERRUPT,
+        interrupt_pending[5]: CsrCause::SUPERVISOR_TIMER_INTERRUPT,
         default             : 0,
     };
-    // #@@range_end(cause)
     let interrupt_xtvec : Addr = if interrupt_mode == PrivMode::M ? mtvec : stvec;
     let interrupt_vector: Addr = if interrupt_xtvec[0] == 0 ?
         {interrupt_xtvec[msb:2], 2'b0}
@@ -226,9 +220,7 @@ module csrunit (
         wmask = case csr_addr {
             CsrAddr::MSTATUS   : MSTATUS_WMASK,
             CsrAddr::MTVEC     : MTVEC_WMASK,
-    // #@@range_begin(wmask)
-    CsrAddr::MIP       : MIP_WMASK,
-    // #@@range_end(wmask)
+            CsrAddr::MIP       : MIP_WMASK,
             CsrAddr::MIE       : MIE_WMASK,
             CsrAddr::MCOUNTEREN: MCOUNTEREN_WMASK,
             CsrAddr::MSCRATCH  : MSCRATCH_WMASK,
@@ -259,11 +251,9 @@ module csrunit (
             mode       = PrivMode::M;
             mstatus    = MSTATUS_SXL | MSTATUS_UXL;
             mtvec      = 0;
-    // #@@range_begin(reset)
-    mie        = 0;
-    @<b>|mip_reg    = 0;|
-    mcounteren = 0;
-    // #@@range_end(reset)
+            mie        = 0;
+            mip_reg    = 0;
+            mcounteren = 0;
             mscratch   = 0;
             mcycle     = 0;
             mepc       = 0;
@@ -330,11 +320,9 @@ module csrunit (
                     if is_wsc {
                         case csr_addr {
                             CsrAddr::MSTATUS   : mstatus    = validate_mstatus(mstatus, wdata);
-    // #@@range_begin(write)
-    CsrAddr::MTVEC     : mtvec      = wdata;
-    @<b>|CsrAddr::MIP       : mip_reg    = wdata & MIP_WMASK;|
-    CsrAddr::MIE       : mie        = wdata;
-    // #@@range_end(write)
+                            CsrAddr::MTVEC     : mtvec      = wdata;
+                            CsrAddr::MIP       : mip_reg    = wdata & MIP_WMASK;
+                            CsrAddr::MIE       : mie        = wdata;
                             CsrAddr::MCOUNTEREN: mcounteren = wdata[31:0];
                             CsrAddr::MSCRATCH  : mscratch   = wdata;
                             CsrAddr::MEPC      : mepc       = wdata;
