@@ -90,7 +90,9 @@ module csrunit (
 
     // Interrupt
     let interrupt_pending: UIntX = mip & mie;
-    let raise_interrupt  : logic = valid && can_intr && (mode != PrivMode::M || mstatus_mie) && interrupt_pending != 0;
+    // #@@range_begin(raise_interrupt)
+    let raise_interrupt  : logic = valid && can_intr && @<b>{(mode != PrivMode::M ||} mstatus_mie@<b>{)} && interrupt_pending != 0;
+    // #@@range_end(raise_interrupt)
     let interrupt_cause  : UIntX = switch {
         interrupt_pending[3]: CsrCause::MACHINE_SOFTWARE_INTERRUPT,
         interrupt_pending[7]: CsrCause::MACHINE_TIMER_INTERRUPT,
