@@ -33,16 +33,12 @@ module csrunit (
     const MCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const MTVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_0088 as UIntX;
-    // #@@range_begin(WMASK)
     const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0000 as UIntX;
-    // #@@range_end(WMASK)
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const LED_WMASK       : UIntX = 'hffff_ffff_ffff_ffff;
 
     // read masks
-    // #@@range_begin(RMASK)
     const SSTATUS_RMASK: UIntX = 'h8000_0003_018f_e762;
-    // #@@range_end(RMASK)
 
     // CSRR(W|S|C)[I]命令かどうか
     let is_wsc: logic = ctrl.is_csr && ctrl.funct3[1:0] != 0;
@@ -103,9 +99,7 @@ module csrunit (
     let mstatus_mie : logic    = mstatus[3];
 
     // Supervisor mode CSR
-    // #@@range_begin(reg)
     let sstatus   : UIntX  = mstatus & SSTATUS_RMASK;
-    // #@@range_end(reg)
     var scounteren: UInt32;
 
     // Interrupt
@@ -181,11 +175,9 @@ module csrunit (
             CsrAddr::MSCRATCH  : mscratch,
             CsrAddr::MEPC      : mepc,
             CsrAddr::MCAUSE    : mcause,
-    // #@@range_begin(rdata)
-    CsrAddr::MTVAL     : mtval,
-    @<b>|CsrAddr::SSTATUS   : sstatus,|
-    CsrAddr::SCOUNTEREN: {1'b0 repeat XLEN - 32, scounteren},
-    // #@@range_end(rdata)
+            CsrAddr::MTVAL     : mtval,
+            CsrAddr::SSTATUS   : sstatus,
+            CsrAddr::SCOUNTEREN: {1'b0 repeat XLEN - 32, scounteren},
             CsrAddr::LED       : led,
             CsrAddr::CYCLE     : mcycle,
             CsrAddr::TIME      : aclint.mtime,
@@ -201,11 +193,9 @@ module csrunit (
             CsrAddr::MSCRATCH  : MSCRATCH_WMASK,
             CsrAddr::MEPC      : MEPC_WMASK,
             CsrAddr::MCAUSE    : MCAUSE_WMASK,
-    // #@@range_begin(wmask)
-    CsrAddr::MTVAL     : MTVAL_WMASK,
-    @<b>|CsrAddr::SSTATUS   : SSTATUS_WMASK,|
-    CsrAddr::SCOUNTEREN: SCOUNTEREN_WMASK,
-    // #@@range_end(wmask)
+            CsrAddr::MTVAL     : MTVAL_WMASK,
+            CsrAddr::SSTATUS   : SSTATUS_WMASK,
+            CsrAddr::SCOUNTEREN: SCOUNTEREN_WMASK,
             CsrAddr::LED       : LED_WMASK,
             default            : 0,
         };
@@ -269,9 +259,7 @@ module csrunit (
                             CsrAddr::MEPC      : mepc       = wdata;
                             CsrAddr::MCAUSE    : mcause     = wdata;
                             CsrAddr::MTVAL     : mtval      = wdata;
-    // #@@range_begin(write)
-    CsrAddr::SSTATUS   : mstatus    = validate_mstatus(mstatus, wdata | mstatus & ~SSTATUS_WMASK);
-    // #@@range_end(write)
+                            CsrAddr::SSTATUS   : mstatus    = validate_mstatus(mstatus, wdata | mstatus & ~SSTATUS_WMASK);
                             CsrAddr::SCOUNTEREN: scounteren = wdata[31:0];
                             CsrAddr::LED       : led        = wdata;
                             default            : {}
