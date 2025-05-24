@@ -16,6 +16,13 @@ module aclint_memory (
         aclint.mtime = mtime;
     }
 
+    always_comb {
+        aclint.setssip = 0;
+        if membus.valid && membus.wen && membus.addr == MMAP_ACLINT_SETSSIP {
+            aclint.setssip = membus.wdata[0];
+        }
+    }
+
     assign membus.ready = 1;
     always_ff {
         if_reset {
