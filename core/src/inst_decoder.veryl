@@ -57,14 +57,12 @@ module inst_decoder (
                 3'b101 : f7 == 7'b0000000 || f7 == 7'b0100000, // SRLIW, SRAIW
                 default: F,
             },
-    // #@@range_begin(wfi)
-    OP_SYSTEM: f3 != 3'b000 && f3 != 3'b100 || // CSRR(W|S|C)[I]
-     bits == 32'h00000073 || // ECALL
-     bits == 32'h00100073 || // EBREAK
-     bits == 32'h30200073 @<b>{||} //MRET
-     @<b>{bits == 32'h10500073}, @<b>{// WFI}
-    OP_MISC_MEM: T, // FENCE
-    // #@@range_end(wfi)
+            OP_SYSTEM: f3 != 3'b000 && f3 != 3'b100 || // CSRR(W|S|C)[I]
+             bits == 32'h00000073 || // ECALL
+             bits == 32'h00100073 || // EBREAK
+             bits == 32'h30200073 || //MRET
+             bits == 32'h10500073, // WFI
+            OP_MISC_MEM: T, // FENCE
             OP_AMO     : f3 == 3'b010 || f3 == 3'b011, // AMO
             default    : F,
         } && (IALIGN == 16 || !is_rvc); // IALIGN == 32のとき、C拡張は無効
