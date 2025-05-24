@@ -14,11 +14,9 @@ module csrunit (
     rs1_addr   : input   logic           <5> ,
     rs1_data   : input   UIntX               ,
     can_intr   : input   logic               ,
-    // #@@range_begin(port)
     rdata      : output  UIntX               ,
-    @<b>|mode       : output  PrivMode            ,|
+    mode       : output  PrivMode            ,
     raise_trap : output  logic               ,
-    // #@@range_end(port)
     trap_vector: output  Addr                ,
     trap_return: output  logic               ,
     minstret   : input   UInt64              ,
