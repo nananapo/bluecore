@@ -256,30 +256,28 @@ module csrunit (
             mcycle += 1;
             if valid {
                 if raise_trap {
-// #@@range_begin(ff)
-if raise_expt || raise_interrupt {
-    @<b>|let x|epc@<b>|: Addr| = if raise_expt ? pc : // exception
-     if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt
-    @<b>|if trap_mode_next == PrivMode::M {|
-        @<b>|mepc   = xepc;|
-        mcause = trap_cause;
-        if raise_expt {
-            mtval = expt_value;
-        }
-        // save mstatus.mie to mstatus.mpie
-        // and set mstatus.mie = 0
-        mstatus[7] = mstatus[3];
-        mstatus[3] = 0;
-        // save current privilege level to mstatus.mpp
-        mstatus[12:11] = mode;
-    @<b>|} else {|
-        @<b>|sepc   = xepc;|
-        @<b>|scause = trap_cause;|
-        @<b>|if raise_expt {|
-        @<b>|    stval = expt_value;|
-        @<b>|}|
-    @<b>|}|
-// #@@range_end(ff)
+                    if raise_expt || raise_interrupt {
+                        let xepc: Addr = if raise_expt ? pc : // exception
+                         if raise_interrupt && is_wfi ? pc + 4 : pc; // interrupt when wfi / interrupt
+                        if trap_mode_next == PrivMode::M {
+                            mepc   = xepc;
+                            mcause = trap_cause;
+                            if raise_expt {
+                                mtval = expt_value;
+                            }
+                            // save mstatus.mie to mstatus.mpie
+                            // and set mstatus.mie = 0
+                            mstatus[7] = mstatus[3];
+                            mstatus[3] = 0;
+                            // save current privilege level to mstatus.mpp
+                            mstatus[12:11] = mode;
+                        } else {
+                            sepc   = xepc;
+                            scause = trap_cause;
+                            if raise_expt {
+                                stval = expt_value;
+                            }
+                        }
                     } else if trap_return {
                         // set mstatus.mie = mstatus.mpie
                         //     mstatus.mpie = 0
