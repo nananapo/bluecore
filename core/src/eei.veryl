@@ -100,10 +100,12 @@ package eei {
         MINSTRET = 12'hB02,
         // Custom
         LED = 12'h800,
-        // Unprivileged Counter/Timers
-        CYCLE = 12'hC00,
-        TIME = 12'hC01,
-        INSTRET = 12'hC02,
+    // #@@range_begin(CsrAddr)
+    // Unprivileged Counter/Timers
+    CYCLE = 12'hC00,
+    TIME = 12'hC01,
+    INSTRET = 12'hC02,
+    // #@@range_end(CsrAddr)
     }
 
     enum CsrCause: UIntX {
