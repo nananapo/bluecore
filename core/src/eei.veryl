@@ -44,13 +44,11 @@ package eei {
     // pc on reset
     const INITIAL_PC: Addr = MMAP_ROM_BEGIN;
 
-    // #@@range_begin(def)
     struct MemException {
         valid      : logic   ,
         page_fault : logic   ,
-        @<b>|addr_offset: logic<3>,|
+        addr_offset: logic<3>,
     }
-    // #@@range_end(def)
 
     // opcode
     const OP_LUI      : logic<7> = 7'b0110111;

@@ -174,15 +174,13 @@ module csrunit (
         expt_memory_fault      : if ctrl.is_load ? CsrCause::LOAD_PAGE_FAULT : CsrCause::STORE_AMO_PAGE_FAULT,
         default                : 0,
     };
-    // #@@range_begin(offset)
     let expt_value: UIntX = switch {
         expt_info.valid                             : expt_info.value,
         expt_cause == CsrCause::ILLEGAL_INSTRUCTION : {1'b0 repeat XLEN - $bits(Inst), inst_bits},
-        expt_cause == CsrCause::LOAD_PAGE_FAULT     : mem_addr @<b>|+ {1'b0 repeat XLEN - 3, membus.expt.addr_offset}|,
-        expt_cause == CsrCause::STORE_AMO_PAGE_FAULT: mem_addr @<b>|+ {1'b0 repeat XLEN - 3, membus.expt.addr_offset}|,
+        expt_cause == CsrCause::LOAD_PAGE_FAULT     : mem_addr,
+        expt_cause == CsrCause::STORE_AMO_PAGE_FAULT: mem_addr,
         default                                     : 0
     };
-    // #@@range_end(offset)
     let expt_xtvec : Addr     = if expt_mode == PrivMode::M ? mtvec : stvec;
     let expt_vector: Addr     = {expt_xtvec[msb:2], 2'b0};
     let expt_mode  : PrivMode = if mode == PrivMode::M || !medeleg[expt_cause[5:0]] ? PrivMode::M : PrivMode::S;
