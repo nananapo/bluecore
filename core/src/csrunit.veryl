@@ -46,9 +46,7 @@ module csrunit (
     const SEPC_WMASK      : UIntX = 'hffff_ffff_ffff_fffe;
     const SCAUSE_WMASK    : UIntX = 'hffff_ffff_ffff_ffff;
     const STVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
-    // #@@range_begin(WMASK)
     const SATP_WMASK      : UIntX = 'hffff_ffff_ffff_ffff;
-    // #@@range_end(WMASK)
     const LED_WMASK       : UIntX = 'hffff_ffff_ffff_ffff;
 
     // read masks
@@ -132,9 +130,7 @@ module csrunit (
     var stval     : UIntX ;
     let sip       : UIntX  = mip & mideleg;
     var sie       : UIntX ;
-    // #@@range_begin(reg)
     var satp      : UIntX ;
-    // #@@range_end(reg)
 
     // Interrupt to M-mode
     let interrupt_pending_mmode: UIntX = mip & mie & ~mideleg;
@@ -247,9 +243,7 @@ module csrunit (
             CsrAddr::STVAL     : stval,
             CsrAddr::SIP       : sip,
             CsrAddr::SIE       : sie & mideleg,
-    // #@@range_begin(rdata)
-    CsrAddr::SATP      : satp,
-    // #@@range_end(rdata)
+            CsrAddr::SATP      : satp,
             CsrAddr::LED       : led,
             CsrAddr::CYCLE     : mcycle,
             CsrAddr::TIME      : aclint.mtime,
@@ -277,9 +271,7 @@ module csrunit (
             CsrAddr::SCAUSE    : SCAUSE_WMASK,
             CsrAddr::STVAL     : STVAL_WMASK,
             CsrAddr::SIE       : SIE_WMASK & mideleg,
-    // #@@range_begin(wmask)
-    CsrAddr::SATP      : SATP_WMASK,
-    // #@@range_end(wmask)
+            CsrAddr::SATP      : SATP_WMASK,
             CsrAddr::LED       : LED_WMASK,
             default            : 0,
         };
@@ -316,9 +308,7 @@ module csrunit (
             scause     = 0;
             stval      = 0;
             sie        = 0;
-    // #@@range_begin(reset)
-    satp       = 0;
-    // #@@range_end(reset)
+            satp       = 0;
             led        = 0;
         } else {
             mcycle  += 1;
@@ -393,9 +383,7 @@ module csrunit (
                             CsrAddr::SCAUSE    : scause     = wdata;
                             CsrAddr::STVAL     : stval      = wdata;
                             CsrAddr::SIE       : sie        = wdata;
-    // #@@range_begin(write)
-    CsrAddr::SATP      : satp       = validate_satp(satp, wdata);
-    // #@@range_end(write)
+                            CsrAddr::SATP      : satp       = validate_satp(satp, wdata);
                             CsrAddr::LED       : led        = wdata;
                             default            : {}
                         }
@@ -418,7 +406,6 @@ module csrunit (
         return result;
     }
 
-    // #@@range_begin(validate)
     function validate_satp (
         satp : input UIntX,
         wdata: input UIntX,
@@ -429,5 +416,4 @@ module csrunit (
         }
         return wdata;
     }
-    // #@@range_end(validate)
 }
