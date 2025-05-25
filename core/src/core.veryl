@@ -106,9 +106,11 @@ module core (
         exq_wdata.expt = 0;
         if i_membus.expt.valid {
             // fault
-            exq_wdata.expt.valid = 1;
-            exq_wdata.expt.cause = CsrCause::INSTRUCTION_PAGE_FAULT;
-            exq_wdata.expt.value = ids_pc + {1'b0 repeat XLEN - 3, i_membus.expt.addr_offset};
+    // #@@range_begin(offset)
+    exq_wdata.expt.valid = 1;
+    exq_wdata.expt.cause = CsrCause::INSTRUCTION_PAGE_FAULT;
+    exq_wdata.expt.value = ids_pc @<b>|+ {1'b0 repeat XLEN - 3, i_membus.expt.addr_offset}|;
+    // #@@range_end(offset)
         } else if !ids_inst_valid {
             // illegal instruction
             exq_wdata.expt.valid = 1;
