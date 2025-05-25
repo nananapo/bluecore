@@ -27,7 +27,7 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK   : UIntX = 'h0000_0000_0060_19aa as UIntX;
+    const MSTATUS_WMASK   : UIntX = 'h0000_0000_006e_19aa as UIntX;
     const MTVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const MEDELEG_WMASK   : UIntX = 'hffff_ffff_fffe_f7ff;
     const MIDELEG_WMASK   : UIntX = 'h0000_0000_0000_0222 as UIntX;
@@ -38,7 +38,7 @@ module csrunit (
     const MTVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
     const MIP_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_02aa as UIntX;
-    const SSTATUS_WMASK   : UIntX = 'h0000_0000_0000_0122 as UIntX;
+    const SSTATUS_WMASK   : UIntX = 'h0000_0000_000c_0122 as UIntX;
     const SIE_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const STVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
@@ -113,6 +113,9 @@ module csrunit (
 
     // mstatus bits
     let mstatus_tsr : logic    = mstatus[22];
+    let mstatus_mxr : logic    = mstatus[19];
+    let mstatus_sum : logic    = mstatus[18];
+    let mstatus_mprv: logic    = mstatus[17];
     let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;
     let mstatus_spp : PrivMode = if mstatus[8] ? PrivMode::S : PrivMode::U;
     let mstatus_mpie: logic    = mstatus[7];
@@ -344,6 +347,10 @@ module csrunit (
                             mstatus[8] = mode[0];
                         }
                     } else if trap_return {
+                        // set mstatus.mprv = 0 when new mode != M-mode
+                        if trap_mode_next <: PrivMode::M {
+                            mstatus[17] = 0;
+                        }
                         if is_mret {
                             // set mstatus.mie = mstatus.mpie
                             //     mstatus.mpie = 0
