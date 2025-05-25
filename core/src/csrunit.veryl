@@ -27,7 +27,9 @@ module csrunit (
 ) {
 
     // wmasks
-    const MSTATUS_WMASK   : UIntX = 'h0000_0000_006e_19aa as UIntX;
+    // #@@range_begin(WMASK_mstatus)
+    const MSTATUS_WMASK   : UIntX = 'h0000_0000_006@<b>|e|_19aa as UIntX;
+    // #@@range_end(WMASK_mstatus)
     const MTVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
     const MEDELEG_WMASK   : UIntX = 'hffff_ffff_fffe_f7ff;
     const MIDELEG_WMASK   : UIntX = 'h0000_0000_0000_0222 as UIntX;
@@ -38,7 +40,9 @@ module csrunit (
     const MTVAL_WMASK     : UIntX = 'hffff_ffff_ffff_ffff;
     const MIP_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;
     const MIE_WMASK       : UIntX = 'h0000_0000_0000_02aa as UIntX;
-    const SSTATUS_WMASK   : UIntX = 'h0000_0000_000c_0122 as UIntX;
+    // #@@range_begin(WMASK_sstatus)
+    const SSTATUS_WMASK   : UIntX = 'h0000_0000_000@<b>|c|_0122 as UIntX;
+    // #@@range_end(WMASK_sstatus)
     const SIE_WMASK       : UIntX = 'h0000_0000_0000_0222 as UIntX;
     const SCOUNTEREN_WMASK: UIntX = 'h0000_0000_0000_0007 as UIntX;
     const STVEC_WMASK     : UIntX = 'hffff_ffff_ffff_fffd;
@@ -113,9 +117,11 @@ module csrunit (
 
     // mstatus bits
     let mstatus_tsr : logic    = mstatus[22];
+    // #@@range_begin(reg)
     let mstatus_mxr : logic    = mstatus[19];
     let mstatus_sum : logic    = mstatus[18];
     let mstatus_mprv: logic    = mstatus[17];
+    // #@@range_end(reg)
     let mstatus_mpp : PrivMode = mstatus[12:11] as PrivMode;
     let mstatus_spp : PrivMode = if mstatus[8] ? PrivMode::S : PrivMode::U;
     let mstatus_mpie: logic    = mstatus[7];
@@ -346,12 +352,14 @@ module csrunit (
                             // save current privilege mode (S or U) to sstatus.spp
                             mstatus[8] = mode[0];
                         }
-                    } else if trap_return {
-                        // set mstatus.mprv = 0 when new mode != M-mode
-                        if trap_mode_next <: PrivMode::M {
-                            mstatus[17] = 0;
-                        }
-                        if is_mret {
+    // #@@range_begin(mprv)
+    } else if trap_return {
+        @<b>|// set mstatus.mprv = 0 when new mode != M-mode|
+        @<b>|if trap_mode_next <: PrivMode::M {|
+        @<b>|    mstatus[17] = 0;|
+        @<b>|}|
+        if is_mret {
+    // #@@range_end(mprv)
                             // set mstatus.mie = mstatus.mpie
                             //     mstatus.mpie = 0
                             mstatus[3] = mstatus[7];
