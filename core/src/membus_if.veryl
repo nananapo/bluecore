@@ -7,8 +7,11 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
     var wmask : logic            <DATA_WIDTH / 8>;
     var rvalid: logic                            ;
     var rdata : logic            <DATA_WIDTH>    ;
+    // #@@range_begin(var)
     var expt  : eei::MemException                ;
+    // #@@range_end(var)
 
+    // #@@range_begin(master)
     modport master {
         valid       : output,
         ready       : input ,
@@ -18,9 +21,10 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
         wmask       : output,
         rvalid      : input ,
         rdata       : input ,
-        expt        : input ,
+        @<b>|expt        : input ,|
         wmask_expand: import,
     }
+    // #@@range_end(master)
 
     modport slave {
         wmask_expand: import,
@@ -31,11 +35,13 @@ interface membus_if::<DATA_WIDTH: u32, ADDR_WIDTH: u32> {
         ..input
     }
 
+    // #@@range_begin(response)
     modport response {
         rvalid: output,
         rdata : output,
         expt  : output,
     }
+    // #@@range_end(response)
 
     modport slave_output {
         ready: output,
