@@ -131,7 +131,6 @@ module inst_fetcher (
         issue_fifo_wdata      = 0;
         issue_fifo_wdata.expt = expt;
 
-        // #@@range_begin(offset)
         if !core_if.is_hazard && fetch_fifo_rvalid {
             if offset == 6 {
                 // offsetが6な32ビット命令の場合、
@@ -141,7 +140,7 @@ module inst_fetcher (
                     issue_fifo_wdata.addr             = {issue_saved_addr[msb:3], offset};
                     issue_fifo_wdata.bits             = {rdata[15:0], issue_saved_bits};
                     issue_fifo_wdata.is_rvc           = 0;
-                    @<b>|issue_fifo_wdata.expt.addr_offset = 2;|
+                    issue_fifo_wdata.expt.addr_offset = 2;
                 } else {
                     if rvcc_is_rvc || expt.valid {
                         fetch_fifo_rready       = issue_fifo_wready;
@@ -154,7 +153,6 @@ module inst_fetcher (
                         fetch_fifo_rready = 1; // Read next 8 bytes
                     }
                 }
-        // #@@range_end(offset)
             } else {
                 fetch_fifo_rready     = issue_fifo_wready && !rvcc_is_rvc && offset == 4;
                 issue_fifo_wvalid     = 1;
