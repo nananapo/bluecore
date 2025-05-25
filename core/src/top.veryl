@@ -81,18 +81,16 @@ module top #(
         }
     }
 
-    // #@@range_begin(comb)
     always_comb {
         i_membus.ready  = mmio_membus.ready && !d_membus.valid;
         i_membus.rvalid = mmio_membus.rvalid && memarb_last_i;
         i_membus.rdata  = mmio_membus.rdata;
-        @<b>|i_membus.expt   = mmio_membus.expt;|
+        i_membus.expt   = mmio_membus.expt;
 
         d_membus.ready  = mmio_membus.ready;
         d_membus.rvalid = mmio_membus.rvalid && !memarb_last_i;
         d_membus.rdata  = mmio_membus.rdata;
-        @<b>|d_membus.expt   = mmio_membus.expt;|
-    // #@@range_end(comb)
+        d_membus.expt   = mmio_membus.expt;
 
         mmio_membus.valid = i_membus.valid | d_membus.valid;
         if d_membus.valid {

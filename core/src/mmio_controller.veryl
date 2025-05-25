@@ -132,13 +132,11 @@ module mmio_controller (
     }
 
     // req_coreの割り当て
-    // #@@range_begin(comb)
     always_comb {
         req_core.ready  = 0;
         req_core.rvalid = 0;
         req_core.rdata  = 0;
         req_core.expt   = 0;
-    // #@@range_end(comb)
 
         if req_saved.valid {
             if is_requested {

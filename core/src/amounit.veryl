@@ -113,13 +113,11 @@ module amounit (
     }
 
     // slaveに結果を割り当てる
-    // #@@range_begin(slave)
     always_comb {
         slave.ready  = 0;
         slave.rvalid = 0;
         slave.rdata  = 0;
-        @<b>|slave.expt   = master.expt;|
-    // #@@range_end(slave)
+        slave.expt   = master.expt;
 
         case state {
             State::Init: {
@@ -145,16 +143,14 @@ module amounit (
                 slave.rvalid = master.rvalid;
                 slave.rdata  = zaamo_fetched_data;
             }
-    // #@@range_begin(slave_end)
             default: {}
         }
 
-        @<b>|if state != State::Init && master.expt.valid {|
-        @<b>|    slave.ready  = 0;|
-        @<b>|    slave.rvalid = 1;|
-        @<b>|}|
+        if state != State::Init && master.expt.valid {
+            slave.ready  = 0;
+            slave.rvalid = 1;
+        }
     }
-    // #@@range_end(slave_end)
 
     // masterに要求を割り当てる
     always_comb {
@@ -178,16 +174,14 @@ module amounit (
                 let wdata        : UIntX = gen_amo_wdata(slave_saved, rdata);
                 assign_master(slave_saved.addr, 1, wdata, slave_saved.wmask);
             }
-    // #@@range_begin(master_end)
             State::AMOStoreValid: accept_request_comb();
             default             : {}
         }
 
-        @<b>|if state != State::Init && master.expt.valid {|
-        @<b>|    reset_master();|
-        @<b>|}|
+        if state != State::Init && master.expt.valid {
+            reset_master();
+        }
     }
-    // #@@range_end(master_end)
 
     // 新しく要求を受け入れる
     function accept_request_ff () {
@@ -233,14 +227,12 @@ module amounit (
         }
     }
 
-    // #@@range_begin(on_clock)
     function on_clock () {
-        @<b>|if state != State::Init && master.expt.valid {|
-        @<b>|    state = State::Init;|
-        @<b>|} else {|
+        if state != State::Init && master.expt.valid {
+            state = State::Init;
+        } else {
             case state {
                 State::Init     : accept_request_ff();
-    // #@@range_end(on_clock)
                 State::WaitReady: if master.ready {
                     if slave_saved.is_amo && slave_saved.amoop == AMOOp::SC {
                         state = State::SCSuccess;

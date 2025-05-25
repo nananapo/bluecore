@@ -6,13 +6,11 @@ module inst_fetcher (
     core_if: modport core_inst_if::slave,
     mem_if : modport Membus::master     ,
 ) {
-    // #@@range_begin(fft)
     struct fetch_fifo_type {
         addr: Addr                           ,
         bits: logic       <MEMBUS_DATA_WIDTH>,
-        @<b>|expt: MemException                   ,|
+        expt: MemException                   ,
     }
-    // #@@range_end(fft)
 
     var fetch_fifo_flush : logic          ;
     var fetch_fifo_wvalid: logic          ;
@@ -38,14 +36,12 @@ module inst_fetcher (
         rdata     : fetch_fifo_rdata ,
     );
 
-    // #@@range_begin(ift)
     struct issue_fifo_type {
         addr  : Addr        ,
         bits  : Inst        ,
         is_rvc: logic       ,
-        @<b>|expt  : MemException,|
+        expt  : MemException,
     }
-    // #@@range_end(ift)
 
     var issue_fifo_flush : logic          ;
     var issue_fifo_wvalid: logic          ;
@@ -108,11 +104,9 @@ module inst_fetcher (
             } else {
                 // offsetが6な32ビット命令の場合、
                 // アドレスと上位16ビットを保存してFIFOを読み進める
-    // #@@range_begin(offset_ff)
-    if issue_pc_offset == 6 && !rvcc_is_rvc && !issue_is_rdata_saved @<b>|&& !fetch_fifo_rdata.expt.valid| {
-        if fetch_fifo_rvalid {
-            issue_is_rdata_saved = 1;
-    // #@@range_end(offset_ff)
+                if issue_pc_offset == 6 && !rvcc_is_rvc && !issue_is_rdata_saved && !fetch_fifo_rdata.expt.valid {
+                    if fetch_fifo_rvalid {
+                        issue_is_rdata_saved = 1;
                         issue_saved_addr     = fetch_fifo_rdata.addr;
                         issue_saved_bits     = fetch_fifo_rdata.bits[63:48];
                     }
@@ -127,18 +121,16 @@ module inst_fetcher (
     }
 
     // fetch_fifo <-> issue_fifo
-    // #@@range_begin(feif)
     always_comb {
         let raddr : Addr                            = fetch_fifo_rdata.addr;
         let rdata : logic       <MEMBUS_DATA_WIDTH> = fetch_fifo_rdata.bits;
-        @<b>|let expt  : MemException                    = fetch_fifo_rdata.expt;|
+        let expt  : MemException                    = fetch_fifo_rdata.expt;
         let offset: logic       <3>                 = issue_pc_offset;
 
         fetch_fifo_rready     = 0;
         issue_fifo_wvalid     = 0;
         issue_fifo_wdata      = 0;
-        @<b>|issue_fifo_wdata.expt = expt;|
-    // #@@range_end(feif)
+        issue_fifo_wdata.expt = expt;
 
         if !core_if.is_hazard && fetch_fifo_rvalid {
             if issue_fifo_wready {
@@ -150,15 +142,13 @@ module inst_fetcher (
                         issue_fifo_wdata.addr   = {issue_saved_addr[msb:3], offset};
                         issue_fifo_wdata.bits   = {rdata[15:0], issue_saved_bits};
                         issue_fifo_wdata.is_rvc = 0;
-                    } else {a
-    // #@@range_begin(offset_comb)
-    fetch_fifo_rready = 1;
-    if rvcc_is_rvc @<b>{|| expt.valid} {
-        issue_fifo_wvalid       = 1;
-        issue_fifo_wdata.addr   = {raddr[msb:3], offset};
-        issue_fifo_wdata.is_rvc = 1;
-        issue_fifo_wdata.bits   = rvcc_inst32;
-    // #@@range_end(offset_comb)
+                    } else {
+                        fetch_fifo_rready = 1;
+                        if rvcc_is_rvc || expt.valid {
+                            issue_fifo_wvalid       = 1;
+                            issue_fifo_wdata.addr   = {raddr[msb:3], offset};
+                            issue_fifo_wdata.is_rvc = 1;
+                            issue_fifo_wdata.bits   = rvcc_inst32;
                         } else {
                             // Read next 8 bytes
                         }
@@ -184,7 +174,6 @@ module inst_fetcher (
     }
 
     // issue_fifo <-> core
-    // #@@range_begin(issue)
     always_comb {
         issue_fifo_flush  = core_if.is_hazard;
         issue_fifo_rready = core_if.rready;
@@ -192,9 +181,8 @@ module inst_fetcher (
         core_if.raddr     = issue_fifo_rdata.addr;
         core_if.rdata     = issue_fifo_rdata.bits;
         core_if.is_rvc    = issue_fifo_rdata.is_rvc;
-        @<b>|core_if.expt      = issue_fifo_rdata.expt;|
+        core_if.expt      = issue_fifo_rdata.expt;
     }
-    // #@@range_end(issue)
 
     /*--------- fetch logic ----------*/
     var fetch_pc          : Addr ;
@@ -217,15 +205,13 @@ module inst_fetcher (
     }
 
     // memory -> fetch_fifo
-    // #@@range_begin(fetch)
     always_comb {
         fetch_fifo_flush      = core_if.is_hazard;
         fetch_fifo_wvalid     = fetch_requested && mem_if.rvalid;
         fetch_fifo_wdata.addr = fetch_pc_requested;
         fetch_fifo_wdata.bits = mem_if.rdata;
-        @<b>|fetch_fifo_wdata.expt = mem_if.expt;|
+        fetch_fifo_wdata.expt = mem_if.expt;
     }
-    // #@@range_end(fetch)
 
     always_ff {
         if_reset {

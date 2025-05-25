@@ -104,14 +104,12 @@ module core (
         exq_wdata.imm   = ids_imm;
         // exception
         exq_wdata.expt = 0;
-        // #@@range_begin(inst)
-        @<b>|if i_membus.expt.valid {|
-        @<b>|    // fault|
-        @<b>|    exq_wdata.expt.valid = 1;|
-        @<b>|    exq_wdata.expt.cause = CsrCause::INSTRUCTION_PAGE_FAULT;|
-        @<b>|    exq_wdata.expt.value = ids_pc;|
-        @<b>|} else| if !ids_inst_valid {
-        // #@@range_end(inst)
+        if i_membus.expt.valid {
+            // fault
+            exq_wdata.expt.valid = 1;
+            exq_wdata.expt.cause = CsrCause::INSTRUCTION_PAGE_FAULT;
+            exq_wdata.expt.value = ids_pc;
+        } else if !ids_inst_valid {
             // illegal instruction
             exq_wdata.expt.valid = 1;
             exq_wdata.expt.cause = CsrCause::ILLEGAL_INSTRUCTION;
@@ -337,14 +335,30 @@ module core (
     var csru_trap_return: logic   ;
     var minstret        : UInt64  ;
 
-    // #@@range_begin(csru)
     inst csru: csrunit (
-        ...
-        @<b>|mem_addr   : memu_addr            ,|
-        ...
-        @<b>|membus     : d_membus             ,|
+        clk                               ,
+        rst                               ,
+        valid      : mems_valid           ,
+        pc         : mems_pc              ,
+        inst_bits  : mems_inst_bits       ,
+        ctrl       : mems_ctrl            ,
+        expt_info  : mems_expt            ,
+        rd_addr    : mems_rd_addr         ,
+        csr_addr   : mems_inst_bits[31:20],
+        rs1_addr   : memq_rdata.rs1_addr  ,
+        rs1_data   : memq_rdata.rs1_data  ,
+        can_intr   : mems_is_new          ,
+        mem_addr   : memu_addr            ,
+        rdata      : csru_rdata           ,
+        mode       : csru_priv_mode       ,
+        raise_trap : csru_raise_trap      ,
+        trap_vector: csru_trap_vector     ,
+        trap_return: csru_trap_return     ,
+        minstret                          ,
+        led                               ,
+        aclint                            ,
+        membus     : d_membus             ,
     );
-    // #@@range_end(csru)
 
     always_comb {
         // MEM -> WB
