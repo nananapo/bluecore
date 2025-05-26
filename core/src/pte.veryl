@@ -1,61 +1,29 @@
+//#@@range_begin(bits)
 import eei::*;
 import sv39util::*;
 
 interface PTE39 {
     var value: UIntX;
 
-    function v () -> logic {
-        return value[0];
-    }
+    function v () -> logic { return value[0]; }
+    function r () -> logic { return value[1]; }
+    function w () -> logic { return value[2]; }
+    function x () -> logic { return value[3]; }
+    function u () -> logic { return value[4]; }
+    function a () -> logic { return value[6]; }
+    function d () -> logic { return value[7]; }
 
-    function r () -> logic {
-        return value[1];
-    }
+    function reserved -> logic<10> { return value[63:54]; }
 
-    function w () -> logic {
-        return value[2];
-    }
-
-    function x () -> logic {
-        return value[3];
-    }
-
-    function u () -> logic {
-        return value[4];
-    }
-
-    function a () -> logic {
-        return value[6];
-    }
-
-    function d () -> logic {
-        return value[7];
-    }
-
-    function reserved -> logic<10> {
-        return value[63:54];
-    }
-
-    function ppn2 () -> logic<26> {
-        return value[53:28];
-    }
-
-    function ppn1 () -> logic<9> {
-        return value[27:19];
-    }
-
-    function ppn0 () -> logic<9> {
-        return value[18:10];
-    }
-
-    function ppn () -> logic<44> {
-        return value[53:10];
-    }
-
+    function ppn2 () -> logic<26> { return value[53:28]; }
+    function ppn1 () -> logic<9> { return value[27:19]; }
+    function ppn0 () -> logic<9> { return value[18:10]; }
+    function ppn  () -> logic<44> { return value[53:10]; }
+}
+// #@@range_end(bits)
+// #@@range_begin(func)
     // leaf PTEか判定する
-    function is_leaf () -> logic {
-        return r() || x();
-    }
+    function is_leaf () -> logic { return r() || x(); }
 
     // leaf PTEのとき、PPNがページサイズに整列されているかどうかを判定する
     function is_ppn_aligned (
@@ -130,4 +98,5 @@ interface PTE39 {
         let d: logic<8> = wen as u8 << 7;
         return value[7:0] | a | d;
     }
+// #@@range_end(func)
 }
