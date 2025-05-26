@@ -297,11 +297,9 @@ module core (
     let mems_expt     : ExceptionInfo    = memq_rdata.expt;
     let mems_rd_addr  : logic        <5> = mems_inst_bits[11:7];
 
-    // #@@range_begin(hazard)
-    assign control_hazard         = mems_valid && (csru_raise_trap || mems_ctrl.is_jump || memq_rdata.br_taken @<b>{|| csru_flush});
+    assign control_hazard         = mems_valid && (csru_raise_trap || mems_ctrl.is_jump || memq_rdata.br_taken || csru_flush);
     assign control_hazard_pc_next = if csru_raise_trap ? csru_trap_vector : // trap
-     @<b>{if csru_flush ? mems_pc + 4 :} memq_rdata.jump_addr; // @<b>{flush or} jump
-    // #@@range_end(hazard)
+     if csru_flush ? mems_pc + 4 : memq_rdata.jump_addr; // flush or jump
 
     always_ff {
         if_reset {
@@ -336,11 +334,9 @@ module core (
     var csru_rdata      : UIntX   ;
     var csru_raise_trap : logic   ;
     var csru_trap_vector: Addr    ;
-    // #@@range_begin(reg)
     var csru_trap_return: logic   ;
-    @<b>|var csru_flush      : logic   ;|
+    var csru_flush      : logic   ;
     var minstret        : UInt64  ;
-    // #@@range_end(reg)
 
     inst csru: csrunit (
         clk                               ,
@@ -361,10 +357,8 @@ module core (
         raise_trap : csru_raise_trap      ,
         trap_vector: csru_trap_vector     ,
         trap_return: csru_trap_return     ,
-// #@@range_begin(csru)
-@<b>|flush      : csru_flush           ,|
-minstret                          ,
-// #@@range_end(csru)
+        flush      : csru_flush           ,
+        minstret                          ,
         led                               ,
         aclint                            ,
         membus     : d_membus             ,
