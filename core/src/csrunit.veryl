@@ -20,8 +20,10 @@ module csrunit (
     raise_trap : output  logic                   ,
     trap_vector: output  Addr                    ,
     trap_return: output  logic                   ,
-    flush      : output  logic                   ,
-    minstret   : input   UInt64                  ,
+// #@@range_begin(port)
+@<b>|flush      : output  logic                   ,|
+minstret   : input   UInt64                  ,
+// #@@range_end(port)
     led        : output  UIntX                   ,
     aclint     : modport aclint_if::slave        ,
     membus     : modport core_data_if::master    ,
@@ -224,8 +226,10 @@ module csrunit (
     };
 
     // flush logic
+    // #@@range_begin(logic)
     let wsc_flush: logic = is_wsc && (csr_addr == CsrAddr::SATP || csr_addr == CsrAddr::MSTATUS);
     assign flush     = valid && wsc_flush;
+    // #@@range_end(logic)
 
     // connect to ptw
     always_comb {
