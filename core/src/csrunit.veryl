@@ -65,7 +65,9 @@ module csrunit (
     // SFENCE.VMAかどうか
     let is_sfence_vma: logic = ctrl.is_csr && ctrl.funct7 == 7'b0001001 && ctrl.funct3 == 0 && rd_addr == 0;
     // FENCE.I命令かどうか
+    // #@@range_begin(is)
     let is_fence_i: logic = inst_bits[6:0] == OP_MISC_MEM && ctrl.funct3 == 3'b001;
+    // #@@range_end(is)
 
     // Check CSR access
     let will_not_write_csr     : logic = (ctrl.funct3[1:0] == 2 || ctrl.funct3[1:0] == 3) && rs1_addr == 0; // set/clear with source = 0
@@ -227,7 +229,9 @@ module csrunit (
 
     // flush logic
     let wsc_flush: logic = is_wsc && (csr_addr == CsrAddr::SATP || csr_addr == CsrAddr::MSTATUS);
-    assign flush     = valid && (wsc_flush || is_fence_i);
+    // #@@range_begin(flush)
+    assign flush     = valid && (wsc_flush @<b>{|| is_fence_i});
+    // #@@range_end(flush)
 
     // connect to ptw
     always_comb {
