@@ -23,11 +23,9 @@ module csrunit (
     minstret   : input   UInt64                  ,
     led        : output  UIntX                   ,
     aclint     : modport aclint_if::slave        ,
-// #@@range_begin(port)
     membus     : modport core_data_if::master    ,
-    @<b>|ptw_ctrl   : modport ptw_ctrl_if::master     ,|
+    ptw_ctrl   : modport ptw_ctrl_if::master     ,
 ) {
-// #@@range_end(port)
 
     // wmasks
     const MSTATUS_WMASK   : UIntX = 'h0000_0000_006e_19aa as UIntX;
@@ -219,7 +217,6 @@ module csrunit (
     };
 
     // connect to ptw
-    // #@@range_begin(assign)
     always_comb {
         ptw_ctrl.priv = mode;
         ptw_ctrl.satp = satp;
@@ -228,7 +225,6 @@ module csrunit (
         ptw_ctrl.mprv = mstatus_mprv;
         ptw_ctrl.mpp  = mstatus_mpp;
     }
-    // #@@range_end(assign)
 
     var wmask: UIntX; // write mask
     var wdata: UIntX; // write data
