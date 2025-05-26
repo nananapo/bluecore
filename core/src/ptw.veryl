@@ -1,3 +1,4 @@
+// #@@range_begin(port)
 import eei::*;
 
 module ptw (
@@ -8,8 +9,12 @@ module ptw (
     master : modport Membus::master    ,
     ctrl   : modport ptw_ctrl_if::slave,
 ) {
+// #@@range_end(port)
+    // #@@range_begin(paging_enabled)
     let paging_enabled: logic = ctrl.is_enabled(is_inst);
+    // #@@range_end(paging_enabled)
 
+    // #@@range_begin(state)
     enum State {
         IDLE,
         EXECUTE_READY,
@@ -17,11 +22,17 @@ module ptw (
     }
 
     var state: State;
+    // #@@range_end(state)
 
+    // #@@range_begin(phy)
     var physical_addr: Addr;
+    // #@@range_end(phy)
 
+    // #@@range_begin(save)
     inst slave_saved: Membus;
+    // #@@range_end(save)
 
+    // #@@range_begin(assign_master)
     function assign_master (
         addr : input Addr                        ,
         wen  : input logic                       ,
@@ -57,7 +68,9 @@ module ptw (
             default: {}
         }
     }
+    // #@@range_end(assign_master)
 
+    // #@@range_begin(assign_slave)
     always_comb {
         slave.ready  = 0;
         slave.rvalid = 0;
@@ -75,7 +88,9 @@ module ptw (
             default: {}
         }
     }
+    // #@@range_end(assign_slave)
 
+    // #@@range_begin(ff)
     function accept_request_ff () {
         slave_saved.valid = slave.ready && slave.valid;
         if slave.ready && slave.valid {
@@ -124,4 +139,5 @@ module ptw (
             on_clock();
         }
     }
+    // #@@range_end(ff)
 }
