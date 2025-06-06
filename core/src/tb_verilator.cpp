@@ -6,7 +6,10 @@
 #include <termios.h>
 #include <signal.h>
 #include "Vcore_top.h"
+
+#ifdef TRACE
 #include <verilated_vcd_c.h>
+#endif
 
 namespace fs = std::filesystem;
 
