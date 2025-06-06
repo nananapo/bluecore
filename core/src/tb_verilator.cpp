@@ -112,6 +112,7 @@ int main(int argc, char** argv) {
     // デバッグ用の入出力デバイスのアドレスを取得する
     const char* dbg_addr_c = getenv("DBG_ADDR");
     const unsigned long long DBG_ADDR = dbg_addr_c == nullptr ? 0 : std::strtoull(dbg_addr_c, nullptr, 0);
+    std::cout << DBG_ADDR << std::endl;
 
     // top
     Vcore_top *dut = new Vcore_top();
@@ -133,21 +134,21 @@ int main(int argc, char** argv) {
     }
 
     // trace
-    #ifdef TRACE
+    // #ifdef TRACE
     Verilated::traceEverOn(true);
     VerilatedVcdC* tfp = new VerilatedVcdC;
     dut->trace(tfp, 100);
     tfp->open("sim.vcd");
-    #endif
+    // #endif
 
     // loop
     dut->rst = 1;
     for (long long i=0; !Verilated::gotFinish() && (cycles == 0 || i / 2 < cycles); i++) {
         dut->clk = !dut->clk;
         dut->eval();
-        #ifdef TRACE
+        // #ifdef TRACE
         tfp->dump((int)i);
-        #endif
+        // #endif
     }
 
     dut->final();

@@ -25,8 +25,8 @@ module plic_memory (
     let claim1    : UInt32 = if pending[SOURCE_UART_RX] && enable1[SOURCE_UART_RX] && uart_rx_priority >: threshold1 ? 1 : 0;
 
     always_comb {
-        irq.meip = claim0 != 0;
-        irq.seip = claim1 != 0;
+        irq.meip = 0; //claim0 != 0;
+        irq.seip = 0; // claim1 != 0;
     }
 
     var wmask_expand: logic<MEMBUS_DATA_WIDTH>;
