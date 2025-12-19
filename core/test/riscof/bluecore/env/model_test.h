@@ -11,10 +11,20 @@
         .word 4;
 
 //RV_COMPLIANCE_HALT
-#define RVMODEL_HALT                                              \
-  li x1, 1;                                                                   \
-  write_tohost:                                                               \
-    sw x1, tohost, t5;                                                        \
+#define RVMODEL_HALT             \
+    la a0, begin_signature;      \
+    la a1, end_signature;        \
+    li a2, 0xFFFFFF88;           \
+  copy_loop:                     \
+    beq a0, a1, copy_loop_end;   \
+    lw t0, 0(a0);                \
+    sw t0, 0(a2);                \
+    addi a0, a0, 4;              \
+    j copy_loop;                 \
+  copy_loop_end:                 \
+    li x1, 1;                    \
+  write_tohost:                  \
+    sw x1, tohost, t5;           \
     j write_tohost;
 
 #define RVMODEL_BOOT

@@ -24,6 +24,7 @@ module top #(
     var memarb_last_i: logic;
 
     const RISCVTESTS_TOHOST_ADDR: Addr = 'h1000 as Addr;
+    const RISCOF_SIGNATURE_ADDR : Addr = 'hffffff88 as Addr;
     #[ifdef(TEST_MODE)]
     always_ff {
         if d_membus.valid && d_membus.ready {
@@ -37,6 +38,9 @@ module top #(
                         $error  ("wdata : %h", d_membus.wdata);
                     }
                     $finish();
+                }
+                RISCOF_SIGNATURE_ADDR: if d_membus.wen == 1 {
+                    $display("signature: %h", d_membus.wdata[31:0]);
                 }
             }
         }
