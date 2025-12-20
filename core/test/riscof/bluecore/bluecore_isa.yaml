@@ -1,6 +1,6 @@
 hart_ids: [0]
 hart0:
-  ISA: RV64I
+  ISA: RV64IM
   physical_addr_sz: 20
   User_Spec_Version: '2.3'
   supported_xlen: [64]
