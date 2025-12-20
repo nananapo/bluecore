@@ -13,6 +13,18 @@ import riscof.utils as utils
 import riscof.constants as constants
 from riscof.pluginTemplate import pluginTemplate
 
+from elftools.elf.elffile import ELFFile
+def get_section_address(filepath, section_name):
+  try:
+      with open(filepath, 'rb') as f:
+          elffile = ELFFile(f)
+          for section in elffile.iter_sections():
+              if section.name == section_name:
+                  return section.header['sh_addr']
+          return 0
+  except:
+      return 0
+
 logger = logging.getLogger()
 
 class bluecore(pluginTemplate):
@@ -60,6 +72,7 @@ class bluecore(pluginTemplate):
             self.target_run = True
         
         self.bin2hex_path = os.path.abspath(config["BIN2HEX_PATH"])
+        self.bootrom_path = os.path.abspath(config["BOOTROM_PATH"])
 
     def initialise(self, suite, work_dir, archtest_env):
 
@@ -171,7 +184,8 @@ class bluecore(pluginTemplate):
             cmd = "python3 {0} {1} {2}.bin > {3}.hex".format(self.bin2hex_path, bin2hex_granularity, elf, elf)
             utils.shellCommand(cmd).run(cwd=test_dir)
             # run test
-            execute = "{0} {1}.hex 1000000 > {2}".format(self.dut_exe, str(elf), logfile)
+            execute = "DBG_ADDR={0} ".format(get_section_address(os.path.join(test_dir, elf), ".tohost"))
+            execute += "{0} {1} {2}.hex 1000000 > {3}".format(self.dut_exe, self.bootrom_path, str(elf), logfile)
             logger.debug('Executing on bluecore ' + execute)
 
 

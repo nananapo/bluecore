@@ -14,11 +14,13 @@
 #define RVMODEL_HALT             \
     la a0, begin_signature;      \
     la a1, end_signature;        \
-    li a2, 0xFFFFFF88;           \
+    la a2, tohost;               \
+    li a3, 0x1010100000000000;   \
   copy_loop:                     \
     beq a0, a1, copy_loop_end;   \
-    lw t0, 0(a0);                \
-    sw t0, 0(a2);                \
+    lwu t0, 0(a0);               \
+    or t0, t0, a3;               \
+    sd t0, 0(a2);                \
     addi a0, a0, 4;              \
     j copy_loop;                 \
   copy_loop_end:                 \
